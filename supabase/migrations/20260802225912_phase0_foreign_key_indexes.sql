@@ -1,0 +1,12 @@
+create index proposals_owner_idx on public.proposals (owner_id);
+create index prototype_records_owner_idx on public.prototype_records (owner_id);
+create index prototype_records_proposal_idx on public.prototype_records (proposal_id);
+create index retainers_owner_idx on public.retainers (owner_id);
+create index retainer_templates_owner_idx on public.retainer_deliverable_templates (owner_id);
+create index retainer_templates_retainer_idx on public.retainer_deliverable_templates (retainer_id);
+create index retainer_cycles_owner_idx on public.retainer_cycles (owner_id);
+create index cycle_items_owner_idx on public.retainer_cycle_items (owner_id);
+create index cycle_items_template_idx on public.retainer_cycle_items (template_id);
+create index cycle_items_carried_from_idx on public.retainer_cycle_items (carried_from_item_id);
+create index slipping_signals_owner_idx on public.slipping_signals (owner_id);
+create index slipping_signals_cycle_item_idx on public.slipping_signals (cycle_item_id);
