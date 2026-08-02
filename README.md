@@ -3,6 +3,8 @@
 
 Responsive Next.js + Tailwind prototype for capture → proposal → review, explainable Slipping, and safe monthly retainer rollover.
 
+The ordered commercial-MVP plan, current implementation status, exit gates, and verification log live in [`MVP-BUILD-TRACKER.md`](MVP-BUILD-TRACKER.md). Update that tracker in the same change that completes an MVP item.
+
 ## Run locally
 
 1. Use Node 24+ and `npm install`.

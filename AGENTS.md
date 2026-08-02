@@ -17,30 +17,57 @@ The initial product is a responsive Next.js website/PWA. Native iOS and Android 
 For product or implementation work, read the relevant parts of these files first:
 
 1. `PRD.md` — authoritative product scope, requirements, terminology, acceptance criteria, architecture, and roadmap.
-2. `product-strategy.md` — commercial reasoning, competition, positioning, and MVP rationale.
-3. `idea-assessment.md` — initial viability assessment.
-4. `youtube-script.md` — broad inspiration and long-term vision; it is not the MVP specification.
+2. `MVP-BUILD-TRACKER.md` — ordered implementation plan, current completion status, milestone exit gates, release blockers, and verification log. It is derived from the PRD and does not override it.
+3. `product-strategy.md` — commercial reasoning, competition, positioning, and MVP rationale.
+4. `idea-assessment.md` — initial viability assessment.
+5. `youtube-script.md` — broad inspiration and long-term vision; it is not the MVP specification.
 
 When these documents conflict, follow this order:
 
 1. The user’s current explicit request.
 2. `PRD.md`.
-3. `product-strategy.md`.
-4. `idea-assessment.md`.
-5. `youtube-script.md`.
+3. `MVP-BUILD-TRACKER.md` for build order and recorded implementation status only.
+4. `product-strategy.md`.
+5. `idea-assessment.md`.
+6. `youtube-script.md`.
 
 Do not interpret a feature in the transcript as authorization to add it to the MVP. The PRD’s priorities and non-goals control scope.
 
+The PRD uses **Phase 0** for validation/prototyping and **P0** for requirements that are mandatory for the public MVP. Do not treat those terms as interchangeable. The commercial MVP is complete only when all required P0 work, the PRD acceptance journey, and the production-like release gates pass.
+
 ## Current repository state
 
-At the time this file was created, the repository contains product documents but no application scaffold.
+The repository now contains an npm-based Phase 0 application scaffold and product documents:
+
+- Next.js 16 App Router, React 19, strict TypeScript, and Tailwind CSS 4 under `src/`.
+- Supabase SSR clients, invite-only email magic-link authentication, API routes, and version-controlled migrations under `supabase/migrations/`.
+- A source-first text capture prototype, server-only OpenRouter proposal adapter, review/correction UI, retainer rollover lab, and Slipping lab.
+- Vitest unit tests for proposal validation and basic retainer/Slipping behavior.
+- `MVP-BUILD-TRACKER.md` records the audited state and the ordered path from this prototype to the commercial MVP.
+
+This is still a validation prototype, not a complete Phase 1 beta or commercial MVP. In particular, the OpenRouter happy path has not been verified in the tested UI, the current records are prototype records rather than the canonical product model, and the repository does not yet include Today, the broader P0 entities, calendar sync, voice, durable jobs, billing, export/deletion, cross-user RLS integration tests, or end-to-end tests.
 
 Before running or suggesting commands:
 
-- Inspect the repository and use the package manager identified by the lockfile.
-- Do not assume `npm`, `pnpm`, `yarn`, or `bun` until the project has selected one.
-- Once scripts exist, use the scripts defined in `package.json` instead of inventing parallel commands.
-- Update this section when the application is scaffolded and the canonical commands are known.
+- Use **npm** and preserve `package-lock.json`; do not introduce a second package manager or lockfile.
+- Use scripts defined in `package.json` instead of inventing parallel commands.
+- Current commands are `npm run dev`, `npm run lint`, `npm test`, and `npm run build`.
+- A dedicated format check, dedicated type-check script, integration-test script, and end-to-end-test script are still required by the MVP tracker.
+- Never assume a prototype path is production-ready merely because its UI exists; consult the tracker status and exit gate.
+
+## MVP tracker workflow
+
+For every product or implementation change:
+
+1. Identify the relevant PRD requirement IDs and tracker step before editing.
+2. Work in the dependency order recorded in `MVP-BUILD-TRACKER.md` unless the user explicitly reprioritizes it.
+3. Update the tracker in the same change when implementation status, setup, schema, a milestone gate, or verification evidence changes.
+4. Mark `[x]` only after the item has appropriate implementation and test/manual evidence. Code presence alone is not completion.
+5. Add a dated verification-log entry for a newly completed milestone or release-critical invariant.
+6. Do not mark a step complete while its exit gate, authorization, recovery, mobile, accessibility, or required test work remains open.
+7. Keep P1/P2 items parked unless they are dependencies for P0 or the user explicitly changes scope.
+
+If the tracker and current code disagree, inspect the code and tests, correct the tracker, and mention the discrepancy in the handoff. Never weaken the PRD to make the completion percentage look better.
 
 ## MVP scope
 
@@ -129,8 +156,6 @@ Keep these boundaries:
 Do not connect browser code directly to privileged operations merely because Supabase permits client access. Exposed client access requires narrowly scoped row-level policies.
 
 ## TypeScript and code conventions
-
-Once the app is scaffolded:
 
 - Enable TypeScript strict mode.
 - Avoid `any`; use `unknown` and validate at system boundaries.
@@ -310,7 +335,13 @@ Match tests to the risk of the change.
 
 ### Quality commands
 
-Once the app is scaffolded, keep canonical commands in `package.json` for at least:
+Current runnable checks are:
+
+- `npm run lint`
+- `npm test`
+- `npm run build`
+
+Before the commercial MVP can be declared complete, add and keep canonical `package.json` commands for at least:
 
 - Formatting check.
 - Lint.
@@ -356,6 +387,7 @@ A change is complete when, as applicable:
 - Analytics are added without sensitive contents.
 - Accessibility and responsive behavior are verified.
 - Documentation and environment examples are updated.
+- `MVP-BUILD-TRACKER.md` reflects the resulting status and includes new release-critical verification evidence when applicable.
 - No unrelated files or user changes were overwritten.
 
-In the final handoff, summarize the user-visible outcome, list verification performed, identify any remaining risk, and link the most relevant files.
+In the final handoff, summarize the user-visible outcome, list verification performed, identify any remaining risk, and link the most relevant files and tracker step.

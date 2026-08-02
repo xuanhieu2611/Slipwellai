@@ -5,7 +5,7 @@
 **Last updated:** August 2, 2026  
 **Initial platform:** Responsive website built with Next.js  
 **Product name:** Slipwell  
-**Document owner:** Founder / Product  
+**Document owner:** Founder / Product
 
 ---
 
@@ -68,21 +68,21 @@ The original transcript is a vision source, not an instruction to build every de
 
 ## 3. Key product decisions
 
-| Decision | Selected direction | Why |
-|---|---|---|
-| Beachhead customer | Creator-consultants, freelancers with retainers, and solo operators | They experience the full problem intensely and have clearer willingness to pay than a general consumer audience. |
-| Public-facing message | Broad, relatable outcome: capture what matters and prevent it from slipping | Enables viral demos without diluting the build scope. |
-| Initial platform | Responsive Next.js website / PWA | Fastest path to validation and works across desktop and mobile browsers. |
-| Native mobile | Expo app for iOS and Android after web retention is proven | Preserves future mobile capture quality without delaying validation. |
-| Collaboration | Single-player only in initial releases | Team permissions and shared state would substantially increase complexity before individual retention is known. |
-| Differentiating wedge | Trustworthy AI capture + native retainers + cross-object Slipping | This combination is more defensible than a broad module count. |
-| Calendar | Google Calendar read sync in MVP | Calendar is context; Slipwell should not try to replace it initially. |
-| Content workflow | Opinionated project template in MVP | Tests demand without creating a separate content subsystem too early. |
-| Routines | Simple daily checklist in MVP | Preserves separation from tasks; advanced streak analytics come later. |
-| People and notes | Lightweight linked records in MVP | Provides useful context without attempting full CRM or knowledge-management depth. |
-| AI chat | Deferred until retrieval and source-linking are trustworthy | An ungrounded chat feature would create risk before enough user data exists. |
-| Monetization | Free tier + automatic 14-day Pro trial + Pro subscription | Free capture encourages habit and sharing; paid workflows monetize professional value. |
-| Initial Pro price | US$15 monthly or US$144 annually | Sits between basic task tools and more expensive AI planning suites. |
+| Decision              | Selected direction                                                          | Why                                                                                                              |
+| --------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Beachhead customer    | Creator-consultants, freelancers with retainers, and solo operators         | They experience the full problem intensely and have clearer willingness to pay than a general consumer audience. |
+| Public-facing message | Broad, relatable outcome: capture what matters and prevent it from slipping | Enables viral demos without diluting the build scope.                                                            |
+| Initial platform      | Responsive Next.js website / PWA                                            | Fastest path to validation and works across desktop and mobile browsers.                                         |
+| Native mobile         | Expo app for iOS and Android after web retention is proven                  | Preserves future mobile capture quality without delaying validation.                                             |
+| Collaboration         | Single-player only in initial releases                                      | Team permissions and shared state would substantially increase complexity before individual retention is known.  |
+| Differentiating wedge | Trustworthy AI capture + native retainers + cross-object Slipping           | This combination is more defensible than a broad module count.                                                   |
+| Calendar              | Google Calendar read sync in MVP                                            | Calendar is context; Slipwell should not try to replace it initially.                                            |
+| Content workflow      | Opinionated project template in MVP                                         | Tests demand without creating a separate content subsystem too early.                                            |
+| Routines              | Simple daily checklist in MVP                                               | Preserves separation from tasks; advanced streak analytics come later.                                           |
+| People and notes      | Lightweight linked records in MVP                                           | Provides useful context without attempting full CRM or knowledge-management depth.                               |
+| AI chat               | Deferred until retrieval and source-linking are trustworthy                 | An ungrounded chat feature would create risk before enough user data exists.                                     |
+| Monetization          | Free tier + automatic 14-day Pro trial + Pro subscription                   | Free capture encourages habit and sharing; paid workflows monetize professional value.                           |
+| Initial Pro price     | US$15 monthly or US$144 annually                                            | Sits between basic task tools and more expensive AI planning suites.                                             |
 
 ---
 
@@ -133,14 +133,14 @@ Even when an item is recorded, conventional tools primarily surface due dates. W
 
 ### 5.2 Existing alternatives and their shortcomings
 
-| Alternative | What works | Remaining problem for Slipwell’s target user |
-|---|---|---|
-| Apple Notes / voice memos | Extremely fast capture | Information remains unstructured and rarely resurfaces. |
-| Todoist and similar task apps | Reliable task management | Weak context across retainers, notes, people, and attention cadence. |
-| Notion | Flexible databases and templates | Requires setup, categorization, and ongoing system maintenance. |
-| Team project tools | Strong collaboration and delivery workflows | Heavy for personal use and awkward for work/life context. |
-| Calendar | Trusted time commitments | Not suitable for every task, note, follow-up, or stale project. |
-| Personal CRM / habit / PKM apps | Strong specialist workflows | Fragment the user’s context across more tools. |
+| Alternative                     | What works                                  | Remaining problem for Slipwell’s target user                         |
+| ------------------------------- | ------------------------------------------- | -------------------------------------------------------------------- |
+| Apple Notes / voice memos       | Extremely fast capture                      | Information remains unstructured and rarely resurfaces.              |
+| Todoist and similar task apps   | Reliable task management                    | Weak context across retainers, notes, people, and attention cadence. |
+| Notion                          | Flexible databases and templates            | Requires setup, categorization, and ongoing system maintenance.      |
+| Team project tools              | Strong collaboration and delivery workflows | Heavy for personal use and awkward for work/life context.            |
+| Calendar                        | Trusted time commitments                    | Not suitable for every task, note, follow-up, or stale project.      |
+| Personal CRM / habit / PKM apps | Strong specialist workflows                 | Fragment the user’s context across more tools.                       |
 
 ### 5.3 Jobs to be done
 
@@ -170,16 +170,16 @@ Even when an item is recorded, conventional tools primarily surface due dates. W
 
 These are planning targets, not forecasts.
 
-| Metric | Target |
-|---|---:|
-| Registered users | 10,000 |
-| Activated users | 4,000 |
-| Paying subscribers | 800+ |
-| Monthly recurring revenue at target scale | US$10,000+ |
-| Activated-to-paid conversion | 8% or higher |
-| Annual-plan share of paying subscribers | 40% or higher |
+| Metric                                          | Target        |
+| ----------------------------------------------- | ------------- |
+| Registered users                                | 10,000        |
+| Activated users                                 | 4,000         |
+| Paying subscribers                              | 800+          |
+| Monthly recurring revenue at target scale       | US$10,000+    |
+| Activated-to-paid conversion                    | 8% or higher  |
+| Annual-plan share of paying subscribers         | 40% or higher |
 | Six-week weekly retention among activated users | 40% or higher |
-| Gross margin after AI/infrastructure costs | 80% or higher |
+| Gross margin after AI/infrastructure costs      | 80% or higher |
 
 ### 6.3 Non-goals for MVP
 
@@ -295,37 +295,37 @@ Priority definitions:
 - **P2:** Future expansion after retention evidence.
 - **Excluded:** Not planned without a deliberate strategy revision.
 
-| Capability | Priority | Release treatment |
-|---|---:|---|
-| Authentication and onboarding | P0 | Email magic link and Google sign-in; guided setup. |
-| Responsive web / PWA | P0 | Desktop and mobile browser support. |
-| Text capture | P0 | Global capture control and keyboard shortcut. |
-| Browser voice capture | P0 | Record, transcribe, preserve, and route. |
-| AI cleanup and routing | P0 | Task, note, project update, and person update. |
-| Capture review and audit trail | P0 | Prominent and reversible. |
-| Today | P0 | Top three, calendar, tasks, routines, Slipping, recent captures. |
-| Tasks | P0 | Dates, reminders, recurrence, priority, links, completion. |
-| Domains / areas | P0 | Simple top-level work/life organization. |
-| Finite projects | P0 | Milestones, tasks, checklist templates, activity. |
-| Retainers | P0 | Cycles, recurring deliverables, roll-forward, history. |
-| Slipping engine | P0 | Tasks, projects, and retainers. |
-| Google Calendar read sync | P0 | One account and selected calendars initially. |
-| Simple routines | P0 | Checklist separated by time of day. |
-| People | P0-light | Facts, interactions, follow-up, links. |
-| Notes | P0-light | Markdown/plain text, tags, links, review date. |
-| Global keyword search | P0 | Cross-entity results and filters. |
-| Notifications | P0 | In-app and email; browser push where reliable. |
-| Import/export/deletion | P0 | CSV/Markdown/JSON export and account deletion. |
-| Billing | P0 | Free, Pro trial, Pro monthly/annual. |
-| Content workflow | P1 | Opinionated project template and filtered view. |
-| Semantic search | P1 | After keyword search and data permissions are stable. |
-| Grounded AI chat | P2 | Must cite supporting records. |
-| Native Expo app | P2 | iOS and Android after web retention. |
-| Full routines/streak analytics | P2 | Challenges, charts, historical streaks. |
-| Full personal CRM | P2 | Contact sync, relationship cadence, richer views. |
-| Deep personal library | P2 | Journal, books, quotes, highlights, resurfacing. |
-| Collaboration | P2 / conditional | Only after individual retention and team demand. |
-| Inventory | Excluded for foreseeable roadmap | Does not support the initial commercial wedge. |
+| Capability                     | Priority                         | Release treatment                                                |
+| ------------------------------ | -------------------------------- | ---------------------------------------------------------------- |
+| Authentication and onboarding  | P0                               | Email magic link and Google sign-in; guided setup.               |
+| Responsive web / PWA           | P0                               | Desktop and mobile browser support.                              |
+| Text capture                   | P0                               | Global capture control and keyboard shortcut.                    |
+| Browser voice capture          | P0                               | Record, transcribe, preserve, and route.                         |
+| AI cleanup and routing         | P0                               | Task, note, project update, and person update.                   |
+| Capture review and audit trail | P0                               | Prominent and reversible.                                        |
+| Today                          | P0                               | Top three, calendar, tasks, routines, Slipping, recent captures. |
+| Tasks                          | P0                               | Dates, reminders, recurrence, priority, links, completion.       |
+| Domains / areas                | P0                               | Simple top-level work/life organization.                         |
+| Finite projects                | P0                               | Milestones, tasks, checklist templates, activity.                |
+| Retainers                      | P0                               | Cycles, recurring deliverables, roll-forward, history.           |
+| Slipping engine                | P0                               | Tasks, projects, and retainers.                                  |
+| Google Calendar read sync      | P0                               | One account and selected calendars initially.                    |
+| Simple routines                | P0                               | Checklist separated by time of day.                              |
+| People                         | P0-light                         | Facts, interactions, follow-up, links.                           |
+| Notes                          | P0-light                         | Markdown/plain text, tags, links, review date.                   |
+| Global keyword search          | P0                               | Cross-entity results and filters.                                |
+| Notifications                  | P0                               | In-app and email; browser push where reliable.                   |
+| Import/export/deletion         | P0                               | CSV/Markdown/JSON export and account deletion.                   |
+| Billing                        | P0                               | Free, Pro trial, Pro monthly/annual.                             |
+| Content workflow               | P1                               | Opinionated project template and filtered view.                  |
+| Semantic search                | P1                               | After keyword search and data permissions are stable.            |
+| Grounded AI chat               | P2                               | Must cite supporting records.                                    |
+| Native Expo app                | P2                               | iOS and Android after web retention.                             |
+| Full routines/streak analytics | P2                               | Challenges, charts, historical streaks.                          |
+| Full personal CRM              | P2                               | Contact sync, relationship cadence, richer views.                |
+| Deep personal library          | P2                               | Journal, books, quotes, highlights, resurfacing.                 |
+| Collaboration                  | P2 / conditional                 | Only after individual retention and team demand.                 |
+| Inventory                      | Excluded for foreseeable roadmap | Does not support the initial commercial wedge.                   |
 
 ---
 
@@ -477,12 +477,12 @@ Before a user reaches the plan limit, show remaining usage and explain alternati
 
 **Acceptance examples**
 
-| Input | Expected proposal |
-|---|---|
-| “Tomorrow at 2 remind me to replace the fridge filter at home.” | Task; Home; due tomorrow 2:00 PM; reminder based on user default. |
+| Input                                                                                         | Expected proposal                                                                                    |
+| --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| “Tomorrow at 2 remind me to replace the fridge filter at home.”                               | Task; Home; due tomorrow 2:00 PM; reminder based on user default.                                    |
 | “For Acme’s retainer, send July analytics by Friday and ask Dana about the missing ad spend.” | Task linked to Acme retainer plus person follow-up if Dana is confidently matched; otherwise review. |
-| “Idea: a video about why recurring tasks fail freelancers.” | Note or content-template idea based on user preference; no invented due date. |
-| “Lunch with Minh—his daughter starts university in September.” | Person interaction and fact if Minh is uniquely matched; private by default. |
+| “Idea: a video about why recurring tasks fail freelancers.”                                   | Note or content-template idea based on user preference; no invented due date.                        |
+| “Lunch with Minh—his daughter starts university in September.”                                | Person interaction and fact if Minh is uniquely matched; private by default.                         |
 
 ### 12.4 Capture review and AI trust
 
@@ -704,12 +704,12 @@ People, content stages, and review-marked notes are P1/P2.
 
 **SLP-04 — Default rules**
 
-| Entity | Initial default |
-|---|---|
-| Unscheduled open task | Slipping after 14 days without meaningful attention. |
-| Active finite project | Slipping after 7 days without meaningful attention. |
-| Retainer deliverable | Slipping when not started by its configured or inferred expected point in the cycle. |
-| Active retainer | Slipping after 7 days without activity while current-cycle work remains. |
+| Entity                | Initial default                                                                      |
+| --------------------- | ------------------------------------------------------------------------------------ |
+| Unscheduled open task | Slipping after 14 days without meaningful attention.                                 |
+| Active finite project | Slipping after 7 days without meaningful attention.                                  |
+| Retainer deliverable  | Slipping when not started by its configured or inferred expected point in the cycle. |
+| Active retainer       | Slipping after 7 days without activity while current-cycle work remains.             |
 
 Defaults must be remotely configurable and user-overridable on Pro.
 
@@ -872,22 +872,22 @@ Every actionable notification links directly to the relevant signed-in record or
 
 **BIL-01 — Plans**
 
-| Capability | Free | Pro |
-|---|---:|---:|
-| Tasks and notes | Unlimited reasonable use | Unlimited reasonable use |
-| Active domains | 3 | Unlimited |
-| Active finite projects | 3 | Unlimited |
-| Active retainers | 1 | Unlimited |
-| Google accounts | 1 | 1 initially |
-| AI captures | 50/month launch allowance | 500/month launch allowance |
-| Voice minutes | 20/month launch allowance | 180/month launch allowance |
-| Basic Slipping defaults | Yes | Yes |
-| Custom Slipping rules | No | Yes |
-| Routines | 3 | Unlimited |
-| Search | Keyword | Keyword; semantic when released |
-| Export and deletion | Yes | Yes |
-| Activity history | 30 days in UI | Full available history |
-| Support | Community/email | Priority email |
+| Capability              | Free                      | Pro                             |
+| ----------------------- | ------------------------- | ------------------------------- |
+| Tasks and notes         | Unlimited reasonable use  | Unlimited reasonable use        |
+| Active domains          | 3                         | Unlimited                       |
+| Active finite projects  | 3                         | Unlimited                       |
+| Active retainers        | 1                         | Unlimited                       |
+| Google accounts         | 1                         | 1 initially                     |
+| AI captures             | 50/month launch allowance | 500/month launch allowance      |
+| Voice minutes           | 20/month launch allowance | 180/month launch allowance      |
+| Basic Slipping defaults | Yes                       | Yes                             |
+| Custom Slipping rules   | No                        | Yes                             |
+| Routines                | 3                         | Unlimited                       |
+| Search                  | Keyword                   | Keyword; semantic when released |
+| Export and deletion     | Yes                       | Yes                             |
+| Activity history        | 30 days in UI             | Full available history          |
+| Support                 | Community/email           | Priority email                  |
 
 Allowances are launch hypotheses. Change them based on real usage cost and activation, with clear notice and without removing access to user-authored records.
 
@@ -1027,36 +1027,36 @@ All user-owned entities include `id`, `user_id`, `created_at`, `updated_at`, opt
 
 ### 14.1 Core entities
 
-| Entity | Purpose | Important relationships |
-|---|---|---|
-| User | Identity and account | Preferences, subscription, connections |
-| UserPreference | Locale, timezone, capture, notification defaults | User |
-| Capture | Immutable source and processing state | Proposals, resulting records, media |
-| CaptureProposal | Versioned AI interpretation | Capture, proposed/created records |
-| Domain | Durable responsibility area | Projects, retainers, tasks, notes, people |
-| Task | Actionable commitment | Domain, project/retainer, person, note, capture |
-| RecurrenceRule | Versioned recurrence definition | Task or routine template |
-| Project | Finite outcome | Domain, milestones, tasks, checklists, activity |
-| Milestone | Project checkpoint | Project, tasks |
-| ChecklistTemplate | Reusable process definition | Project/retainer templates |
-| ChecklistInstance | Snapshot used in real work | Project or retainer cycle |
-| Retainer | Ongoing engagement | Domain, client/person, cycles, templates |
-| RetainerCycle | One period of a retainer | Retainer, generated tasks/checklists |
-| Routine | Repeated personal behavior | Domain, daily instances |
-| RoutineInstance | Scheduled completion state | Routine |
-| Person | Lightweight personal/client record | Retainers, projects, facts, interactions, tasks |
-| PersonFact | Discrete sourced fact | Person, capture |
-| Interaction | Timestamped relationship context | Person, follow-up task, capture |
-| Note | Contextual written record | Domain and any linkable entity |
-| ActivityEvent | Append-only meaningful event | Actor, source, affected entity |
-| SlippingRule | Expected-attention rule | Entity type or specific entity |
-| SlippingSignal | Computed attention-risk episode | Entity, rule, outcome |
-| CalendarConnection | OAuth and sync health | User, calendars |
-| CalendarEventMirror | Read-only provider event | Calendar connection, optional linked records |
-| Notification | Delivery and read state | User, source entity |
-| Subscription | Billing and entitlement state | User, provider customer/subscription |
-| UsageLedger | Metered AI/storage usage | User, subscription period |
-| AuditEvent | Security and data-change history | User, actor, entity |
+| Entity              | Purpose                                          | Important relationships                         |
+| ------------------- | ------------------------------------------------ | ----------------------------------------------- |
+| User                | Identity and account                             | Preferences, subscription, connections          |
+| UserPreference      | Locale, timezone, capture, notification defaults | User                                            |
+| Capture             | Immutable source and processing state            | Proposals, resulting records, media             |
+| CaptureProposal     | Versioned AI interpretation                      | Capture, proposed/created records               |
+| Domain              | Durable responsibility area                      | Projects, retainers, tasks, notes, people       |
+| Task                | Actionable commitment                            | Domain, project/retainer, person, note, capture |
+| RecurrenceRule      | Versioned recurrence definition                  | Task or routine template                        |
+| Project             | Finite outcome                                   | Domain, milestones, tasks, checklists, activity |
+| Milestone           | Project checkpoint                               | Project, tasks                                  |
+| ChecklistTemplate   | Reusable process definition                      | Project/retainer templates                      |
+| ChecklistInstance   | Snapshot used in real work                       | Project or retainer cycle                       |
+| Retainer            | Ongoing engagement                               | Domain, client/person, cycles, templates        |
+| RetainerCycle       | One period of a retainer                         | Retainer, generated tasks/checklists            |
+| Routine             | Repeated personal behavior                       | Domain, daily instances                         |
+| RoutineInstance     | Scheduled completion state                       | Routine                                         |
+| Person              | Lightweight personal/client record               | Retainers, projects, facts, interactions, tasks |
+| PersonFact          | Discrete sourced fact                            | Person, capture                                 |
+| Interaction         | Timestamped relationship context                 | Person, follow-up task, capture                 |
+| Note                | Contextual written record                        | Domain and any linkable entity                  |
+| ActivityEvent       | Append-only meaningful event                     | Actor, source, affected entity                  |
+| SlippingRule        | Expected-attention rule                          | Entity type or specific entity                  |
+| SlippingSignal      | Computed attention-risk episode                  | Entity, rule, outcome                           |
+| CalendarConnection  | OAuth and sync health                            | User, calendars                                 |
+| CalendarEventMirror | Read-only provider event                         | Calendar connection, optional linked records    |
+| Notification        | Delivery and read state                          | User, source entity                             |
+| Subscription        | Billing and entitlement state                    | User, provider customer/subscription            |
+| UsageLedger         | Metered AI/storage usage                         | User, subscription period                       |
+| AuditEvent          | Security and data-change history                 | User, actor, entity                             |
 
 ### 14.2 Relationship rules
 
@@ -1087,20 +1087,20 @@ The Slipping engine consumes meaningful activity events rather than relying only
 
 ### 15.1 Recommended stack
 
-| Layer | Recommendation |
-|---|---|
-| Web application | Next.js with TypeScript and responsive/PWA support |
-| UI | Accessible component system with a small Slipwell design-token layer |
-| API | Next.js server routes/server actions with explicit schemas and authorization |
-| Database/auth/storage | Supabase Postgres, Auth, and Storage |
-| Validation | Shared versioned schemas, e.g. Zod |
-| Background processing | Durable queue for AI, transcription, reminders, calendar sync, cycle generation, export |
-| Search | Postgres full-text initially; pgvector later |
-| Billing | Stripe Checkout, Billing, Customer Portal, and signed webhooks |
-| Email | Transactional email provider with delivery events |
-| Analytics | Privacy-conscious product analytics plus first-party event warehouse/table |
-| Error monitoring | Server and client exception/performance monitoring with content redaction |
-| Deployment | Vercel or equivalent Next.js-compatible platform; choose based on queue and background-job needs |
+| Layer                 | Recommendation                                                                                   |
+| --------------------- | ------------------------------------------------------------------------------------------------ |
+| Web application       | Next.js with TypeScript and responsive/PWA support                                               |
+| UI                    | Accessible component system with a small Slipwell design-token layer                             |
+| API                   | Next.js server routes/server actions with explicit schemas and authorization                     |
+| Database/auth/storage | Supabase Postgres, Auth, and Storage                                                             |
+| Validation            | Shared versioned schemas, e.g. Zod                                                               |
+| Background processing | Durable queue for AI, transcription, reminders, calendar sync, cycle generation, export          |
+| Search                | Postgres full-text initially; pgvector later                                                     |
+| Billing               | Stripe Checkout, Billing, Customer Portal, and signed webhooks                                   |
+| Email                 | Transactional email provider with delivery events                                                |
+| Analytics             | Privacy-conscious product analytics plus first-party event warehouse/table                       |
+| Error monitoring      | Server and client exception/performance monitoring with content redaction                        |
+| Deployment            | Vercel or equivalent Next.js-compatible platform; choose based on queue and background-job needs |
 
 ### 15.2 Architecture rules
 
@@ -1142,14 +1142,14 @@ Do not place canonical business rules only in React components or browser-only c
 
 ### 16.1 Performance
 
-| Requirement | Target |
-|---|---:|
-| Signed-in route response / usable shell | p75 under 2.5 seconds on typical broadband |
-| Common mutation acknowledgement | p95 under 500 ms before async work |
-| Text capture proposal | median under 5 seconds |
-| Short voice capture proposal | median under 8 seconds after recording ends |
-| Keyword search | p95 under 1 second at 10,000 records/account |
-| Background job visibility | processing state shown within 2 seconds |
+| Requirement                             | Target                                       |
+| --------------------------------------- | -------------------------------------------- |
+| Signed-in route response / usable shell | p75 under 2.5 seconds on typical broadband   |
+| Common mutation acknowledgement         | p95 under 500 ms before async work           |
+| Text capture proposal                   | median under 5 seconds                       |
+| Short voice capture proposal            | median under 8 seconds after recording ends  |
+| Keyword search                          | p95 under 1 second at 10,000 records/account |
+| Background job visibility               | processing state shown within 2 seconds      |
 
 ### 16.2 Reliability
 
@@ -1206,19 +1206,19 @@ This measures delivered value better than time in app or raw records created.
 
 ### 17.2 Supporting product metrics
 
-| Area | Metrics |
-|---|---|
-| Acquisition | Visitor-to-signup, source/UTM, landing-page conversion, referral conversion |
-| Activation | First-capture completion, first accepted route, calendar/retainer setup, activation rate |
-| Capture | Captures per active user, days captured/week, text vs voice, latency, failure/loss rate |
-| AI trust | Structural acceptance, field correction rate, false confident match rate, undo rate |
-| Today | Days opened/week, Top Three selection/completion, task actions from Today |
-| Retainers | Retainers created, cycle generation success, rollover completion, carry-forward volume |
-| Slipping | Signals shown, acted on, deferred, dismissed, muted, and time to resolution |
-| Retention | D1, W1, W6, M3 active retention by persona and activation behavior |
-| Revenue | Trial-to-paid, activated-to-paid, MRR, ARR, ARPU, churn, annual mix, refunds |
-| Economics | AI cost/capture, infra cost/MAU, gross margin, cost by cohort and plan |
-| Growth | Shared recap/template rate, referral invites, invite conversion, organic mentions |
+| Area        | Metrics                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------- |
+| Acquisition | Visitor-to-signup, source/UTM, landing-page conversion, referral conversion              |
+| Activation  | First-capture completion, first accepted route, calendar/retainer setup, activation rate |
+| Capture     | Captures per active user, days captured/week, text vs voice, latency, failure/loss rate  |
+| AI trust    | Structural acceptance, field correction rate, false confident match rate, undo rate      |
+| Today       | Days opened/week, Top Three selection/completion, task actions from Today                |
+| Retainers   | Retainers created, cycle generation success, rollover completion, carry-forward volume   |
+| Slipping    | Signals shown, acted on, deferred, dismissed, muted, and time to resolution              |
+| Retention   | D1, W1, W6, M3 active retention by persona and activation behavior                       |
+| Revenue     | Trial-to-paid, activated-to-paid, MRR, ARR, ARPU, churn, annual mix, refunds             |
+| Economics   | AI cost/capture, infra cost/MAU, gross margin, cost by cohort and plan                   |
+| Growth      | Shared recap/template rate, referral invites, invite conversion, organic mentions        |
 
 ### 17.3 Core event taxonomy
 
@@ -1255,16 +1255,16 @@ Analytics events must use record IDs and safe categorical metadata, not note bod
 
 ### 17.4 Go/no-go thresholds
 
-| Metric | Proceed | Warning |
-|---|---:|---:|
-| AI structural acceptance | ≥85% | <70% |
-| Activated-user six-week weekly retention | ≥40% | <25% |
-| Retained users reducing/replacing two tools | ≥25% | <10% |
-| Retainer users completing monthly rollover | ≥60% | <35% |
-| Slipping signals producing intentional action | ≥25% | <10% |
-| Target interviews willing to pay ≥US$12/month | ≥30% | <15% |
-| Activated-to-paid conversion | ≥8% | <3% |
-| Capture loss/unrecoverable duplicate rate | <0.5% | >2% |
+| Metric                                        | Proceed | Warning |
+| --------------------------------------------- | ------- | ------- |
+| AI structural acceptance                      | ≥85%    | <70%    |
+| Activated-user six-week weekly retention      | ≥40%    | <25%    |
+| Retained users reducing/replacing two tools   | ≥25%    | <10%    |
+| Retainer users completing monthly rollover    | ≥60%    | <35%    |
+| Slipping signals producing intentional action | ≥25%    | <10%    |
+| Target interviews willing to pay ≥US$12/month | ≥30%    | <15%    |
+| Activated-to-paid conversion                  | ≥8%     | <3%     |
+| Capture loss/unrecoverable duplicate rate     | <0.5%   | >2%     |
 
 If a core metric remains in the warning zone for two measured cohorts, improve the core loop before adding P2 modules.
 
@@ -1290,41 +1290,46 @@ Slipwell needs repeated capture before users trust it. A permanent Free plan rem
 **Growth features must never expose private productivity data by default.**
 
 1. **Shareable workflow templates (P1)**
-   - Public landing pages for a retainer checklist, content project, or weekly review setup.
-   - Recipient previews the structure before signing up.
-   - Import creates independent private copies, not shared data.
+
+- Public landing pages for a retainer checklist, content project, or weekly review setup.
+- Recipient previews the structure before signing up.
+- Import creates independent private copies, not shared data.
 
 2. **Sanitized progress/recap cards (P1)**
-   - User explicitly chooses which counts or labels appear.
-   - Default cards contain aggregate outcomes, not task names, clients, people, or notes.
-   - Optional subtle Slipwell attribution and referral link.
+
+- User explicitly chooses which counts or labels appear.
+- Default cards contain aggregate outcomes, not task names, clients, people, or notes.
+- Optional subtle Slipwell attribution and referral link.
 
 3. **Referral program (P1)**
-   - Each verified referral that activates may grant both users limited Pro time or AI allowance.
-   - Cap rewards and protect against self-referral/fraud.
+
+- Each verified referral that activates may grant both users limited Pro time or AI allowance.
+- Cap rewards and protect against self-referral/fraud.
 
 4. **Founder-led demo loop**
-   - Demonstrate one raw capture becoming connected records.
-   - Demonstrate a non-overdue but neglected project appearing in Slipping.
-   - Demonstrate retainer cycle rollover and carry-forward.
-   - Turn common questions into short demos and landing pages.
+
+- Demonstrate one raw capture becoming connected records.
+- Demonstrate a non-overdue but neglected project appearing in Slipping.
+- Demonstrate retainer cycle rollover and carry-forward.
+- Turn common questions into short demos and landing pages.
 
 5. **Use-case SEO and community pages**
-   - Retainer task management.
-   - Monthly client checklist.
-   - Voice capture for freelancers.
-   - Neglected project tracking.
-   - Creator-consultant content workflow.
+
+- Retainer task management.
+- Monthly client checklist.
+- Voice capture for freelancers.
+- Neglected project tracking.
+- Creator-consultant content workflow.
 
 ### 18.4 Channel approach
 
-| Channel | Role | Content style |
-|---|---|---|
-| Twitter/X | Primary awareness and build-in-public feedback | Short demos, before/after workflows, product decisions, user outcomes |
-| Reddit | Problem discovery, credibility, and targeted launch | Detailed useful posts, transparent founder participation, no spam or fake testimonials |
-| TikTok / short video | Selective reach | Visually immediate voice-capture and Slipping moments |
-| YouTube | Later durable acquisition | Full workflow walkthroughs and comparisons |
-| Search | Durable high-intent acquisition | Workflow-specific guides and templates |
+| Channel              | Role                                                | Content style                                                                          |
+| -------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Twitter/X            | Primary awareness and build-in-public feedback      | Short demos, before/after workflows, product decisions, user outcomes                  |
+| Reddit               | Problem discovery, credibility, and targeted launch | Detailed useful posts, transparent founder participation, no spam or fake testimonials |
+| TikTok / short video | Selective reach                                     | Visually immediate voice-capture and Slipping moments                                  |
+| YouTube              | Later durable acquisition                           | Full workflow walkthroughs and comparisons                                             |
+| Search               | Durable high-intent acquisition                     | Workflow-specific guides and templates                                                 |
 
 ### 18.5 Launch sequence
 
@@ -1544,19 +1549,19 @@ A release candidate passes when a new user can:
 
 ## 23. Risks and mitigations
 
-| Risk | Impact | Mitigation |
-|---|---|---|
-| Product becomes a shallow all-in-one suite | Weak differentiation and slow delivery | Enforce P0/P1 boundaries and lead with retainers + Slipping + capture. |
-| AI routes important information incorrectly | Users abandon capture | Preserve source, review-first onboarding, confidence gates, undo, evaluation set. |
-| Slipping becomes noisy or judgmental | Notifications are ignored or disabled | Explain signals, bundle alerts, allow cadence changes and intentional dismissal. |
-| Retainer rollover corrupts or duplicates work | Professional trust failure | Idempotent jobs, versioned templates, reconciliation, extensive edge-case tests. |
-| Sensitive data concentration | High breach and reputation impact | RLS, least privilege, redacted logs, transparent AI use, export/deletion, security review. |
-| Calendar sync becomes stale | Today loses credibility | Incremental sync, push updates, reconciliation, visible health and reconnect states. |
-| Free users create high AI cost | Poor unit economics | Quotas, smaller models, asynchronous processing, usage ledger, no unlimited promise. |
-| Free tier does not convert | Revenue failure | Reserve professional scale and controls for Pro; test upgrade moments and annual offer. |
-| Paywall prevents viral adoption | Weak acquisition loop | Preserve useful Free core, no-card trial, public templates, referrals, share-safe outputs. |
-| Social launch attracts the wrong audience | High signups but low retention | Segment onboarding and measure retention by persona/source, not aggregate signups. |
-| Competitors copy visible features | Differentiation erodes | Build accumulated trust, workflow quality, retainer history, and attention data—not feature count. |
+| Risk                                          | Impact                                 | Mitigation                                                                                         |
+| --------------------------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Product becomes a shallow all-in-one suite    | Weak differentiation and slow delivery | Enforce P0/P1 boundaries and lead with retainers + Slipping + capture.                             |
+| AI routes important information incorrectly   | Users abandon capture                  | Preserve source, review-first onboarding, confidence gates, undo, evaluation set.                  |
+| Slipping becomes noisy or judgmental          | Notifications are ignored or disabled  | Explain signals, bundle alerts, allow cadence changes and intentional dismissal.                   |
+| Retainer rollover corrupts or duplicates work | Professional trust failure             | Idempotent jobs, versioned templates, reconciliation, extensive edge-case tests.                   |
+| Sensitive data concentration                  | High breach and reputation impact      | RLS, least privilege, redacted logs, transparent AI use, export/deletion, security review.         |
+| Calendar sync becomes stale                   | Today loses credibility                | Incremental sync, push updates, reconciliation, visible health and reconnect states.               |
+| Free users create high AI cost                | Poor unit economics                    | Quotas, smaller models, asynchronous processing, usage ledger, no unlimited promise.               |
+| Free tier does not convert                    | Revenue failure                        | Reserve professional scale and controls for Pro; test upgrade moments and annual offer.            |
+| Paywall prevents viral adoption               | Weak acquisition loop                  | Preserve useful Free core, no-card trial, public templates, referrals, share-safe outputs.         |
+| Social launch attracts the wrong audience     | High signups but low retention         | Segment onboarding and measure retention by persona/source, not aggregate signups.                 |
+| Competitors copy visible features             | Differentiation erodes                 | Build accumulated trust, workflow quality, retainer history, and attention data—not feature count. |
 
 ---
 
@@ -1639,7 +1644,7 @@ This supports testing Slipwell at US$15 monthly / US$144 annually: higher than a
 **Headline:** Nothing important slips through.  
 **Subheadline:** Slipwell turns quick thoughts into organized tasks, projects, client commitments, notes, and reminders—then shows what needs attention before it becomes a problem.  
 **Primary CTA:** Start free  
-**Secondary CTA:** Watch one capture organize itself  
+**Secondary CTA:** Watch one capture organize itself
 
 **Three proof points:**
 
@@ -1651,16 +1656,16 @@ This supports testing Slipwell at US$15 monthly / US$144 annually: higher than a
 
 ## Appendix C — Glossary
 
-| Term | Meaning |
-|---|---|
-| Capture | Original unstructured text or audio submitted by a user. |
-| Proposal | Structured interpretation suggested by Slipwell before or during filing. |
-| Domain | Durable top-level area of responsibility. |
-| Project | Finite outcome with an intended completion state. |
-| Retainer | Ongoing engagement composed of recurring cycles and preserved history. |
-| Retainer cycle | One recurring period, initially one month, within a retainer. |
-| Routine | Repeated personal behavior intentionally separated from tasks. |
-| Meaningful attention | An event indicating substantive progress, decision, or intentional deferment. |
-| Slipping | State in which a record has received less meaningful attention than expected. |
+| Term                  | Meaning                                                                                              |
+| --------------------- | ---------------------------------------------------------------------------------------------------- |
+| Capture               | Original unstructured text or audio submitted by a user.                                             |
+| Proposal              | Structured interpretation suggested by Slipwell before or during filing.                             |
+| Domain                | Durable top-level area of responsibility.                                                            |
+| Project               | Finite outcome with an intended completion state.                                                    |
+| Retainer              | Ongoing engagement composed of recurring cycles and preserved history.                               |
+| Retainer cycle        | One recurring period, initially one month, within a retainer.                                        |
+| Routine               | Repeated personal behavior intentionally separated from tasks.                                       |
+| Meaningful attention  | An event indicating substantive progress, decision, or intentional deferment.                        |
+| Slipping              | State in which a record has received less meaningful attention than expected.                        |
 | Structural acceptance | AI proposal accepted without changing its record type, destination/relationships, or date semantics. |
-| Activated user | User satisfying the defined early behaviors that indicate experience of core value. |
+| Activated user        | User satisfying the defined early behaviors that indicate experience of core value.                  |
