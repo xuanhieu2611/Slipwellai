@@ -286,13 +286,13 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 ### Tasks and relationships
 
-- [ ] Partial: create the canonical task schema with owner, title, details, status, dates, priority, primary relationships, provenance, archival fields, and RLS. The additive migration is unpromoted and reminders/recurrence remain open.
+- [ ] Partial: create the canonical task schema with owner, title, details, status, dates, priority, limited recurrence, primary relationships, provenance, archival fields, and RLS. The additive migrations are unpromoted and reminders/expanded recurrence remain open.
 - [ ] Support one or more reminder times and route their delivery through the durable notification system.
 - [ ] Partial: support fast manual task creation independent of AI in the working-prototype UI; migration promotion and authenticated browser verification remain open.
 - [ ] Partial: implement complete, reopen, and defer behavior in the working-prototype UI; cancellation, archive, recovery, and integration coverage remain open.
-- [ ] Partial: distinguish due, scheduled, and defer/until semantics in storage and UI; recurrence and timezone-boundary coverage remain open.
-- [ ] Implement recurring task rules separately from routines.
-- [ ] Generate recurring instances idempotently across retries, short months, and timezone/DST changes.
+- [ ] Partial: distinguish due, scheduled, defer/until, and limited recurrence semantics in storage and UI; timezone-boundary coverage remains open.
+- [ ] Partial: implement daily, weekly, and monthly task recurrence separately from routines. A recurring task requires a schedule and always advances from its scheduled date; yearly, weekdays, and custom intervals remain open.
+- [ ] Partial: use root/anchor uniqueness to prevent duplicate generated recurrence occurrences and unit-test short-month bounds; migration-backed retry, timezone, and DST coverage remain open.
 - [ ] Link tasks to domains, projects, retainers, people, notes, and source captures where relevant.
 - [ ] Add list/filter/sort views that remain usable at 360 px and by keyboard.
 
@@ -318,7 +318,7 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 ### Tests
 
-- [ ] Test task CRUD, dates, deferment, recurrence idempotency, and relationship authorization.
+- [ ] Partial: unit-test recurrence input validation and daily/weekly/monthly dates including short/leap-month behavior; task CRUD, migration-backed idempotency, deferment, authorization, and timezone tests remain open.
 - [ ] Test domain archive/delete resolution and cross-user isolation.
 - [ ] Test Today at timezone boundaries, DST changes, midnight rollover, empty state, partial data, and 360 px.
 - [ ] End-to-end test capture → accepted task → Today visibility → completion/undo.
@@ -712,6 +712,7 @@ Add a dated row when a milestone or important checkbox becomes verified. Link co
 | 2026-08-02 | Step 1 public authentication implementation | `src/components/sign-in.tsx`, `src/app/auth/callback/route.ts`, `src/proxy.ts`, `src/lib/auth.test.ts`, `e2e/public-auth.spec.ts`, `npm run lint`, `npm test`, `npm run test:e2e`, `npm run build`; founder manual Google sign-in | Partial: public email/password and Google entry, recovery UI, safe callback routing, SSR refresh, and session controls are implemented; 18 unit tests and 2 public-entry browser tests pass. Google sign-in was manually verified by the founder. Local Supabase integration, identity-linking, and session-revocation checks remain unverified because Docker/local Supabase is unavailable and no dedicated test identities were supplied. | Codex / Founder |
 | 2026-08-02 | Working-prototype record surfaces | `20260803110000_working_prototype_core.sql`, `src/components/workspace.tsx`, `src/app/api/workspace/route.ts`, `src/lib/workspace.test.ts`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 20 unit tests, lint, and production build. The source now has owner-scoped/RLS domains, tasks, projects, routines/completions, people, notes, Today/Top Three, manual record flows, and account-scoped prototype search. Supabase migration promotion and authenticated browser/database verification are pending; `supabase migration list` cannot run because this checkout is not linked to a project. | Codex |
 | 2026-08-02 | Project progress and core Slipping prototype | `20260803120000_project_activity_and_core_slipping.sql`, `src/lib/slipping.ts`, `src/lib/slipping.test.ts`, `src/app/api/slipping/*`, `src/components/workspace.tsx`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 22 unit tests, lint, and production build. Source now has owner-scoped ordered milestones, guarded project completion, append-only meaningful project activity, and one-open-episode task/project Slipping with explanations and resolutions in Today. Supabase migration promotion and authenticated browser/database verification remain pending. | Codex |
+| 2026-08-02 | Recurring-task prototype | `20260803140000_task_recurrence.sql`, `src/lib/recurrence.ts`, `src/lib/recurrence.test.ts`, `src/app/api/workspace/route.ts`, `src/components/workspace.tsx`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 25 unit tests, lint, and production build. Source supports daily/weekly/monthly task recurrence from an explicit scheduled-date anchor, short-month/leap-year bounds, and a root/anchor uniqueness guard against duplicate next occurrences. Supabase migration promotion and authenticated browser/database verification remain pending. | Codex |
 
 Canonical quality commands still needed:
 

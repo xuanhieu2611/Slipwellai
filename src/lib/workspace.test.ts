@@ -12,4 +12,9 @@ describe("working-prototype workspace commands", () => {
     expect(taskDateLabel({ due_on: null, scheduled_for: "2026-08-03", deferred_until: null })).toBe("Scheduled 2026-08-03");
     expect(taskDateLabel({ due_on: "2026-08-04", scheduled_for: null, deferred_until: "2026-08-06" })).toBe("Deferred until 2026-08-06");
   });
+
+  it("requires a scheduled-date anchor before a task can repeat", () => {
+    expect(workspaceCommandSchema.safeParse({ action: "create_task", title: "Weekly review", recurrenceRule: "weekly" }).success).toBe(false);
+    expect(workspaceCommandSchema.safeParse({ action: "create_task", title: "Weekly review", recurrenceRule: "weekly", scheduledFor: "2026-08-03" }).success).toBe(true);
+  });
 });

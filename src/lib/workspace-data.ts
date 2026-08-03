@@ -6,7 +6,7 @@ export async function getWorkspaceData(): Promise<WorkspaceData> {
   const [preferences, domains, tasks, projects, milestones, people, notes, routines, routineCompletions, signals, captures] = await Promise.all([
     supabase.from("user_preferences").select("timezone").maybeSingle(),
     supabase.from("domains").select("id, name, color, archived_at").is("archived_at", null).order("name"),
-    supabase.from("tasks").select("id, title, details, status, priority, due_on, scheduled_for, deferred_until, domain_id, project_id, person_id, top_three_date, top_three_order, created_at").is("archived_at", null).order("created_at", { ascending: false }),
+    supabase.from("tasks").select("id, title, details, status, priority, due_on, scheduled_for, deferred_until, recurrence_rule, domain_id, project_id, person_id, top_three_date, top_three_order, created_at").is("archived_at", null).order("created_at", { ascending: false }),
     supabase.from("projects").select("id, name, description, status, domain_id, target_on, created_at").is("archived_at", null).order("created_at", { ascending: false }),
     supabase.from("project_milestones").select("id, project_id, title, position, status").order("position"),
     supabase.from("people").select("id, name, context, domain_id, created_at").is("archived_at", null).order("name"),

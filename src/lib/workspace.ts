@@ -7,7 +7,7 @@ const optionalId = id.optional().nullable();
 
 export const workspaceCommandSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("create_domain"), name: shortText(80), description: optionalText(1_000), color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default("#215944") }),
-  z.object({ action: z.literal("create_task"), title: shortText(280), details: optionalText(10_000), dueOn: z.iso.date().optional().nullable(), scheduledFor: z.iso.date().optional().nullable(), priority: z.coerce.number().int().min(1).max(3).default(2), domainId: optionalId, projectId: optionalId, personId: optionalId }),
+  z.object({ action: z.literal("create_task"), title: shortText(280), details: optionalText(10_000), dueOn: z.iso.date().optional().nullable(), scheduledFor: z.iso.date().optional().nullable(), priority: z.coerce.number().int().min(1).max(3).default(2), recurrenceRule: z.enum(["none", "daily", "weekly", "monthly"]).default("none"), domainId: optionalId, projectId: optionalId, personId: optionalId }).refine((task) => task.recurrenceRule === "none" || Boolean(task.scheduledFor), { message: "Recurring tasks need a scheduled date.", path: ["scheduledFor"] }),
   z.object({ action: z.literal("create_project"), name: shortText(160), description: optionalText(10_000), domainId: optionalId, targetOn: z.iso.date().optional().nullable() }),
   z.object({ action: z.literal("create_milestone"), projectId: id, title: shortText(280) }),
   z.object({ action: z.literal("create_person"), name: shortText(160), context: optionalText(1_000), domainId: optionalId }),
@@ -31,7 +31,7 @@ export type WorkspaceCommand = z.infer<typeof workspaceCommandSchema>;
 export type WorkspaceData = {
   timezone: string;
   domains: Array<{ id: string; name: string; color: string; archived_at: string | null }>;
-  tasks: Array<{ id: string; title: string; details: string | null; status: "open" | "completed" | "canceled" | "archived"; priority: number; due_on: string | null; scheduled_for: string | null; deferred_until: string | null; domain_id: string | null; project_id: string | null; person_id: string | null; top_three_date: string | null; top_three_order: number | null; created_at: string }>;
+  tasks: Array<{ id: string; title: string; details: string | null; status: "open" | "completed" | "canceled" | "archived"; priority: number; due_on: string | null; scheduled_for: string | null; deferred_until: string | null; recurrence_rule: "daily" | "weekly" | "monthly" | null; domain_id: string | null; project_id: string | null; person_id: string | null; top_three_date: string | null; top_three_order: number | null; created_at: string }>;
   projects: Array<{ id: string; name: string; description: string | null; status: string; domain_id: string | null; target_on: string | null; created_at: string }>;
   milestones: Array<{ id: string; project_id: string; title: string; position: number; status: "open" | "completed" }>;
   people: Array<{ id: string; name: string; context: string | null; domain_id: string | null; created_at: string }>;
