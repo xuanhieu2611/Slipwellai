@@ -15,6 +15,5 @@ export const env = {
       .split(",")
       .map((model) => model.trim())
       .filter(Boolean),
-  openAiApiKey: () => required("OPENAI_API_KEY", process.env.OPENAI_API_KEY),
-  openAiTranscriptionModel: () => process.env.OPENAI_TRANSCRIPTION_MODEL ?? "gpt-4o-mini-transcribe",
+  openRouterTranscriptionModel: () => process.env.OPENROUTER_TRANSCRIPTION_MODEL ?? "openai/gpt-4o-transcribe",
 };

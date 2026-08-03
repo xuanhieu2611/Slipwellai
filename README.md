@@ -10,7 +10,7 @@ For the Phase 0 interview guide, manual acceptance script, alpha recruitment cop
 ## Run locally
 
 1. Use Node 24+ and `npm install`.
-2. Complete `.env.local` with the server-only `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, and (for browser voice capture) `OPENAI_API_KEY`. Supabase URL and publishable key are already configured locally; never add a Supabase secret/service-role key.
+2. Complete `.env.local` with the server-only `OPENROUTER_API_KEY` and `OPENROUTER_MODEL`. Browser voice capture uses that same OpenRouter key; optionally set `OPENROUTER_TRANSCRIPTION_MODEL`. Supabase URL and publishable key are already configured locally; never add a Supabase secret/service-role key.
 3. Run `npm run dev`, then open http://localhost:3000.
 
 ## Authentication
@@ -33,7 +33,7 @@ The database migration is versioned at `supabase/migrations/20260802224924_phase
 
 The migrations through `supabase/migrations/20260803161000_remove_voice_audio_storage.sql` are applied to the linked pilot project. They add required-once onboarding, working-prototype records, project milestones, task/project Slipping, versioned project checklist snapshots, scheduled task recurrence, lightweight person interactions, and the current transient-audio Phase 0 voice capture. Apply the same version-controlled migration chain through the normal promotion process before deploying to any other environment; these migrations are additive except for the explicit voice-audio cleanup migration.
 
-`20260803160000_voice_capture_foundation.sql` and `20260803161000_remove_voice_audio_storage.sql` implement the current Phase 0 browser-voice decision: a submitted recording is sent directly to OpenAI for synchronous transcription and is not saved in Supabase Storage. If transcription fails, the recording is discarded and the user must use text capture. Set `OPENAI_API_KEY` before trying it.
+`20260803160000_voice_capture_foundation.sql` and `20260803161000_remove_voice_audio_storage.sql` implement the current Phase 0 browser-voice decision: a submitted recording is sent directly to OpenRouter's transcription endpoint with an OpenAI transcription model, then is not saved in Supabase Storage. If transcription fails, the recording is discarded and the user must use text capture. Set `OPENROUTER_API_KEY` before trying it; `OPENROUTER_TRANSCRIPTION_MODEL` defaults to `openai/gpt-4o-transcribe`.
 
 ## Browser coverage
 

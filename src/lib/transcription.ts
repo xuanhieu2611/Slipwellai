@@ -7,14 +7,14 @@ export class TranscriptionError extends Error {
 }
 
 export async function transcribeAudio({ audio, mimeType }: { audio: Blob; mimeType: string }) {
-  if (!process.env.OPENAI_API_KEY) throw new TranscriptionError("transcription_not_configured", "Voice transcription is not configured yet.");
-  const apiKey = env.openAiApiKey();
+  if (!process.env.OPENROUTER_API_KEY) throw new TranscriptionError("transcription_not_configured", "Voice transcription is not configured yet.");
+  const apiKey = env.openRouterApiKey();
   const form = new FormData();
-  form.append("model", env.openAiTranscriptionModel());
+  form.append("model", env.openRouterTranscriptionModel());
   form.append("response_format", "json");
   form.append("file", new File([audio], `capture.${mimeType.split("/")[1] ?? "webm"}`, { type: mimeType }));
 
-  const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+  const response = await fetch("https://openrouter.ai/api/v1/audio/transcriptions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}` },
     body: form,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { interpretCapture } from "@/lib/captures";
+import { env } from "@/lib/env";
 import { badRequest, serverError, unauthorized } from "@/lib/http";
 import { requireUser } from "@/lib/supabase/server";
 import { createVoiceCaptureSchema, validateVoiceCapture } from "@/lib/voice";
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
       source_type: "voice",
       status: "interpreting",
       idempotency_key: idempotencyKey,
-      transcription_model: process.env.OPENAI_TRANSCRIPTION_MODEL ?? "gpt-4o-mini-transcribe",
+      transcription_model: env.openRouterTranscriptionModel(),
       transcription_latency_ms: Date.now() - startedAt,
     })
     .select("id, original_text")
