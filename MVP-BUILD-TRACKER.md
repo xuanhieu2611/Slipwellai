@@ -58,7 +58,7 @@ Important limitations:
 - 🟡 `prototype_records` is not the canonical task, note, project, person, or retainer data model.
 - 🟡 Retainer and Slipping logic are interactive labs, not production-grade durable workflows.
 - 🟡 A migration-backed working-prototype core for Today, manual tasks, domains, finite projects, routines, lightweight people/notes, recurring tasks, project checklists, account-scoped search, and People interactions is applied to the linked pilot project. Authenticated browser and database-integration verification remain open.
-- 🟡 Browser voice recording and transient synchronous transcription exist as a Phase 0 slice. By product-owner direction, recordings are never stored; a failed transcription is discarded and the user is directed to text capture. This intentionally does not meet CAP-05/REV-07’s original-audio preservation and recovery expectation.
+- 🟡 Browser voice recording and transient synchronous transcription exist as a Phase 0 slice. Recordings are never stored; a failed transcription is discarded and the user is directed to text capture.
 - ⬜ There is no calendar sync, notification system, billing, account-deletion workflow, or production analytics/operations layer.
 - ⬜ There are no cross-user RLS integration tests or browser end-to-end tests.
 - ⬜ There is no installable PWA manifest/application-shell strategy or production deployment pipeline yet.
@@ -465,24 +465,24 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 ## Step 10 — Add browser voice capture and transcription
 
-**Outcome:** voice follows the same source-preserving review flow as text and always has a text alternative.
+**Outcome:** voice becomes a text transcript for the same review flow as typed capture; audio remains transient and text capture is always available.
 
 **Covers:** CAP-04 and voice-specific AI/non-functional requirements.
 
 - [ ] Partial: detect browser/media capability and microphone permission before recording; supported-browser and denied-permission browser verification remain open.
 - [ ] Partial: provide recording, paused, transcribing, and failed-to-text-capture states in the Phase 0 Inbox; interruption/tab-close recovery remains open.
 - [ ] Partial: enforce supported MIME types, a five-minute duration, and a 25 MB size limit in the browser and route schema; server-side content inspection remains open.
-- [ ] Product decision: do not store original audio in Supabase or retain it after sending it to the transcription provider. This is a user-requested exception to CAP-05 and means failed audio cannot be recovered.
+- [ ] Do not store original audio in Supabase or retain it after sending it to the transcription provider; only a successful transcript becomes a capture source.
 - [ ] Not applicable under the transient-audio decision: no private-audio playback or signed URLs are created.
 - [ ] Partial: use a stable voice-capture idempotency key for the submission. Transcription and proposal scheduling remain synchronous rather than durable jobs.
-- [ ] Product decision: discard failed voice audio and direct the user to text capture rather than preserving a retryable Inbox item. This is a user-requested exception to REV-07.
+- [ ] Discard failed voice audio and direct the user to text capture rather than preserving a retryable Inbox item.
 - [ ] Partial: show the saved text transcript in review; direct transcript correction/re-interpretation remains open.
 - [ ] Partial: send the submitted audio only to the server-only OpenAI transcription endpoint, then retain only the resulting text and model/latency metadata. Provider approval, cost estimation, and durable safe telemetry remain open.
 - [x] Keep text capture available as an alternative.
 - [ ] Test permission denial, interruption, unsupported browser, upload retry, tab close, duplicate request, and provider failure.
 - [ ] End-to-end test record → transcribe → review → correct → file on supported browsers.
 
-**Exit gate:** voice is optional, private, recoverable, capability-aware, and uses the same validated review path as text.
+**Exit gate:** voice is optional, transient, capability-aware, and uses the same validated review path as text after transcription succeeds; text remains the clear fallback on failure.
 
 ## Step 11 — Add notifications, summaries, and processing recovery
 
@@ -511,7 +511,7 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 **Covers:** SET-01–08 plus security/privacy non-functional requirements.
 
 - [ ] Partial: expose account security and a direct JSON export in Settings; profile, preferences, integrations, notifications, plan, and deletion remain open.
-- [ ] Add capture preferences for auto-file threshold, original-audio retention, default domain, reminders, and confirmations.
+- [ ] Add capture preferences for auto-file threshold, default domain, reminders, and confirmations. Audio retention is intentionally absent because voice recordings are never stored.
 - [ ] Partial: export the current prototype’s RLS-authorized canonical/pilot records, relationships, source data, and activity as documented JSON. CSV, Markdown notes, media manifests, completeness testing, and documented format support remain open.
 - [ ] Partial: provide an authenticated direct download with `private, no-store` headers for normal-size prototype accounts. Durable idempotent jobs and expiring private downloads remain open.
 - [ ] Partial: the current direct export is reachable for every signed-in prototype account; durable plan/entitlement verification remains open.
@@ -718,8 +718,8 @@ Add a dated row when a milestone or important checkbox becomes verified. Link co
 | 2026-08-02 | Prototype JSON export | `src/app/api/export/route.ts`, `src/lib/export.test.ts`, `src/components/account-security.tsx`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 27 unit tests, lint, and production build. A signed-in user can request a private/no-store JSON download of current RLS-authorized prototype and canonical records. Export-route authorization/completeness/browser-download tests, durable delivery, and deletion remain pending. | Codex |
 | 2026-08-02 | People interactions and note review prototype | `20260803150000_people_interactions.sql`, `src/app/api/workspace/route.ts`, `src/components/workspace.tsx`, `src/lib/workspace.test.ts`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 28 unit tests, lint, and production build. Source now supports owner-scoped interaction summaries, optional linked follow-up tasks, and Today visibility for due note reviews. Supabase migration promotion and authenticated browser/database verification remain pending. | Codex |
 | 2026-08-02 | Linked pilot migration recovery and promotion | `npx supabase migration list`, `npx supabase migration repair`, `npx supabase db push` | Pass: the remote incorrectly marked the working-prototype migrations as applied while their tables were absent. Repaired only the false history entries, replayed the version-controlled working-prototype migrations, and verified every local migration through `20260803150000` now matches remote history. The linked pilot schema is ready for authenticated browser/database verification. | Codex |
-| 2026-08-02 | Phase 0 browser voice-capture slice | `20260803160000_voice_capture_foundation.sql`, `npx supabase migration list`, `npx supabase db push`, `src/components/dashboard.tsx`, `src/app/api/voice-captures/*`, `src/lib/voice.test.ts`, `npm test`, `npm run lint`, `npm run test:e2e`, `npm run build` | Pass in static verification: 31 unit tests, lint, production build, and two public-entry browser tests (six authenticated specs skipped without dedicated fixture accounts). The migration was applied to the linked pilot. The source adds capability/permission-aware recording, preview/cancel/pause, private owner-foldered audio storage, bounded format/size/duration validation, signed playback, synchronous transcription with a recoverable retry state, and editable transcript re-interpretation. Authenticated supported/unsupported/denied-permission browser/database tests remain pending. | Codex |
-| 2026-08-02 | Transient voice-audio revision | `20260803161000_remove_voice_audio_storage.sql`, `npx supabase db push`, `npx supabase migration list`, storage-bucket count query, `src/app/api/voice-captures/route.ts`, `src/components/dashboard.tsx`, `src/lib/voice.test.ts`, `npm test`, `npm run lint`, `npm run build`, fresh-production Playwright auth interaction | Pass: product owner directed removal of all Supabase voice storage. The migration was applied to the linked pilot, the `capture-audio` bucket count is zero, and the one unusable voice capture without a transcript was removed. New recordings are sent directly to OpenAI, and transcription failure directs the user to keyboard capture. This deliberately overrides CAP-05/REV-07 audio preservation/recovery expectations. | Codex |
+| 2026-08-02 | Superseded Phase 0 browser voice-capture slice | `20260803160000_voice_capture_foundation.sql`, `npx supabase migration list`, `npx supabase db push`, `src/components/dashboard.tsx`, `src/app/api/voice-captures/*`, `src/lib/voice.test.ts`, `npm test`, `npm run lint`, `npm run test:e2e`, `npm run build` | Historical record: the initial slice stored private audio. It was superseded the same day by the transient-audio implementation below and must not be used as current product guidance. | Codex |
+| 2026-08-02 | Transient voice-audio revision | `20260803161000_remove_voice_audio_storage.sql`, `npx supabase db push`, `npx supabase migration list`, storage-bucket count query, `src/app/api/voice-captures/route.ts`, `src/components/dashboard.tsx`, `src/lib/voice.test.ts`, `npm test`, `npm run lint`, `npm run build`, fresh-production Playwright auth interaction | Pass: the migration was applied to the linked pilot, the `capture-audio` bucket count is zero, and the one unusable voice capture without a transcript was removed. New recordings are sent directly to OpenAI, and transcription failure directs the user to keyboard capture, consistent with the updated CAP-05 and REV-07. | Codex |
 
 Canonical quality commands still needed:
 

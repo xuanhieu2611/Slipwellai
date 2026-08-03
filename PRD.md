@@ -271,8 +271,8 @@ Capture → Interpret → Review/Confirm → Structure → Surface → Act → L
 ```
 
 1. The user types or records an unstructured capture.
-2. Slipwell immediately stores the original capture.
-3. The system transcribes when needed and proposes a structured result.
+2. Slipwell immediately stores text sources; a voice recording is used only as transient input to transcription.
+3. The system transcribes when needed, stores the resulting transcript as the text source, and proposes a structured result.
 4. High-confidence results may be created automatically according to user settings; low-confidence results require review.
 5. The user sees what was created and can correct or undo it.
 6. Records appear in Today, projects, retainers, search, or Slipping when relevant.
@@ -427,16 +427,16 @@ A user is activated when, within seven days, they:
 Users can open a capture composer from any signed-in page, enter free text, and submit without selecting a record type.
 
 **CAP-02 — Voice capture**  
-On supported browsers, users can record audio, preview or cancel it, and submit it for transcription.
+On supported browsers, users can record audio, preview or cancel it, and submit it for transcription. Audio is transient: it is sent only to the approved transcription provider, is never written to Slipwell storage or the database, and is discarded after the request completes or fails.
 
 **CAP-03 — Immediate preservation**  
-Slipwell creates a capture record before downstream AI processing. A network interruption must not silently lose a submitted capture.
+Slipwell creates a text capture record before downstream interpretation. For voice, the transcript becomes the capture source only after transcription succeeds; if transcription or the network fails, Slipwell clearly explains that the audio was discarded and directs the user to text capture rather than silently implying recovery is possible.
 
 **CAP-04 — Processing state**  
-The UI shows queued, transcribing, interpreting, needs review, filed, and failed states.
+The UI shows queued, transcribing, interpreting, needs review, filed, and failed states. A voice-transcription failure explains that the recording was discarded and keeps text capture available.
 
 **CAP-05 — Original source**  
-Store original text and, subject to the retention setting, original audio. The cleaned version never overwrites the source.
+Store original text. For voice capture, store the resulting transcript as the text source; never store the original audio. The cleaned version never overwrites the stored text source.
 
 **CAP-06 — Supported intents in MVP**
 
@@ -505,7 +505,7 @@ Auto-filed records show a one-click undo action in the capture confirmation and 
 Record corrections as feedback signals. Do not silently change global behavior based on one correction.
 
 **REV-07 — Failure recovery**  
-If transcription or interpretation fails, the source remains accessible and may be retried or manually filed.
+If interpretation fails, the stored text source remains accessible and may be retried or manually filed. If transcription fails, the transient audio is discarded and the UI directs the user to use text capture.
 
 **REV-08 — Audit history**  
 Store who/what changed a record, the previous value, new value, timestamp, and originating capture.
@@ -919,7 +919,7 @@ Use Stripe Checkout and Customer Portal unless implementation constraints justif
 Name, timezone, locale, week start, date/time format, and default reminder behavior.
 
 **SET-02 — Capture preferences**  
-Auto-file threshold, audio retention, default domain, reminder defaults, and confirmation preferences.
+Auto-file threshold, default domain, reminder defaults, and confirmation preferences. Audio retention is not a setting because Slipwell never stores voice recordings.
 
 **SET-03 — Connections**  
 Google Calendar status, last sync, selected calendars, reconnect, force sync, and disconnect.
@@ -946,6 +946,7 @@ Users can report a bug or routing error with optional diagnostic context. Never 
 ### 13.1 AI responsibilities in MVP
 
 - Speech-to-text transcription.
+- Send voice audio only to the approved transcription provider for the duration of a user-initiated request; do not store it in Slipwell systems.
 - Removal of filler words without changing meaning.
 - Intent and entity extraction.
 - Date/time and recurrence parsing.
@@ -1108,7 +1109,7 @@ The Slipping engine consumes meaningful activity events rather than relying only
 - Enable row-level security on every exposed user-data table.
 - Validate authorization and input on the server for every mutation.
 - Use idempotency keys for capture submission, webhook processing, retainer generation, notifications, and calendar sync.
-- Long-running AI, transcription, export, and synchronization work must not depend on one browser request remaining open.
+- Long-running AI, export, and synchronization work must not depend on one browser request remaining open. A user-initiated voice-transcription request may run synchronously only because its audio is transient and discarded when the request completes or fails.
 - Maintain separate development, staging, and production environments.
 - Database migrations are version-controlled and tested against representative data.
 - Feature flags protect unfinished or risky features.
@@ -1190,8 +1191,8 @@ Do not place canonical business rules only in React components or browser-only c
 
 - Export is available to Free and Pro users.
 - User-authored records remain readable after downgrade.
-- Document retention periods for original audio, soft-deleted records, logs, exports, and backups.
-- Allow users to disable original-audio retention after transcription.
+- Voice recordings are never written to Slipwell storage, database rows, exports, logs, or backups; only the successful text transcript is retained as a capture source.
+- Document retention periods for text captures, soft-deleted records, logs, exports, and backups.
 - Deletion propagates to search indexes, file storage, analytics identifiers where required, and AI caches.
 
 ---
@@ -1466,7 +1467,7 @@ Every core surface must define and design:
 ### Particularly important product edge cases
 
 - Voice capture permission denied or unavailable.
-- User closes the tab during upload or AI processing.
+- User closes the tab during transient voice transcription; the recording is discarded and the text alternative remains clear.
 - AI proposes an existing person/project with the same name.
 - A capture contains both a private reflection and an actionable task.
 - User says “tomorrow” while traveling across timezones.
@@ -1475,7 +1476,7 @@ Every core surface must define and design:
 - Retainer cycle creation retries after a partial failure.
 - Calendar token expires while Today is open.
 - User downgrades with more than one active retainer.
-- Account hits AI limit during an uploaded voice capture.
+- Account hits AI limit during a voice-transcription request.
 - A source capture is deleted after derived tasks were completed.
 - A user asks export/delete while background jobs are in progress.
 
@@ -1597,7 +1598,7 @@ The order below minimizes rework and proves risk in the right sequence.
 7. Slipping calculation, explanations, actions, and outcome tracking.
 8. Google Calendar OAuth, sync, health, and Today agenda.
 9. Simple routines, people, notes, and keyword search.
-10. Voice upload/transcription and browser capability handling.
+10. Transient voice transcription and browser capability handling.
 11. Notifications, summaries, and processing/failure recovery.
 12. Export, deletion, privacy disclosures, and security hardening.
 13. Billing, plan entitlements, trial, downgrade, and usage controls.
@@ -1658,7 +1659,7 @@ This supports testing Slipwell at US$15 monthly / US$144 annually: higher than a
 
 | Term                  | Meaning                                                                                              |
 | --------------------- | ---------------------------------------------------------------------------------------------------- |
-| Capture               | Original unstructured text or audio submitted by a user.                                             |
+| Capture               | Original unstructured text; for voice, the successful transcript. The recording itself is transient. |
 | Proposal              | Structured interpretation suggested by Slipwell before or during filing.                             |
 | Domain                | Durable top-level area of responsibility.                                                            |
 | Project               | Finite outcome with an intended completion state.                                                    |

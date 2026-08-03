@@ -188,15 +188,15 @@ Follow the formatter and linter configuration in the repository. Do not reformat
 
 These rules are release-critical:
 
-- Create and durably store the source capture before starting downstream AI work.
-- Preserve original text and, according to user settings, original audio.
+- Create and durably store the source text before downstream interpretation. Voice audio is transient and is sent only for user-initiated transcription.
+- Preserve original text. Voice audio is transient: send it only to the approved transcription provider for a user-initiated request, retain only the resulting transcript, and never write the recording to Slipwell storage or the database.
 - Cleaned text must never overwrite the original source.
 - AI output must validate against a versioned structured schema before affecting canonical records.
 - Store field-level confidence for material extracted fields.
 - Require review for ambiguous dates, people, projects, retainers, recurrence, or sensitive personal facts.
 - Never invent a specific identity, date, promise, or relationship.
 - Never silently convert a reflective note into a task.
-- A failed AI or transcription job must leave a recoverable Inbox item.
+- A failed interpretation job must leave a recoverable Inbox item. A failed transcription discards the transient audio and must clearly direct the user to text capture.
 - Auto-file is an explicit user preference after successful review behavior, not the default for a brand-new user.
 - AI-created or AI-edited records retain links to their source capture and audit history.
 - Corrections are feedback signals; one correction must not silently rewrite global behavior.
