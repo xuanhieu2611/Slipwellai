@@ -58,7 +58,8 @@ Important limitations:
 - 🟡 `prototype_records` is not the canonical task, note, project, person, or retainer data model.
 - 🟡 Retainer and Slipping logic are interactive labs, not production-grade durable workflows.
 - 🟡 A migration-backed working-prototype core for Today, manual tasks, domains, finite projects, routines, lightweight people/notes, recurring tasks, project checklists, account-scoped search, and People interactions is applied to the linked pilot project. Authenticated browser and database-integration verification remain open.
-- ⬜ There is no calendar sync, voice capture, notification system, billing, export/deletion workflow, or production analytics/operations layer.
+- 🟡 Browser voice recording, private audio storage, synchronous transcription, signed playback, and transcript correction exist as a Phase 0 slice; durable jobs, retention preferences, authenticated browser/database verification, and end-to-end recovery coverage remain open.
+- ⬜ There is no calendar sync, notification system, billing, account-deletion workflow, or production analytics/operations layer.
 - ⬜ There are no cross-user RLS integration tests or browser end-to-end tests.
 - ⬜ There is no installable PWA manifest/application-shell strategy or production deployment pipeline yet.
 - ⬜ The product-validation interview and willingness-to-pay exit criteria have not been recorded as complete.
@@ -89,7 +90,7 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 | 7 | Explainable Slipping engine and outcomes | 🟡 Prototype only | Steps 4–6 |
 | 8 | Read-only Google Calendar synchronization | ⬜ Not started | Steps 1 and 4 |
 | 9 | Routines, people, notes, and global search | 🟡 Working-prototype slice | Steps 1 and 4 |
-| 10 | Browser voice capture and transcription | ⬜ Not started | Steps 2–3 |
+| 10 | Browser voice capture and transcription | 🟡 Phase 0 slice | Steps 2–3 |
 | 11 | Notifications, summaries, and durable processing recovery | ⬜ Not started | Steps 3, 7–10 |
 | 12 | Export, deletion, privacy, and security hardening | ⬜ Not started | Stable canonical data model |
 | 13 | Billing, trial, entitlements, quotas, and downgrade safety | ⬜ Not started | Steps 1–12 |
@@ -468,16 +469,16 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 **Covers:** CAP-04 and voice-specific AI/non-functional requirements.
 
-- [ ] Detect browser/media capability and permission state before recording.
-- [ ] Provide clear recording, paused, uploading, transcribing, failed, and retry states.
-- [ ] Enforce allowed format, content, duration, and size limits.
-- [ ] Store original audio privately according to user settings before transcription work begins.
-- [ ] Use short-lived signed URLs for private playback.
-- [ ] Run upload, transcription, and proposal scheduling idempotently as durable jobs.
-- [ ] Preserve audio and a recoverable Inbox item on transcription failure.
-- [ ] Let the user correct transcript text without changing the original audio.
-- [ ] Send only required source material to approved providers and record safe metadata/cost.
-- [ ] Always keep text capture available as an alternative.
+- [ ] Partial: detect browser/media capability and microphone permission before recording; supported-browser and denied-permission browser verification remain open.
+- [ ] Partial: provide recording, paused, uploading, transcribing, failed, and retry states in the Phase 0 Inbox; interruption/tab-close recovery remains open.
+- [ ] Partial: enforce supported MIME types, a five-minute duration, and a 25 MB size limit in the browser and route schema; server-side content inspection remains open.
+- [ ] Partial: store original audio in an owner-foldered private Supabase bucket before invoking transcription. Retention preferences and post-transcription deletion behavior remain open.
+- [ ] Partial: issue a 60-second signed URL for private playback after authenticated capture lookup.
+- [ ] Partial: use a stable voice-capture idempotency key for the create/upload attempt. Upload, transcription, and proposal scheduling remain synchronous rather than durable jobs.
+- [ ] Partial: preserve the original audio and show a retryable Inbox state when transcription fails.
+- [ ] Partial: let users edit the transcript and re-run interpretation without changing the original audio.
+- [ ] Partial: send only the uploaded audio to the server-only OpenAI transcription endpoint and record model/latency metadata. Provider approval, cost estimation, and durable safe telemetry remain open.
+- [x] Keep text capture available as an alternative.
 - [ ] Test permission denial, interruption, unsupported browser, upload retry, tab close, duplicate request, and provider failure.
 - [ ] End-to-end test record → transcribe → review → correct → file on supported browsers.
 
@@ -717,6 +718,7 @@ Add a dated row when a milestone or important checkbox becomes verified. Link co
 | 2026-08-02 | Prototype JSON export | `src/app/api/export/route.ts`, `src/lib/export.test.ts`, `src/components/account-security.tsx`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 27 unit tests, lint, and production build. A signed-in user can request a private/no-store JSON download of current RLS-authorized prototype and canonical records. Export-route authorization/completeness/browser-download tests, durable delivery, and deletion remain pending. | Codex |
 | 2026-08-02 | People interactions and note review prototype | `20260803150000_people_interactions.sql`, `src/app/api/workspace/route.ts`, `src/components/workspace.tsx`, `src/lib/workspace.test.ts`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 28 unit tests, lint, and production build. Source now supports owner-scoped interaction summaries, optional linked follow-up tasks, and Today visibility for due note reviews. Supabase migration promotion and authenticated browser/database verification remain pending. | Codex |
 | 2026-08-02 | Linked pilot migration recovery and promotion | `npx supabase migration list`, `npx supabase migration repair`, `npx supabase db push` | Pass: the remote incorrectly marked the working-prototype migrations as applied while their tables were absent. Repaired only the false history entries, replayed the version-controlled working-prototype migrations, and verified every local migration through `20260803150000` now matches remote history. The linked pilot schema is ready for authenticated browser/database verification. | Codex |
+| 2026-08-02 | Phase 0 browser voice-capture slice | `20260803160000_voice_capture_foundation.sql`, `npx supabase migration list`, `npx supabase db push`, `src/components/dashboard.tsx`, `src/app/api/voice-captures/*`, `src/lib/voice.test.ts`, `npm test`, `npm run lint`, `npm run test:e2e`, `npm run build` | Pass in static verification: 31 unit tests, lint, production build, and two public-entry browser tests (six authenticated specs skipped without dedicated fixture accounts). The migration was applied to the linked pilot. The source adds capability/permission-aware recording, preview/cancel/pause, private owner-foldered audio storage, bounded format/size/duration validation, signed playback, synchronous transcription with a recoverable retry state, and editable transcript re-interpretation. Authenticated supported/unsupported/denied-permission browser/database tests remain pending. | Codex |
 
 Canonical quality commands still needed:
 

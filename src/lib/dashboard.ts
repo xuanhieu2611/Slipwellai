@@ -3,7 +3,12 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export type DashboardData = {
   captures: Array<{
     id: string;
-    original_text: string;
+    original_text: string | null;
+    source_type: "text" | "voice";
+    transcript_text: string | null;
+    audio_storage_path: string | null;
+    audio_duration_ms: number | null;
+    failure_code: string | null;
     status: string;
     created_at: string;
     proposal?: {
@@ -30,7 +35,7 @@ export const newestProposalByCapture = <T extends { capture_id: string }>(propos
 export async function getDashboardData(): Promise<DashboardData> {
   const supabase = await createSupabaseServerClient();
   const [capturesResult, proposalsResult, prototypeRecordsResult, taskRecordsResult, noteRecordsResult, retainersResult, cyclesResult, cycleItemsResult, signalsResult] = await Promise.all([
-    supabase.from("captures").select("id, original_text, status, created_at").order("created_at", { ascending: false }).limit(12),
+    supabase.from("captures").select("id, original_text, source_type, transcript_text, audio_storage_path, audio_duration_ms, failure_code, status, created_at").order("created_at", { ascending: false }).limit(12),
     supabase.from("proposals").select("id, capture_id, status, proposal_json").order("created_at", { ascending: false }),
     supabase.from("prototype_records").select("id, proposal_id, record_type, title, destination_name, created_at").order("created_at", { ascending: false }).limit(8),
     supabase.from("tasks").select("id, proposal_id, title, created_at").not("proposal_id", "is", null).order("created_at", { ascending: false }).limit(8),

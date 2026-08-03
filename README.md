@@ -10,7 +10,7 @@ For the Phase 0 interview guide, manual acceptance script, alpha recruitment cop
 ## Run locally
 
 1. Use Node 24+ and `npm install`.
-2. Complete `.env.local` with the server-only `OPENROUTER_API_KEY` and `OPENROUTER_MODEL`. Supabase URL and publishable key are already configured locally; never add a Supabase secret/service-role key.
+2. Complete `.env.local` with the server-only `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, and (for browser voice capture) `OPENAI_API_KEY`. Supabase URL and publishable key are already configured locally; never add a Supabase secret/service-role key.
 3. Run `npm run dev`, then open http://localhost:3000.
 
 ## Authentication
@@ -31,7 +31,9 @@ Use only low-sensitivity test captures during Phase 0. Capture text is sent only
 
 The database migration is versioned at `supabase/migrations/20260802224924_phase0_foundation.sql` and has been applied to Supabase project `slipwell-phase0` in US West. All pilot tables have RLS policies keyed to the authenticated owner.
 
-The migrations through `supabase/migrations/20260803150000_people_interactions.sql` are applied to the linked pilot project. They add required-once onboarding, working-prototype records, project milestones, task/project Slipping, versioned project checklist snapshots, scheduled task recurrence, and lightweight person interactions. Apply the same version-controlled migration chain through the normal promotion process before deploying to any other environment; these migrations are additive and preserve existing pilot records.
+The migrations through `supabase/migrations/20260803160000_voice_capture_foundation.sql` are applied to the linked pilot project. They add required-once onboarding, working-prototype records, project milestones, task/project Slipping, versioned project checklist snapshots, scheduled task recurrence, lightweight person interactions, and the Phase 0 voice-capture foundation. Apply the same version-controlled migration chain through the normal promotion process before deploying to any other environment; these migrations are additive and preserve existing pilot records.
+
+`20260803160000_voice_capture_foundation.sql` adds the Phase 0 browser-voice slice: an owner-scoped private `capture-audio` Storage bucket, source/audio metadata, transcription state, and a corrected-transcript field. Set `OPENAI_API_KEY` before trying it. The current transcription request is synchronous and is intentionally not the commercial MVP’s durable job implementation.
 
 ## Browser coverage
 

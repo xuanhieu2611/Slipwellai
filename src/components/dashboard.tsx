@@ -6,6 +6,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { proposalEnvelopeSchema } from "@/lib/proposals/schema";
 import { nextCycleMonth } from "@/lib/retainers";
 import type { DashboardData } from "@/lib/dashboard";
+import { validateVoiceCapture } from "@/lib/voice";
 
 const control = "rounded-lg px-3 py-2 text-sm font-semibold transition disabled:opacity-50";
 
@@ -20,6 +21,114 @@ function Pill({ children, warning = false }: { children: React.ReactNode; warnin
   return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${warning ? "bg-[#fff0d6] text-[#8a5200]" : "bg-[var(--moss-light)] text-[#174b37]"}`}>{children}</span>;
 }
 
+function VoiceRecorder({ done }: { done: () => void }) {
+  const [capability, setCapability] = useState<"checking" | "ready" | "unsupported">("checking");
+  const [permission, setPermission] = useState("unknown");
+  const [state, setState] = useState<"idle" | "recording" | "paused" | "preview" | "uploading" | "transcribing" | "failed">("idle");
+  const [message, setMessage] = useState("");
+  const [recording, setRecording] = useState<{ audio: Blob; durationMs: number; url: string } | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const startedAtRef = useRef(0);
+  const remoteCaptureRef = useRef<{ id: string; storagePath: string; uploaded: boolean } | null>(null);
+  const idempotencyKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const supported = typeof window !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia) && typeof MediaRecorder !== "undefined";
+    const timer = window.setTimeout(() => setCapability(supported ? "ready" : "unsupported"), 0);
+    if (!supported || !navigator.permissions?.query) return () => window.clearTimeout(timer);
+    void navigator.permissions.query({ name: "microphone" as PermissionName }).then((result) => {
+      setPermission(result.state);
+      result.onchange = () => setPermission(result.state);
+    }).catch(() => setPermission("unknown"));
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => () => { if (recording) URL.revokeObjectURL(recording.url); }, [recording]);
+
+  function clearRecording() {
+    if (recording) URL.revokeObjectURL(recording.url);
+    setRecording(null);
+    setMessage("");
+    setState("idle");
+    remoteCaptureRef.current = null;
+    idempotencyKeyRef.current = null;
+  }
+
+  async function begin() {
+    if (capability !== "ready") return;
+    setMessage("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const candidates = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus"];
+      const mimeType = candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate));
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      chunksRef.current = [];
+      recorder.ondataavailable = (event) => { if (event.data.size > 0) chunksRef.current.push(event.data); };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const audio = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        const durationMs = Date.now() - startedAtRef.current;
+        const validated = validateVoiceCapture({ mimeType: audio.type, byteSize: audio.size, durationMs });
+        if (!validated.ok) { setMessage(validated.error); setState("failed"); return; }
+        setRecording({ audio: new Blob([audio], { type: validated.mimeType }), durationMs, url: URL.createObjectURL(audio) });
+        setState("preview");
+      };
+      recorderRef.current = recorder;
+      startedAtRef.current = Date.now();
+      recorder.start();
+      setState("recording");
+    } catch (error) {
+      setPermission("denied");
+      setState("failed");
+      setMessage(error instanceof DOMException && error.name === "NotAllowedError" ? "Microphone access was denied. You can still use text capture." : "Slipwell could not start the microphone. You can still use text capture.");
+    }
+  }
+
+  function pauseOrResume() {
+    const recorder = recorderRef.current;
+    if (!recorder) return;
+    if (recorder.state === "recording") { recorder.pause(); setState("paused"); }
+    else if (recorder.state === "paused") { recorder.resume(); setState("recording"); }
+  }
+
+  function stop() { recorderRef.current?.stop(); }
+
+  async function submitVoice() {
+    if (!recording) return;
+    const validated = validateVoiceCapture({ mimeType: recording.audio.type, byteSize: recording.audio.size, durationMs: recording.durationMs });
+    if (!validated.ok) { setMessage(validated.error); setState("failed"); return; }
+    setMessage("");
+    try {
+      let remote = remoteCaptureRef.current;
+      if (!remote) {
+        setState("uploading");
+        idempotencyKeyRef.current ??= crypto.randomUUID();
+        const created = await post("/api/voice-captures", { captureId: crypto.randomUUID(), idempotencyKey: idempotencyKeyRef.current, mimeType: validated.mimeType, byteSize: recording.audio.size, durationMs: recording.durationMs }) as { captureId: string; storagePath: string };
+        remote = { id: created.captureId, storagePath: created.storagePath, uploaded: false };
+        remoteCaptureRef.current = remote;
+      }
+      if (!remote.uploaded) {
+        setState("uploading");
+        const { error } = await createSupabaseBrowserClient().storage.from("capture-audio").upload(remote.storagePath, recording.audio, { contentType: validated.mimeType, upsert: false });
+        if (error && !/already exists/i.test(error.message)) throw error;
+        remote.uploaded = true;
+      }
+      setState("transcribing");
+      const completed = await post(`/api/voice-captures/${remote.id}`, {}) as { status: string; warning?: string };
+      if (completed.status === "failed") { setState("failed"); setMessage(completed.warning ?? "Transcription failed. Your original audio is ready to retry."); done(); return; }
+      clearRecording();
+      done();
+    } catch (error) {
+      setState("failed");
+      setMessage(error instanceof Error ? error.message : "The recording was not uploaded. Keep this tab open and retry.");
+    }
+  }
+
+  if (capability === "unsupported") return <div className="mt-4 rounded-xl border border-dashed border-[var(--line)] p-3 text-sm text-[var(--ink-muted)]">Voice capture is unavailable in this browser. Text capture is always available.</div>;
+  return <div className="mt-4 rounded-xl bg-[#f6f8f4] p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-semibold">Voice capture</p><p className="text-xs text-[var(--ink-muted)]">{permission === "denied" ? "Microphone access is blocked" : state === "recording" ? "Recording…" : state === "paused" ? "Recording paused" : state === "uploading" ? "Uploading original audio…" : state === "transcribing" ? "Transcribing…" : "Record up to five minutes, then review the transcript."}</p></div>{state === "idle" || state === "failed" ? <button type="button" disabled={capability !== "ready"} onClick={begin} className={`${control} border border-[var(--line)] bg-white`}>Record voice</button> : null}</div>{(state === "recording" || state === "paused") && <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={pauseOrResume} className={`${control} border border-[var(--line)] bg-white`}>{state === "paused" ? "Resume" : "Pause"}</button><button type="button" onClick={stop} className={`${control} bg-[var(--moss)] text-white`}>Stop recording</button></div>}{state === "preview" && recording && <div className="mt-3 space-y-3"><audio className="w-full" controls src={recording.url}>Your browser cannot play this recording.</audio><div className="flex flex-wrap gap-2"><button type="button" onClick={submitVoice} className={`${control} bg-[var(--moss)] text-white`}>Upload & transcribe</button><button type="button" onClick={clearRecording} className={`${control} border border-[var(--line)] bg-white`}>Cancel recording</button></div></div>}{message && <p role="alert" className="mt-3 text-sm text-[#9b2c17]">{message}</p>}</div>;
+}
+
 function Composer({ done, focusOnLoad }: { done: () => void; focusOnLoad: boolean }) {
   const [text, setText] = useState(""); const [busy, setBusy] = useState(false); const [message, setMessage] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -30,16 +139,27 @@ function Composer({ done, focusOnLoad }: { done: () => void; focusOnLoad: boolea
     event.preventDefault(); setBusy(true); setMessage("");
     try { await post("/api/captures", { text, idempotencyKey: crypto.randomUUID() }); setText(""); done(); } catch (error) { setMessage(error instanceof Error ? error.message : "Capture failed."); setBusy(false); }
   }
-  return <section className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-sm sm:p-6"><div className="flex items-start justify-between gap-4"><div><p className="text-sm font-semibold text-[var(--moss)]">Universal capture</p><h2 className="mt-1 text-2xl font-semibold tracking-tight">What needs a place?</h2></div><Pill>Review-first</Pill></div><form className="mt-5" onSubmit={submit}><label className="sr-only" htmlFor="capture">Capture text</label><textarea ref={inputRef} id="capture" required maxLength={10000} value={text} onChange={(event) => setText(event.target.value)} className="min-h-28 w-full rounded-xl border border-[var(--line)] bg-[#fbfbf8] p-4 outline-none focus:border-[var(--moss)] focus:ring-4 focus:ring-[var(--moss-light)]" placeholder="For Acme, send July analytics by Friday…" /><div className="mt-3 flex items-center justify-between gap-3"><p className="text-xs text-[var(--ink-muted)]">Original words are stored before AI runs.</p><button disabled={busy || !text.trim()} className={`${control} bg-[var(--moss)] text-white hover:bg-[#174b37]`} type="submit">{busy ? "Interpreting…" : "Create proposal"}</button></div></form>{message && <p role="alert" className="mt-3 text-sm text-[#9b2c17]">{message}</p>}</section>;
+  return <section className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-sm sm:p-6"><div className="flex items-start justify-between gap-4"><div><p className="text-sm font-semibold text-[var(--moss)]">Universal capture</p><h2 className="mt-1 text-2xl font-semibold tracking-tight">What needs a place?</h2></div><Pill>Review-first</Pill></div><form className="mt-5" onSubmit={submit}><label className="sr-only" htmlFor="capture">Capture text</label><textarea ref={inputRef} id="capture" required maxLength={10000} value={text} onChange={(event) => setText(event.target.value)} className="min-h-28 w-full rounded-xl border border-[var(--line)] bg-[#fbfbf8] p-4 outline-none focus:border-[var(--moss)] focus:ring-4 focus:ring-[var(--moss-light)]" placeholder="For Acme, send July analytics by Friday…" /><div className="mt-3 flex items-center justify-between gap-3"><p className="text-xs text-[var(--ink-muted)]">Original words are stored before AI runs.</p><button disabled={busy || !text.trim()} className={`${control} bg-[var(--moss)] text-white hover:bg-[#174b37]`} type="submit">{busy ? "Interpreting…" : "Create proposal"}</button></div></form>{message && <p role="alert" className="mt-3 text-sm text-[#9b2c17]">{message}</p>}<VoiceRecorder done={done} /></section>;
 }
 
 function Review({ capture, done }: { capture: DashboardData["captures"][number]; done: () => void }) {
-  const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); const [title, setTitle] = useState(""); const [recordType, setRecordType] = useState(""); const [destination, setDestination] = useState("");
+  const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); const [title, setTitle] = useState(""); const [recordType, setRecordType] = useState(""); const [destination, setDestination] = useState(""); const [transcript, setTranscript] = useState(capture.transcript_text ?? ""); const [audioUrl, setAudioUrl] = useState("");
   const parsed = capture.proposal ? proposalEnvelopeSchema.safeParse(capture.proposal.proposal_json) : null;
   const item = parsed?.success ? parsed.data.proposals[0] : null;
   if (capture.status !== "needs_review") return null;
   async function action(action: "accept" | "retry" | "discard") { if (!capture.proposal) return; setBusy(true); try { await post(`/api/proposals/${capture.proposal.id}`, action === "accept" && item ? { action, proposalIndex: 0, edited: { recordType: recordType || item.recordType, title: title || item.title, body: item.body, destinationName: destination || item.destinationName, dueOn: item.dueOn } } : { action }); done(); } catch (error) { setMessage(error instanceof Error ? error.message : "Action failed."); setBusy(false); } }
-  return <article className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><h3 className="font-semibold">Review capture</h3><Pill warning>Needs review</Pill></div><blockquote className="mt-4 border-l-2 border-[var(--moss)] pl-3 text-sm leading-6">{capture.original_text}</blockquote>{item ? <div className="mt-4 rounded-xl bg-[#f6f8f4] p-4"><div className="flex justify-between gap-3"><div><p className="font-semibold capitalize">{item.recordType.replace("_", " ")}: {item.title}</p><p className="mt-1 text-sm text-[var(--ink-muted)]">{item.reason}</p></div><Pill>{Math.round(item.confidence.title * 100)}% title</Pill></div><div className="mt-3 grid gap-2 sm:grid-cols-[1fr_130px]"><input aria-label="Proposal title" value={title || item.title} onChange={(event) => setTitle(event.target.value)} className="h-10 rounded-lg border border-[var(--line)] bg-white px-3 text-sm" /><select aria-label="Proposal record type" value={recordType || item.recordType} onChange={(event) => setRecordType(event.target.value)} className="h-10 rounded-lg border border-[var(--line)] bg-white px-3 text-sm"><option value="task">Task</option><option value="note">Note</option><option value="retainer_update">Retainer update</option></select><input aria-label="Proposal destination" value={destination || item.destinationName || ""} onChange={(event) => setDestination(event.target.value)} className="h-10 rounded-lg border border-[var(--line)] bg-white px-3 text-sm sm:col-span-2" placeholder="Optional destination" /></div><div className="mt-3 flex flex-wrap gap-2"><button disabled={busy} onClick={() => action("accept")} className={`${control} bg-[var(--moss)] text-white`}>Accept changes</button><button disabled={busy} onClick={() => action("retry")} className={`${control} border border-[var(--line)]`}>Retry</button><button disabled={busy} onClick={() => action("discard")} className={`${control} text-[#9b2c17]`}>Discard</button></div></div> : <div className="mt-4 rounded-xl bg-[#fff0d6] p-4"><p className="text-sm text-[#8a5200]">The proposal service did not return a safe result. Your source capture is preserved.</p>{capture.proposal && <button disabled={busy} onClick={() => action("retry")} className={`${control} mt-3 border border-[#e7c48b] text-[#8a5200]`}>Retry proposal</button>}</div>}{message && <p role="alert" className="mt-3 text-sm text-[#9b2c17]">{message}</p>}</article>;
+  async function playOriginal() { try { const result = await fetch(`/api/voice-captures/${capture.id}`); const payload = await result.json() as { url?: string; error?: string }; if (!result.ok || !payload.url) throw new Error(payload.error ?? "Could not open the original audio."); setAudioUrl(payload.url); } catch (error) { setMessage(error instanceof Error ? error.message : "Could not open the original audio."); } }
+  async function correctTranscript() { if (!transcript.trim()) { setMessage("Enter a transcript before re-running the proposal."); return; } setBusy(true); try { await post(`/api/voice-captures/${capture.id}`, { transcript }); done(); } catch (error) { setMessage(error instanceof Error ? error.message : "Could not save the transcript."); setBusy(false); } }
+  return <article className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><h3 className="font-semibold">Review capture</h3><Pill warning>Needs review</Pill></div>{capture.source_type === "voice" ? <div className="mt-4 rounded-xl border border-[var(--line)] p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-medium">Original voice recording</p><button className={`${control} border border-[var(--line)] bg-white`} onClick={playOriginal}>Play original audio</button></div>{audioUrl && <audio className="mt-3 w-full" controls src={audioUrl}>Your browser cannot play this recording.</audio>}<label className="mt-3 block text-sm font-medium">Transcript<textarea aria-label="Voice transcript" value={transcript} onChange={(event) => setTranscript(event.target.value)} maxLength={10000} className="mt-1 min-h-24 w-full rounded-lg border border-[var(--line)] bg-white p-3 text-sm" /></label><button disabled={busy} onClick={correctTranscript} className={`${control} mt-2 border border-[var(--line)] bg-white`}>Save transcript & re-run proposal</button></div> : <blockquote className="mt-4 border-l-2 border-[var(--moss)] pl-3 text-sm leading-6">{capture.original_text}</blockquote>}{item ? <div className="mt-4 rounded-xl bg-[#f6f8f4] p-4"><div className="flex justify-between gap-3"><div><p className="font-semibold capitalize">{item.recordType.replace("_", " ")}: {item.title}</p><p className="mt-1 text-sm text-[var(--ink-muted)]">{item.reason}</p></div><Pill>{Math.round(item.confidence.title * 100)}% title</Pill></div><div className="mt-3 grid gap-2 sm:grid-cols-[1fr_130px]"><input aria-label="Proposal title" value={title || item.title} onChange={(event) => setTitle(event.target.value)} className="h-10 rounded-lg border border-[var(--line)] bg-white px-3 text-sm" /><select aria-label="Proposal record type" value={recordType || item.recordType} onChange={(event) => setRecordType(event.target.value)} className="h-10 rounded-lg border border-[var(--line)] bg-white px-3 text-sm"><option value="task">Task</option><option value="note">Note</option><option value="retainer_update">Retainer update</option></select><input aria-label="Proposal destination" value={destination || item.destinationName || ""} onChange={(event) => setDestination(event.target.value)} className="h-10 rounded-lg border border-[var(--line)] bg-white px-3 text-sm sm:col-span-2" placeholder="Optional destination" /></div><div className="mt-3 flex flex-wrap gap-2"><button disabled={busy} onClick={() => action("accept")} className={`${control} bg-[var(--moss)] text-white`}>Accept changes</button><button disabled={busy} onClick={() => action("retry")} className={`${control} border border-[var(--line)]`}>Retry</button><button disabled={busy} onClick={() => action("discard")} className={`${control} text-[#9b2c17]`}>Discard</button></div></div> : <div className="mt-4 rounded-xl bg-[#fff0d6] p-4"><p className="text-sm text-[#8a5200]">The proposal service did not return a safe result. Your source capture is preserved.</p>{capture.proposal && <button disabled={busy} onClick={() => action("retry")} className={`${control} mt-3 border border-[#e7c48b] text-[#8a5200]`}>Retry proposal</button>}</div>}{message && <p role="alert" className="mt-3 text-sm text-[#9b2c17]">{message}</p>}</article>;
+}
+
+function VoiceCaptureState({ capture, done }: { capture: DashboardData["captures"][number]; done: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  if (capture.source_type !== "voice" || capture.status === "needs_review" || capture.status === "filed" || capture.status === "discarded") return null;
+  async function retry() { setBusy(true); try { const result = await post(`/api/voice-captures/${capture.id}`, {}) as { warning?: string }; setMessage(result.warning ?? "Transcription restarted."); done(); } catch (error) { setMessage(error instanceof Error ? error.message : "Could not retry transcription."); setBusy(false); } }
+  const label = capture.status === "uploading" ? "Upload waiting" : capture.status === "transcribing" ? "Transcribing" : "Transcription failed";
+  return <article className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-sm"><div className="flex items-center justify-between gap-3"><div><h3 className="font-semibold">Voice capture</h3><p className="mt-1 text-sm text-[var(--ink-muted)]">{label}. The original recording stays private and recoverable.</p></div><Pill warning={capture.status === "failed"}>{capture.status}</Pill></div>{capture.status === "failed" && <button disabled={busy} onClick={retry} className={`${control} mt-4 border border-[var(--line)] bg-white`}>Retry transcription</button>}{message && <p role="alert" className="mt-3 text-sm text-[#9b2c17]">{message}</p>}</article>;
 }
 
 function RetainerLab({ data, done }: { data: DashboardData; done: () => void }) {
@@ -99,5 +219,5 @@ export function Dashboard({ data, email }: { data: DashboardData; email: string 
   async function resolveSignal(id: string, outcome: "marked_attention" | "deferred" | "dismissed") { await post(`/api/slipping/${id}`, { outcome }); refresh(); }
   async function undoRecord(record: DashboardData["records"][number]) { if (!record.proposal_id) return; await post(`/api/proposals/${record.proposal_id}`, { action: "undo", recordId: record.id }); refresh(); }
   async function signOut() { await createSupabaseBrowserClient().auth.signOut({ scope: "local" }); window.location.assign("/"); }
-  return <div className="mx-auto max-w-6xl px-4 py-6 sm:px-7 sm:py-8"><header className="mb-7 flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm font-semibold tracking-[0.16em] text-[var(--moss)] uppercase">Inbox / Phase 0 validation</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Nothing important slips through.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--ink-muted)]">This is the active pilot loop for capture, review, retainer rollover, and Slipping while production record models are built.</p></div><div className="flex items-center gap-3"><span className="hidden text-sm text-[var(--ink-muted)] sm:block">{email}</span><button onClick={signOut} className={`${control} border border-[var(--line)] bg-white`}>Sign out</button></div></header><div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]"><div className="space-y-5"><Composer done={refresh} focusOnLoad={searchParams.get("compose") === "1"} /><section><div className="mb-3 flex justify-between"><h2 className="text-lg font-semibold">Review inbox</h2><span className="text-sm text-[var(--ink-muted)]">{refreshing ? "Refreshing…" : "Originals stay in reach"}</span></div><div className="space-y-3">{data.captures.map((capture) => <Review key={capture.id} capture={capture} done={refresh} />)}{data.captures.filter((capture) => capture.status === "needs_review").length === 0 && <p className="rounded-2xl border border-dashed border-[var(--line)] bg-white p-6 text-sm text-[var(--ink-muted)]">Your review inbox is calm.</p>}</div></section></div><aside className="space-y-5"><section className="rounded-2xl bg-[#1d2823] p-5 text-white"><p className="text-sm font-semibold text-[#c9e3cd]">Slipping</p><h2 className="mt-1 text-xl font-semibold">Attention, not shame.</h2><p className="mt-2 text-sm leading-6 text-[#cad3cd]">Each signal explains what needs attention and gives you an intentional next step.</p><div className="mt-4 space-y-3">{data.signals.map((signal) => <article className="rounded-xl bg-white/10 p-3" key={signal.id}><Pill warning>{signal.severity}</Pill><p className="mt-2 text-sm leading-5">{signal.reason}</p><div className="mt-3 flex flex-wrap gap-2"><button onClick={() => resolveSignal(signal.id, "marked_attention")} className={`${control} bg-white text-[#174b37]`}>Mark attention</button><button onClick={() => resolveSignal(signal.id, "deferred")} className={`${control} border border-white/30`}>Defer</button><button onClick={() => resolveSignal(signal.id, "dismissed")} className={`${control} text-[#d9e0db]`}>Dismiss</button></div></article>)}{data.signals.length === 0 && <p className="rounded-xl bg-white/10 p-3 text-sm text-[#d9e0db]">No active signals. Generate a cycle with an overdue open deliverable to test one.</p>}</div></section><RetainerLab data={data} done={refresh} /><section className="rounded-2xl border border-[var(--line)] bg-white p-5"><h2 className="font-semibold">Recently filed</h2><ul className="mt-3 space-y-3">{data.records.map((record) => <li key={record.id} className="flex items-start justify-between gap-3 text-sm"><div><p className="font-medium">{record.title}</p><p className="text-xs text-[var(--ink-muted)]">{record.record_type.replace("_", " ")}{record.destination_name ? ` · ${record.destination_name}` : ""}</p></div>{record.proposal_id && <button onClick={() => undoRecord(record)} className={`${control} border border-[var(--line)] text-xs`}>Undo</button>}</li>)}{data.records.length === 0 && <li className="text-sm text-[var(--ink-muted)]">Accepted proposals appear here.</li>}</ul></section></aside></div></div>;
+  return <div className="mx-auto max-w-6xl px-4 py-6 sm:px-7 sm:py-8"><header className="mb-7 flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm font-semibold tracking-[0.16em] text-[var(--moss)] uppercase">Inbox / Phase 0 validation</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Nothing important slips through.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--ink-muted)]">This is the active pilot loop for capture, review, retainer rollover, and Slipping while production record models are built.</p></div><div className="flex items-center gap-3"><span className="hidden text-sm text-[var(--ink-muted)] sm:block">{email}</span><button onClick={signOut} className={`${control} border border-[var(--line)] bg-white`}>Sign out</button></div></header><div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]"><div className="space-y-5"><Composer done={refresh} focusOnLoad={searchParams.get("compose") === "1"} /><section><div className="mb-3 flex justify-between"><h2 className="text-lg font-semibold">Review inbox</h2><span className="text-sm text-[var(--ink-muted)]">{refreshing ? "Refreshing…" : "Originals stay in reach"}</span></div><div className="space-y-3">{data.captures.map((capture) => <VoiceCaptureState key={`voice-state-${capture.id}`} capture={capture} done={refresh} />)}{data.captures.map((capture) => <Review key={capture.id} capture={capture} done={refresh} />)}{data.captures.filter((capture) => capture.status === "needs_review" || (capture.source_type === "voice" && !["filed", "discarded"].includes(capture.status))).length === 0 && <p className="rounded-2xl border border-dashed border-[var(--line)] bg-white p-6 text-sm text-[var(--ink-muted)]">Your review inbox is calm.</p>}</div></section></div><aside className="space-y-5"><section className="rounded-2xl bg-[#1d2823] p-5 text-white"><p className="text-sm font-semibold text-[#c9e3cd]">Slipping</p><h2 className="mt-1 text-xl font-semibold">Attention, not shame.</h2><p className="mt-2 text-sm leading-6 text-[#cad3cd]">Each signal explains what needs attention and gives you an intentional next step.</p><div className="mt-4 space-y-3">{data.signals.map((signal) => <article className="rounded-xl bg-white/10 p-3" key={signal.id}><Pill warning>{signal.severity}</Pill><p className="mt-2 text-sm leading-5">{signal.reason}</p><div className="mt-3 flex flex-wrap gap-2"><button onClick={() => resolveSignal(signal.id, "marked_attention")} className={`${control} bg-white text-[#174b37]`}>Mark attention</button><button onClick={() => resolveSignal(signal.id, "deferred")} className={`${control} border border-white/30`}>Defer</button><button onClick={() => resolveSignal(signal.id, "dismissed")} className={`${control} text-[#d9e0db]`}>Dismiss</button></div></article>)}{data.signals.length === 0 && <p className="rounded-xl bg-white/10 p-3 text-sm text-[#d9e0db]">No active signals. Generate a cycle with an overdue open deliverable to test one.</p>}</div></section><RetainerLab data={data} done={refresh} /><section className="rounded-2xl border border-[var(--line)] bg-white p-5"><h2 className="font-semibold">Recently filed</h2><ul className="mt-3 space-y-3">{data.records.map((record) => <li key={record.id} className="flex items-start justify-between gap-3 text-sm"><div><p className="font-medium">{record.title}</p><p className="text-xs text-[var(--ink-muted)]">{record.record_type.replace("_", " ")}{record.destination_name ? ` · ${record.destination_name}` : ""}</p></div>{record.proposal_id && <button onClick={() => undoRecord(record)} className={`${control} border border-[var(--line)] text-xs`}>Undo</button>}</li>)}{data.records.length === 0 && <li className="text-sm text-[var(--ink-muted)]">Accepted proposals appear here.</li>}</ul></section></aside></div></div>;
 }
