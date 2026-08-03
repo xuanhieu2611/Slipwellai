@@ -116,6 +116,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .form-span { grid-column: 1 / -1; }
 .form-submit { align-self: end; justify-self: start; }
 .search-input { font-size: 1rem; margin-top: .2rem; }
+.project-card { border: 1px solid var(--line); border-radius: .95rem; overflow: hidden; }
+.project-card > .record-card { border: 0; border-radius: 0; }
+.project-milestones { background: #fafaf5; border-top: 1px solid var(--line); padding: .85rem 1rem; }
+.inline-form { align-items: end; display: flex; gap: .5rem; }
+.inline-form .field-base { min-width: 0; }
 
 .onboarding-page { align-items: center; display: flex; justify-content: center; min-height: 100dvh; padding: 1.25rem; }
 .onboarding-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 1.5rem; box-shadow: 0 24px 64px rgb(29 40 35 / .1); max-width: 43rem; overflow: hidden; width: 100%; }
@@ -148,4 +153,5 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .record-card { flex-direction: column; }
   .record-actions { justify-content: flex-start; }
   .form-span { grid-column: auto; }
+  .inline-form { align-items: stretch; flex-direction: column; }
 }

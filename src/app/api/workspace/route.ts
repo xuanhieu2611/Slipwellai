@@ -21,18 +21,32 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  async function recordActivity(entityType: string, entityId: string, eventType: string, metadata: Record<string, string> = {}) {
+    const { error } = await supabase.from("activity_events").insert({ entity_type: entityType, entity_id: entityId, event_type: eventType, metadata });
+    if (error) throw error;
+  }
+
   try {
     if (command.action === "create_domain") {
       const { error } = await supabase.from("domains").insert({ name: command.name, description: command.description, color: command.color });
       if (error) throw error;
     } else if (command.action === "create_task") {
       await verifyRelations(command);
-      const { error } = await supabase.from("tasks").insert({ title: command.title, details: command.details, due_on: command.dueOn ?? null, scheduled_for: command.scheduledFor ?? null, priority: command.priority, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null });
-      if (error) throw error;
+      const { data: task, error } = await supabase.from("tasks").insert({ title: command.title, details: command.details, due_on: command.dueOn ?? null, scheduled_for: command.scheduledFor ?? null, priority: command.priority, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null }).select("id").single();
+      if (error || !task) throw error ?? new Error("Task creation failed.");
+      if (command.projectId) await recordActivity("project", command.projectId, "task_created", { taskId: task.id });
     } else if (command.action === "create_project") {
       await verifyRelations(command);
-      const { error } = await supabase.from("projects").insert({ name: command.name, description: command.description, domain_id: command.domainId ?? null, target_on: command.targetOn ?? null });
+      const { data: project, error } = await supabase.from("projects").insert({ name: command.name, description: command.description, domain_id: command.domainId ?? null, target_on: command.targetOn ?? null }).select("id").single();
+      if (error || !project) throw error ?? new Error("Project creation failed.");
+      await recordActivity("project", project.id, "created");
+    } else if (command.action === "create_milestone") {
+      const { data: project } = await supabase.from("projects").select("id").eq("id", command.projectId).maybeSingle();
+      if (!project) return badRequest("Project not found.");
+      const { count } = await supabase.from("project_milestones").select("id", { count: "exact", head: true }).eq("project_id", command.projectId);
+      const { error } = await supabase.from("project_milestones").insert({ project_id: command.projectId, title: command.title, position: (count ?? 0) + 1 });
       if (error) throw error;
+      await recordActivity("project", command.projectId, "milestone_created");
     } else if (command.action === "create_person") {
       await verifyRelations(command);
       const { error } = await supabase.from("people").insert({ name: command.name, context: command.context, domain_id: command.domainId ?? null });
@@ -45,11 +59,13 @@ export async function POST(request: NextRequest) {
       const { error } = await supabase.from("routines").insert({ name: command.name, period: command.period });
       if (error) throw error;
     } else if (command.action === "complete_task" || command.action === "reopen_task" || command.action === "defer_task") {
+      const { data: task } = await supabase.from("tasks").select("id").eq("id", command.taskId).maybeSingle();
+      if (!task) return badRequest("Task not found.");
       const changes = command.action === "complete_task" ? { status: "completed", completed_at: new Date().toISOString(), deferred_until: null } : command.action === "reopen_task" ? { status: "open", completed_at: null } : { status: "open", deferred_until: command.until ?? null };
       const { error } = await supabase.from("tasks").update(changes).eq("id", command.taskId);
       if (error) throw error;
       const eventType = command.action === "complete_task" ? "completed" : command.action === "reopen_task" ? "reopened" : "deferred";
-      await supabase.from("activity_events").insert({ entity_type: "task", entity_id: command.taskId, event_type: eventType, metadata: {} });
+      await recordActivity("task", command.taskId, eventType);
     } else if (command.action === "set_top_three") {
       const { data: selected } = await supabase.from("tasks").select("id, top_three_date").eq("id", command.taskId).maybeSingle();
       if (!selected) return badRequest("Task not found.");
@@ -64,6 +80,25 @@ export async function POST(request: NextRequest) {
     } else if (command.action === "resolve_routine") {
       const { error } = await supabase.from("routine_completions").upsert({ routine_id: command.routineId, local_date: command.localDate, outcome: command.outcome }, { onConflict: "routine_id,local_date" });
       if (error) throw error;
+    } else if (command.action === "complete_milestone" || command.action === "reopen_milestone") {
+      const { data: milestone } = await supabase.from("project_milestones").select("id, project_id").eq("id", command.milestoneId).maybeSingle();
+      if (!milestone) return badRequest("Milestone not found.");
+      const { error } = await supabase.from("project_milestones").update(command.action === "complete_milestone" ? { status: "completed", completed_at: new Date().toISOString() } : { status: "open", completed_at: null }).eq("id", milestone.id);
+      if (error) throw error;
+      await recordActivity("project", milestone.project_id, command.action === "complete_milestone" ? "milestone_completed" : "milestone_reopened");
+    } else if (command.action === "record_project_progress" || command.action === "pause_project" || command.action === "complete_project") {
+      const { data: project } = await supabase.from("projects").select("id").eq("id", command.projectId).maybeSingle();
+      if (!project) return badRequest("Project not found.");
+      if (command.action === "complete_project") {
+        const { count } = await supabase.from("tasks").select("id", { count: "exact", head: true }).eq("project_id", project.id).eq("status", "open");
+        if ((count ?? 0) > 0) return badRequest("Resolve this project’s open tasks before completing it.");
+      }
+      if (command.action !== "record_project_progress") {
+        const { error } = await supabase.from("projects").update({ status: command.action === "pause_project" ? "paused" : "completed" }).eq("id", project.id);
+        if (error) throw error;
+      }
+      const eventType = command.action === "record_project_progress" ? "progress_recorded" : command.action === "pause_project" ? "paused" : "completed";
+      await recordActivity("project", project.id, eventType);
     }
   } catch {
     return serverError();

@@ -310,7 +310,7 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 - [ ] Partial: add user-controlled Top Three selection up to three tasks; reordering and tests remain open.
 - [ ] Add explainable Top Three suggestions without silently replacing user choices.
 - [ ] Partial: show today’s due, scheduled, and deferred tasks in the working prototype.
-- [ ] Partial: show routines and recent captures in Today; calendar and Slipping placement remain open.
+- [ ] Partial: show routines, task/project Slipping, and recent captures in Today; calendar context remains open.
 - [ ] Add recent-capture recovery and needs-review visibility.
 - [ ] Define local-midnight rollover and behavior while the app remains open across midnight.
 - [ ] Implement calm empty, loading, stale, partial, and error states.
@@ -332,14 +332,14 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 **Covers:** PRJ-01–06 and the activity-event model. PRJ-07 manual time logging is P1 and does not block this MVP.
 
 - [ ] Partial: create a finite project schema and manual create/list UI with outcome, state, dates, domain, person, provenance, and RLS; notes/milestones/checklists and validation remain open.
-- [ ] Add milestones/checkpoints and linked tasks.
+- [ ] Partial: add owner-scoped project milestones with ordered checkpoints, complete/reopen controls, and manually linked tasks; migration promotion and relationship/browser tests remain open.
 - [ ] Create reusable checklist/project templates with immutable version snapshots for generated work.
 - [ ] Record template version and source template item on each generated record.
 - [ ] Keep template edits scoped explicitly to current work, future work, or both.
-- [ ] Define substantive progress, decision, and intentional deferment as meaningful activity.
-- [ ] Ensure cosmetic edits do not reset attention cadence.
-- [ ] Add project create/edit/archive/complete flows and project history.
-- [ ] Require an explicit decision for remaining open work when completing or archiving a project.
+- [ ] Partial: record task creation for a project, milestone changes, explicit progress, pause, completion, and Slipping resolution as append-only activity; decisions and richer activity updates remain open.
+- [ ] Partial: task/project prototype Slipping reads append-only meaningful activity, not `updated_at`; its migration and integration verification remain open.
+- [ ] Partial: add project create, pause, and guarded completion flows; editing, archiving, full history UI, and validation remain open.
+- [ ] Partial: prevent project completion while linked open tasks remain; move/cancel resolution UI and archive behavior remain open.
 - [ ] Test template generation idempotency, template edits, project completion, and cross-user relationships.
 - [ ] End-to-end test proposal → project/task structure → meaningful progress event.
 
@@ -383,15 +383,15 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 - [x] Calculate a basic prototype signal for retainer cycle items using activity events.
 - [x] Show a basic plain-language reason and prototype severity.
 - [x] Record prototype mark-attention, defer, and dismiss outcomes.
-- [ ] Support tasks, projects, retainers, and relevant cycle deliverables.
-- [ ] Calculate cadence from meaningful activity rather than generic `updated_at`.
+- [ ] Partial: support prototype retainer cycle deliverables plus task/project signals in the additive generic-episode migration; migration promotion and browser/database verification remain open.
+- [ ] Partial: calculate task/project cadence from append-only meaningful activity rather than generic `updated_at`.
 - [ ] Define remotely configurable audited defaults by record type.
 - [ ] Allow eligible users to override cadence without changing historical evidence.
-- [ ] Produce a plain-language explanation naming the expected cadence and last meaningful attention.
-- [ ] Define severity from age, importance, and state without shame-based language.
-- [ ] Support act, add next action, mark attention, defer, change cadence, pause/archive, and dismiss.
-- [ ] Record outcome, episode, state transition, and subsequent useful action safely.
-- [ ] Deduplicate an unchanged episode and avoid repeated notification without a state change.
+- [ ] Partial: produce plain-language task/project explanations naming expected cadence and elapsed meaningful attention; retainer explanation remains its earlier prototype variant.
+- [ ] Partial: derive task/project prototype severity from elapsed time, high priority, and due/target dates without shame-based language.
+- [ ] Partial: support mark attention, defer, and dismiss for generic episodes; add-next-action, cadence change, and pause/archive from the signal remain open.
+- [ ] Partial: record generic episode resolution as meaningful activity; outcome analytics and subsequent-action tracking remain open.
+- [ ] Partial: use a partial unique index to avoid duplicate open task/project/retainer episodes; durable-job/notification behavior remains open.
 - [ ] Bundle lower-severity signals into summaries.
 - [ ] Test cosmetic edits, completion, deferment, dismissal, cadence changes, archive/pause, episode deduplication, and timezone boundaries.
 - [ ] End-to-end test an explained signal and each primary resolution path.
@@ -711,6 +711,7 @@ Add a dated row when a milestone or important checkbox becomes verified. Link co
 | 2026-08-02 | Step 1 onboarding migration applied to `slipwell-phase0` | Remote migration history, schema/RLS/privilege verification query, Supabase security advisor | Pass: the profile backfill matches all auth users; onboarding columns, `user_preferences`, its RLS policy, and the auth-user trigger exist. The trigger function is not executable by `anon` or `authenticated`. The remaining advisor warning is unrelated leaked-password protection. | Codex |
 | 2026-08-02 | Step 1 public authentication implementation | `src/components/sign-in.tsx`, `src/app/auth/callback/route.ts`, `src/proxy.ts`, `src/lib/auth.test.ts`, `e2e/public-auth.spec.ts`, `npm run lint`, `npm test`, `npm run test:e2e`, `npm run build`; founder manual Google sign-in | Partial: public email/password and Google entry, recovery UI, safe callback routing, SSR refresh, and session controls are implemented; 18 unit tests and 2 public-entry browser tests pass. Google sign-in was manually verified by the founder. Local Supabase integration, identity-linking, and session-revocation checks remain unverified because Docker/local Supabase is unavailable and no dedicated test identities were supplied. | Codex / Founder |
 | 2026-08-02 | Working-prototype record surfaces | `20260803110000_working_prototype_core.sql`, `src/components/workspace.tsx`, `src/app/api/workspace/route.ts`, `src/lib/workspace.test.ts`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 20 unit tests, lint, and production build. The source now has owner-scoped/RLS domains, tasks, projects, routines/completions, people, notes, Today/Top Three, manual record flows, and account-scoped prototype search. Supabase migration promotion and authenticated browser/database verification are pending; `supabase migration list` cannot run because this checkout is not linked to a project. | Codex |
+| 2026-08-02 | Project progress and core Slipping prototype | `20260803120000_project_activity_and_core_slipping.sql`, `src/lib/slipping.ts`, `src/lib/slipping.test.ts`, `src/app/api/slipping/*`, `src/components/workspace.tsx`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 22 unit tests, lint, and production build. Source now has owner-scoped ordered milestones, guarded project completion, append-only meaningful project activity, and one-open-episode task/project Slipping with explanations and resolutions in Today. Supabase migration promotion and authenticated browser/database verification remain pending. | Codex |
 
 Canonical quality commands still needed:
 

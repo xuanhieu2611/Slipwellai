@@ -13,9 +13,14 @@ export async function POST(request: NextRequest, context: { params: Promise<{ si
     .from("slipping_signals")
     .update({ outcome: parsed.data.outcome, outcome_note: parsed.data.note ?? null, resolved_at: new Date().toISOString() })
     .eq("id", signalId)
-    .select("retainer_id")
+    .select("retainer_id, entity_type, entity_id")
     .single();
   if (error || !signal) return serverError();
-  await supabase.from("activity_events").insert({ entity_type: "retainer", entity_id: signal.retainer_id, event_type: `slipping_${parsed.data.outcome}` });
+  const { error: activityError } = await supabase.from("activity_events").insert({
+    entity_type: signal.entity_type,
+    entity_id: signal.entity_type === "retainer" && signal.retainer_id ? signal.retainer_id : signal.entity_id,
+    event_type: `slipping_${parsed.data.outcome}`,
+  });
+  if (activityError) return serverError();
   return NextResponse.json({ ok: true });
 }
