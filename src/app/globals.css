@@ -89,6 +89,34 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .build-state > p:not(.eyebrow) { color: var(--ink-muted); font-size: 1.05rem; line-height: 1.7; margin-top: 1.5rem; max-width: 39rem; }
 .build-state-rule { background: var(--moss); height: 2px; margin: 2.5rem 0 1.15rem; width: 4rem; }
 
+.workspace-page { margin: 0 auto; max-width: 74rem; padding: clamp(1.5rem, 4vw, 3.5rem); }
+.page-intro { margin-bottom: 2rem; max-width: 45rem; }
+.page-intro h1 { font-size: clamp(2rem, 4.5vw, 3.7rem); font-weight: 650; letter-spacing: -.06em; line-height: 1; margin-top: .7rem; text-wrap: balance; }
+.page-intro > p:not(.eyebrow) { color: var(--ink-muted); font-size: 1rem; line-height: 1.6; margin-top: 1rem; }
+.workspace-section { background: var(--surface); border: 1px solid var(--line); border-radius: 1.2rem; margin-top: 1.15rem; padding: clamp(1rem, 3vw, 1.5rem); }
+.workspace-section h2 { font-size: 1.2rem; font-weight: 650; letter-spacing: -.025em; }
+.workspace-columns { display: grid; gap: 1.15rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.workspace-columns .workspace-section { margin-top: 0; }
+.section-heading { align-items: center; display: flex; gap: 1rem; justify-content: space-between; margin-bottom: 1rem; }
+.section-heading h2 { margin-top: .2rem; }
+.tag { background: var(--surface-soft); border-radius: 999px; color: var(--ink-muted); display: inline-flex; font-size: .72rem; font-weight: 650; padding: .3rem .55rem; white-space: nowrap; }
+.tag--attention { background: #fff0d6; color: #8a5200; }
+.record-card { align-items: flex-start; border: 1px solid var(--line); border-radius: .9rem; display: flex; gap: 1rem; justify-content: space-between; padding: 1rem; }
+.record-card h3 { font-size: .95rem; font-weight: 650; line-height: 1.4; }
+.record-copy { color: var(--ink-muted); font-size: .85rem; line-height: 1.5; margin-top: .3rem; max-width: 47rem; }
+.record-meta { color: var(--ink-muted); font-size: .73rem; margin-top: .5rem; }
+.record-actions { align-items: center; display: flex; flex-wrap: wrap; gap: .35rem; justify-content: flex-end; }
+.record-actions .button-base { min-height: 2.35rem; padding: .45rem .65rem; }
+.compact-row { align-items: center; border-bottom: 1px solid var(--line); display: flex; font-size: .87rem; gap: .75rem; justify-content: space-between; padding: .75rem 0; }
+.compact-row:last-child { border-bottom: 0; }
+.compact-row > span:first-child { align-items: center; display: flex; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.domain-dot { border-radius: 999px; display: inline-block; height: .55rem; margin-right: .5rem; width: .55rem; }
+.empty-state { background: var(--surface-soft); border-radius: .8rem; color: var(--ink-muted); font-size: .87rem; line-height: 1.5; padding: 1rem; }
+.form-grid { display: grid; gap: .8rem; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 1rem; }
+.form-span { grid-column: 1 / -1; }
+.form-submit { align-self: end; justify-self: start; }
+.search-input { font-size: 1rem; margin-top: .2rem; }
+
 .onboarding-page { align-items: center; display: flex; justify-content: center; min-height: 100dvh; padding: 1.25rem; }
 .onboarding-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 1.5rem; box-shadow: 0 24px 64px rgb(29 40 35 / .1); max-width: 43rem; overflow: hidden; width: 100%; }
 .onboarding-progress { align-items: center; background: var(--surface-soft); display: flex; font-size: .78rem; font-variant-numeric: tabular-nums; justify-content: space-between; padding: 1rem 1.25rem; }
@@ -115,4 +143,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .mobile-nav-link.is-current { color: var(--moss); }
   .mobile-capture { background: var(--moss); border: 3px solid var(--background); border-radius: 999px; color: white; font-size: 1.5rem; height: 3rem; margin: -1.55rem auto 0; padding: 0; width: 3rem; }
   .build-state { padding-top: 4rem; }
+  .workspace-page { padding: 1.35rem 1rem; }
+  .workspace-columns, .form-grid { grid-template-columns: 1fr; }
+  .record-card { flex-direction: column; }
+  .record-actions { justify-content: flex-start; }
+  .form-span { grid-column: auto; }
 }

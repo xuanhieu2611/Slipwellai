@@ -37,8 +37,12 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
 
   if (parsed.data.action === "undo") {
     if (!parsed.data.recordId) return badRequest("Choose the accepted record to undo.");
-    const { error: deleteError } = await supabase.from("prototype_records").delete().eq("id", parsed.data.recordId).eq("proposal_id", proposal.id);
-    if (deleteError) return serverError();
+    const [taskResult, noteResult, prototypeResult] = await Promise.all([
+      supabase.from("tasks").delete().eq("id", parsed.data.recordId).eq("proposal_id", proposal.id),
+      supabase.from("notes").delete().eq("id", parsed.data.recordId).eq("proposal_id", proposal.id),
+      supabase.from("prototype_records").delete().eq("id", parsed.data.recordId).eq("proposal_id", proposal.id),
+    ]);
+    if (taskResult.error || noteResult.error || prototypeResult.error) return serverError();
     await Promise.all([
       supabase.from("proposals").update({ status: "ready" }).eq("id", proposal.id),
       supabase.from("captures").update({ status: "needs_review" }).eq("id", proposal.capture_id),
@@ -51,18 +55,12 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
   if (!envelope.success) return badRequest("This proposal cannot be applied. Retry it instead.");
   const item = parsed.data.edited ?? envelope.data.proposals[parsed.data.proposalIndex];
   if (!item) return badRequest("Proposal item not found.");
-  const { data: record, error: recordError } = await supabase
-    .from("prototype_records")
-    .insert({
-      proposal_id: proposal.id,
-      record_type: item.recordType,
-      title: item.title,
-      body: item.body ?? null,
-      destination_name: item.destinationName ?? null,
-      due_on: item.dueOn ?? null,
-    })
-    .select("id")
-    .single();
+  const insert = item.recordType === "task"
+    ? supabase.from("tasks").insert({ proposal_id: proposal.id, source_capture_id: proposal.capture_id, title: item.title, details: item.body ?? null, due_on: item.dueOn ?? null }).select("id").single()
+    : item.recordType === "note"
+      ? supabase.from("notes").insert({ proposal_id: proposal.id, source_capture_id: proposal.capture_id, title: item.title, body: item.body ?? null }).select("id").single()
+      : supabase.from("prototype_records").insert({ proposal_id: proposal.id, record_type: item.recordType, title: item.title, body: item.body ?? null, destination_name: item.destinationName ?? null, due_on: item.dueOn ?? null }).select("id").single();
+  const { data: record, error: recordError } = await insert;
   if (recordError || !record) return serverError();
   const wasEdited = Boolean(parsed.data.edited);
   await Promise.all([

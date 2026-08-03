@@ -2,10 +2,13 @@ import { notFound } from "next/navigation";
 import { AccountSecurity } from "@/components/account-security";
 import { BuildStatePage } from "@/components/build-state-page";
 import { Dashboard } from "@/components/dashboard";
+import { Workspace } from "@/components/workspace";
 import { getDashboardData } from "@/lib/dashboard";
 import { requireUser } from "@/lib/supabase/server";
+import { getWorkspaceData } from "@/lib/workspace-data";
 
 const buildStateSurfaces = new Set(["today", "tasks", "work", "search", "people-notes", "settings"]);
+const workspaceSurfaces = new Set(["today", "tasks", "work", "search", "people-notes"]);
 
 export default async function SurfacePage({ params, searchParams }: { params: Promise<{ surface: string }>; searchParams: Promise<{ revoke?: string }> }) {
   const { surface } = await params;
@@ -19,6 +22,10 @@ export default async function SurfacePage({ params, searchParams }: { params: Pr
     if (!user) notFound();
     const providers = user.identities?.map((identity) => identity.provider) ?? [];
     return <AccountSecurity email={user.email ?? "this account"} hasEmailPassword={providers.includes("email")} hasGoogle={providers.includes("google")} revokeAfterGoogle={(await searchParams).revoke === "google"} />;
+  }
+  if (workspaceSurfaces.has(surface)) {
+    const data = await getWorkspaceData();
+    return <Workspace surface={surface as "today" | "tasks" | "work" | "search" | "people-notes"} data={data} />;
   }
   return <BuildStatePage surface={surface} />;
 }

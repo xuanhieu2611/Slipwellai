@@ -29,10 +29,12 @@ export const newestProposalByCapture = <T extends { capture_id: string }>(propos
 
 export async function getDashboardData(): Promise<DashboardData> {
   const supabase = await createSupabaseServerClient();
-  const [capturesResult, proposalsResult, recordsResult, retainersResult, cyclesResult, cycleItemsResult, signalsResult] = await Promise.all([
+  const [capturesResult, proposalsResult, prototypeRecordsResult, taskRecordsResult, noteRecordsResult, retainersResult, cyclesResult, cycleItemsResult, signalsResult] = await Promise.all([
     supabase.from("captures").select("id, original_text, status, created_at").order("created_at", { ascending: false }).limit(12),
     supabase.from("proposals").select("id, capture_id, status, proposal_json").order("created_at", { ascending: false }),
     supabase.from("prototype_records").select("id, proposal_id, record_type, title, destination_name, created_at").order("created_at", { ascending: false }).limit(8),
+    supabase.from("tasks").select("id, proposal_id, title, created_at").not("proposal_id", "is", null).order("created_at", { ascending: false }).limit(8),
+    supabase.from("notes").select("id, proposal_id, title, created_at").not("proposal_id", "is", null).order("created_at", { ascending: false }).limit(8),
     supabase.from("retainers").select("id, name, timezone, cycle_day, status").order("created_at", { ascending: false }),
     supabase.from("retainer_cycles").select("id, retainer_id, cycle_start, cycle_end").order("cycle_start", { ascending: false }),
     supabase.from("retainer_cycle_items").select("id, cycle_id, title, expected_on, status, carried_from_item_id").order("expected_on", { ascending: false }),
@@ -48,7 +50,11 @@ export async function getDashboardData(): Promise<DashboardData> {
       ...capture,
       proposal: proposalByCapture.get(capture.id),
     })),
-    records: (recordsResult.data ?? []) as DashboardData["records"],
+    records: [
+      ...((prototypeRecordsResult.data ?? []) as DashboardData["records"]),
+      ...((taskRecordsResult.data ?? []).map((record) => ({ ...record, record_type: "task", destination_name: null })) as DashboardData["records"]),
+      ...((noteRecordsResult.data ?? []).map((record) => ({ ...record, record_type: "note", destination_name: null })) as DashboardData["records"]),
+    ].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 8),
     retainers: (retainersResult.data ?? []) as DashboardData["retainers"],
     cycles: (cyclesResult.data ?? []) as DashboardData["cycles"],
     cycleItems: (cycleItemsResult.data ?? []) as DashboardData["cycleItems"],

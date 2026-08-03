@@ -57,7 +57,8 @@ Important limitations:
 - 🟡 Review displays only part of the supported multi-proposal output and does not provide the full PRD correction workflow.
 - 🟡 `prototype_records` is not the canonical task, note, project, person, or retainer data model.
 - 🟡 Retainer and Slipping logic are interactive labs, not production-grade durable workflows.
-- ⬜ There is no Today experience, canonical tasks/domains/projects, calendar sync, routines, people, notes, search, voice capture, notifications, billing, export/deletion workflow, or production analytics/operations layer.
+- 🟡 A migration-backed working-prototype core for Today, manual tasks, domains, finite projects, routines, lightweight people/notes, and account-scoped search exists in source. It is awaiting normal Supabase migration promotion and has not yet received authenticated browser or database-integration verification.
+- ⬜ There is no calendar sync, voice capture, notification system, billing, export/deletion workflow, or production analytics/operations layer.
 - ⬜ There are no cross-user RLS integration tests or browser end-to-end tests.
 - ⬜ There is no installable PWA manifest/application-shell strategy or production deployment pipeline yet.
 - ⬜ The product-validation interview and willingness-to-pay exit criteria have not been recorded as complete.
@@ -70,6 +71,7 @@ Current implementation evidence:
 - Prototype retainer and Slipping rules: `src/lib/retainers.ts`
 - Database schema and RLS: `supabase/migrations/20260802224924_phase0_foundation.sql`
 - Current setup and commands: `README.md`, `.env.example`, `package.json`
+- Working-prototype record model and surfaces: `supabase/migrations/20260803110000_working_prototype_core.sql`, `src/components/workspace.tsx`, `src/app/api/workspace/route.ts`
 
 ## Ordered MVP roadmap
 
@@ -81,12 +83,12 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 | 1 | Production foundation: auth, tenancy, environments, design system, audit | 🟡 Partial | Step 0 prototype learning |
 | 2 | Canonical durable text capture without relying on AI | 🟡 Partial | Step 1 |
 | 3 | Trustworthy AI proposal and review pipeline | 🟡 Partial | Steps 1–2 |
-| 4 | Tasks, domains, relationships, and Today foundation | ⬜ Not started | Steps 1–3 |
-| 5 | Finite projects, templates, and meaningful activity | ⬜ Not started | Step 4 |
+| 4 | Tasks, domains, relationships, and Today foundation | 🟡 Working-prototype slice | Steps 1–3 |
+| 5 | Finite projects, templates, and meaningful activity | 🟡 Working-prototype slice | Step 4 |
 | 6 | Production retainers, cycles, rollover, and history | 🟡 Prototype only | Steps 4–5 |
 | 7 | Explainable Slipping engine and outcomes | 🟡 Prototype only | Steps 4–6 |
 | 8 | Read-only Google Calendar synchronization | ⬜ Not started | Steps 1 and 4 |
-| 9 | Routines, people, notes, and global search | ⬜ Not started | Steps 1 and 4 |
+| 9 | Routines, people, notes, and global search | 🟡 Working-prototype slice | Steps 1 and 4 |
 | 10 | Browser voice capture and transcription | ⬜ Not started | Steps 2–3 |
 | 11 | Notifications, summaries, and durable processing recovery | ⬜ Not started | Steps 3, 7–10 |
 | 12 | Export, deletion, privacy, and security hardening | ⬜ Not started | Stable canonical data model |
@@ -284,11 +286,11 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 ### Tasks and relationships
 
-- [ ] Create the canonical task schema with owner, title, details, status, dates, priority, relationships, provenance, and archival fields.
+- [ ] Partial: create the canonical task schema with owner, title, details, status, dates, priority, primary relationships, provenance, archival fields, and RLS. The additive migration is unpromoted and reminders/recurrence remain open.
 - [ ] Support one or more reminder times and route their delivery through the durable notification system.
-- [ ] Support fast manual task creation independent of AI.
-- [ ] Implement complete, reopen, defer, cancel/archive, and soft-delete recovery behavior.
-- [ ] Distinguish due, scheduled, and defer/until semantics in storage and UI.
+- [ ] Partial: support fast manual task creation independent of AI in the working-prototype UI; migration promotion and authenticated browser verification remain open.
+- [ ] Partial: implement complete, reopen, and defer behavior in the working-prototype UI; cancellation, archive, recovery, and integration coverage remain open.
+- [ ] Partial: distinguish due, scheduled, and defer/until semantics in storage and UI; recurrence and timezone-boundary coverage remain open.
 - [ ] Implement recurring task rules separately from routines.
 - [ ] Generate recurring instances idempotently across retries, short months, and timezone/DST changes.
 - [ ] Link tasks to domains, projects, retainers, people, notes, and source captures where relevant.
@@ -296,19 +298,19 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 ### Domains
 
-- [ ] Create durable top-level responsibility areas with active/archived states.
-- [ ] Support name, description, color/icon, and an optional default Slipping cadence.
-- [ ] Allow tasks, projects, retainers, people, and notes to relate to a domain.
+- [ ] Partial: create durable top-level responsibility areas with active/archived states in the additive migration; migration promotion and archive UI remain open.
+- [ ] Partial: support name, description, color, and an optional default Slipping cadence in the schema; icon support and verification remain open.
+- [ ] Partial: tasks, projects, people, and notes can link to a domain in the working prototype; retainers and relationship tests remain open.
 - [ ] Preserve records when a domain is archived or deleted; require an explicit resolution.
 - [ ] Add domain views with relevant active work and recent meaningful activity.
 
 ### Today
 
-- [ ] Build Today in the confirmed user timezone.
-- [ ] Add user-controlled Top Three selection and ordering.
+- [ ] Partial: build a working-prototype Today in the confirmed user timezone; authenticated browser verification and midnight behavior remain open.
+- [ ] Partial: add user-controlled Top Three selection up to three tasks; reordering and tests remain open.
 - [ ] Add explainable Top Three suggestions without silently replacing user choices.
-- [ ] Show today’s tasks, scheduled work, and intentionally surfaced deferred work.
-- [ ] Reserve sections for calendar context, routines, Slipping, and recent captures.
+- [ ] Partial: show today’s due, scheduled, and deferred tasks in the working prototype.
+- [ ] Partial: show routines and recent captures in Today; calendar and Slipping placement remain open.
 - [ ] Add recent-capture recovery and needs-review visibility.
 - [ ] Define local-midnight rollover and behavior while the app remains open across midnight.
 - [ ] Implement calm empty, loading, stale, partial, and error states.
@@ -329,7 +331,7 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 **Covers:** PRJ-01–06 and the activity-event model. PRJ-07 manual time logging is P1 and does not block this MVP.
 
-- [ ] Create the canonical finite project schema with outcome, state, dates, domain, people, notes, and provenance.
+- [ ] Partial: create a finite project schema and manual create/list UI with outcome, state, dates, domain, person, provenance, and RLS; notes/milestones/checklists and validation remain open.
 - [ ] Add milestones/checkpoints and linked tasks.
 - [ ] Create reusable checklist/project templates with immutable version snapshots for generated work.
 - [ ] Record template version and source template item on each generated record.
@@ -426,22 +428,22 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 ### Routines
 
-- [ ] Store routines separately from tasks.
-- [ ] Support name, description, time-of-day group, active days, optional reminder, and active/archived state.
-- [ ] Create or resolve exactly one idempotent completion instance per scheduled day.
-- [ ] Support Today completion and skip as distinct outcomes.
+- [ ] Partial: store routines separately from tasks in the additive schema and working-prototype UI.
+- [ ] Partial: support name, description, time-of-day group, active days, and active/archived state in the schema; reminder UI remains open.
+- [ ] Partial: create or resolve one idempotent completion instance per selected local date via the unique routine/date key; database integration verification remains open.
+- [ ] Partial: support Today completion and skip as distinct outcomes in the working-prototype UI; browser verification remains open.
 - [ ] Avoid creating an unbounded history of recurring task instances.
 - [ ] Show today plus a simple recent history; do not add streak/challenge analytics.
 - [ ] Test timezone/DST behavior and confirm missed routines never enter global Slipping.
 
 ### People and notes
 
-- [ ] Add lightweight people records with name, optional pronouns, context, important dates, tags, default domain, and archive state.
+- [ ] Partial: add lightweight people records with name, optional pronouns, context, tags, default domain, and archive state in schema; working-prototype UI currently captures name/context/domain only and important dates remain open.
 - [ ] Store timestamped interactions and allow an optional linked follow-up task.
 - [ ] Store facts as discrete source-linked records; require review for sensitive AI-proposed facts.
 - [ ] Relate people to tasks, projects, retainers, notes, and source captures.
 - [ ] Suggest possible duplicate matches but never auto-merge people.
-- [ ] Add notes that preserve reflective content and support relevant relationships.
+- [ ] Partial: add notes that preserve reflective content, review date, and domain/project/person/source relationships in schema; working-prototype UI supports manual title/body/links but migration/browser verification remains open.
 - [ ] Support note title, Markdown/plain-text body, tags, domain, review date, source, links, and archive state.
 - [ ] Propose a linked task for an explicit action inside a note rather than silently converting the note.
 - [ ] Surface notes with an explicit review date in Today or Inbox.
@@ -450,7 +452,7 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 ### Search
 
-- [ ] Implement Postgres full-text and normalized keyword search across tasks, projects, retainers, domains, people, notes, and capture source text.
+- [ ] Partial: implement a unified, account-scoped working-prototype search across loaded tasks, projects, domains, people, notes, and captures. Postgres full-text indexing, retainers, filters, and performance verification remain open.
 - [ ] Apply owner and archival filters before returning results.
 - [ ] Show type, matching context, and destination without leaking unrelated private text.
 - [ ] Keep global search keyboard and mobile accessible.
@@ -622,17 +624,17 @@ This table is a navigation aid, not a substitute for the detailed checklists abo
 | Onboarding | ONB-01–07 | ⬜ Not started | 1 |
 | Capture | CAP-01–11 | 🟡 Partial | 2, 3, 10 |
 | Review and correction | REV-01–08 | 🟡 Partial | 3 |
-| Today | TDY-01–10 | ⬜ Not started | 4 |
-| Tasks | TSK-01–06 and TSK-08 P0; TSK-07 P1 | ⬜ Not started | 4 |
-| Domains | DOM-01–04 | ⬜ Not started | 4 |
-| Projects | PRJ-01–06 P0; PRJ-07 P1 | ⬜ Not started | 5 |
+| Today | TDY-01–10 | 🟡 Working-prototype slice | 4 |
+| Tasks | TSK-01–06 and TSK-08 P0; TSK-07 P1 | 🟡 Working-prototype slice | 4 |
+| Domains | DOM-01–04 | 🟡 Working-prototype slice | 4 |
+| Projects | PRJ-01–06 P0; PRJ-07 P1 | 🟡 Working-prototype slice | 5 |
 | Retainers | RET-01–09 | 🟡 Prototype only | 6 |
 | Slipping | SLP-01–10 | 🟡 Prototype only | 7 |
 | Calendar | CAL-01–08 | ⬜ Not started | 8 |
-| Routines | RTN-01–06 | ⬜ Not started | 9 |
-| People | PPL-01–06 | ⬜ Not started | 9 |
-| Notes | NTE-01–04 P0-light; NTE-05 P1 | ⬜ Not started | 9 |
-| Search | SRC-01–06 | ⬜ Not started | 9 |
+| Routines | RTN-01–06 | 🟡 Working-prototype slice | 9 |
+| People | PPL-01–06 | 🟡 Working-prototype slice | 9 |
+| Notes | NTE-01–04 P0-light; NTE-05 P1 | 🟡 Working-prototype slice | 9 |
+| Search | SRC-01–06 | 🟡 Working-prototype slice | 9 |
 | Notifications | NTF-01–05 | ⬜ Not started | 11 |
 | Billing | BIL-01–07 | ⬜ Not started | 13 |
 | Settings, export, deletion | SET-01–08 | ⬜ Not started | 12 |
@@ -708,6 +710,7 @@ Add a dated row when a milestone or important checkbox becomes verified. Link co
 | 2026-08-02 | Step 1 onboarding and authenticated shell | `20260803090000_step1_onboarding_foundation.sql`, `src/lib/onboarding.test.ts`, `npm run lint`, `npm test`, `npm run build` | Pass: existing and future accounts receive an incomplete profile, authenticated setup stores validated profile/timezone/locale data before completion, and the responsive shell preserves Inbox while keeping unfinished surfaces transparent. Browser specs exist but were skipped without dedicated authenticated local-Supabase fixture states. | Codex |
 | 2026-08-02 | Step 1 onboarding migration applied to `slipwell-phase0` | Remote migration history, schema/RLS/privilege verification query, Supabase security advisor | Pass: the profile backfill matches all auth users; onboarding columns, `user_preferences`, its RLS policy, and the auth-user trigger exist. The trigger function is not executable by `anon` or `authenticated`. The remaining advisor warning is unrelated leaked-password protection. | Codex |
 | 2026-08-02 | Step 1 public authentication implementation | `src/components/sign-in.tsx`, `src/app/auth/callback/route.ts`, `src/proxy.ts`, `src/lib/auth.test.ts`, `e2e/public-auth.spec.ts`, `npm run lint`, `npm test`, `npm run test:e2e`, `npm run build`; founder manual Google sign-in | Partial: public email/password and Google entry, recovery UI, safe callback routing, SSR refresh, and session controls are implemented; 18 unit tests and 2 public-entry browser tests pass. Google sign-in was manually verified by the founder. Local Supabase integration, identity-linking, and session-revocation checks remain unverified because Docker/local Supabase is unavailable and no dedicated test identities were supplied. | Codex / Founder |
+| 2026-08-02 | Working-prototype record surfaces | `20260803110000_working_prototype_core.sql`, `src/components/workspace.tsx`, `src/app/api/workspace/route.ts`, `src/lib/workspace.test.ts`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 20 unit tests, lint, and production build. The source now has owner-scoped/RLS domains, tasks, projects, routines/completions, people, notes, Today/Top Three, manual record flows, and account-scoped prototype search. Supabase migration promotion and authenticated browser/database verification are pending; `supabase migration list` cannot run because this checkout is not linked to a project. | Codex |
 
 Canonical quality commands still needed:
 

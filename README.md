@@ -31,7 +31,7 @@ Use only low-sensitivity test captures during Phase 0. Capture text is sent only
 
 The database migration is versioned at `supabase/migrations/20260802224924_phase0_foundation.sql` and has been applied to Supabase project `slipwell-phase0` in US West. All pilot tables have RLS policies keyed to the authenticated owner.
 
-The next migration, `supabase/migrations/20260803090000_step1_onboarding_foundation.sql`, adds required-once onboarding profiles and user preferences. Apply it through the normal Supabase migration promotion process before deploying this app change; existing pilot accounts retain their records and complete setup on their next sign-in.
+The next migrations, `supabase/migrations/20260803090000_step1_onboarding_foundation.sql` and `supabase/migrations/20260803110000_working_prototype_core.sql`, add required-once onboarding plus the working-prototype domains, tasks, projects, routines, people, and notes tables. Apply them through the normal Supabase migration promotion process before deploying this app change; the latter migration is additive and preserves existing pilot records.
 
 ## Browser coverage
 
