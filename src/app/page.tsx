@@ -1,13 +1,15 @@
 import { redirect } from "next/navigation";
+import { authErrorMessages, type AuthCallbackError } from "@/lib/auth";
 import { SignIn } from "@/components/sign-in";
 import { getOnboardingState } from "@/lib/onboarding-service";
 import { createSupabaseOnboardingRepository } from "@/lib/supabase/onboarding-repository";
 import { requireUser } from "@/lib/supabase/server";
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ auth?: string }> }) {
+  const auth = (await searchParams).auth;
   const state = await getHomeState();
   if (state.kind === "setup") return <SetupRequired />;
-  if (state.kind === "signed-out") return <SignIn />;
+  if (state.kind === "signed-out") return <SignIn initialError={auth && auth in authErrorMessages ? authErrorMessages[auth as AuthCallbackError] : undefined} />;
   redirect(state.completed ? "/inbox" : "/onboarding");
 }
 

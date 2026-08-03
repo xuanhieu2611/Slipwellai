@@ -13,9 +13,13 @@ For the Phase 0 interview guide, manual acceptance script, alpha recruitment cop
 2. Complete `.env.local` with the server-only `OPENROUTER_API_KEY` and `OPENROUTER_MODEL`. Supabase URL and publishable key are already configured locally; never add a Supabase secret/service-role key.
 3. Run `npm run dev`, then open http://localhost:3000.
 
-## Pilot access
+## Authentication
 
-Pilot users must be pre-provisioned in the Supabase dashboard using an email invite. The sign-in form uses `shouldCreateUser: false`, so it cannot create public accounts. Configure the hosted Supabase Auth Site URL and redirect allow-list for `http://localhost:3000/auth/callback` before testing magic links.
+Slipwell supports public email/password signup and Google OAuth. New email/password accounts go straight to onboarding; email confirmation and passwordless sign-in are intentionally not enabled.
+
+Set `NEXT_PUBLIC_APP_URL` to the exact deployed application origin. In each hosted Supabase project, enable Email signup, leave email confirmation disabled, and allow only `<app-origin>/auth/callback` as the app redirect URL. For Google, create OAuth credentials in Google Cloud with Supabase’s provider callback (`https://<project-ref>.supabase.co/auth/v1/callback`), add the client ID and secret in Supabase Auth → Google, and enable the provider. Never commit the Google secret.
+
+The checked-in local config leaves Google disabled until local credentials are supplied. Set `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID`, `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET`, and enable `[auth.external.google]` only in local development when testing that provider.
 
 Use only low-sensitivity test captures during Phase 0. Capture text is sent only to the configured OpenRouter model with zero-data-retention and provider data collection denied. Its original text is stored before interpretation and no capture content is logged by application code.
 
@@ -31,4 +35,4 @@ The next migration, `supabase/migrations/20260803090000_step1_onboarding_foundat
 
 ## Browser coverage
 
-`npm run test:e2e` contains desktop and mobile browser coverage for the authenticated shell and onboarding. It intentionally skips unless local-Supabase fixture storage-state paths are supplied through `PLAYWRIGHT_AUTH_STORAGE_STATE` and `PLAYWRIGHT_INCOMPLETE_ONBOARDING_STORAGE_STATE`; never use a real pilot account as either fixture.
+`npm run test:e2e` contains desktop and mobile browser coverage for the authenticated shell and onboarding. It intentionally skips authenticated scenarios unless local-Supabase fixture storage-state paths are supplied through `PLAYWRIGHT_AUTH_STORAGE_STATE` and `PLAYWRIGHT_INCOMPLETE_ONBOARDING_STORAGE_STATE`; never use a real account as either fixture.

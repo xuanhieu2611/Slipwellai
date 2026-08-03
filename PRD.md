@@ -297,7 +297,7 @@ Priority definitions:
 
 | Capability                     | Priority                         | Release treatment                                                |
 | ------------------------------ | -------------------------------- | ---------------------------------------------------------------- |
-| Authentication and onboarding  | P0                               | Email magic link and Google sign-in; guided setup.               |
+| Authentication and onboarding  | P0                               | Email/password and Google sign-in; guided setup.                 |
 | Responsive web / PWA           | P0                               | Desktop and mobile browser support.                              |
 | Text capture                   | P0                               | Global capture control and keyboard shortcut.                    |
 | Browser voice capture          | P0                               | Record, transcribe, preserve, and route.                         |
@@ -369,7 +369,7 @@ Every task, project, retainer, person, and note detail page should use a consist
 ### 12.1 Authentication and account lifecycle
 
 **AUTH-01 — Sign up**  
-Users can create an account with Google OAuth or an emailed magic link.
+Users can create an account with Google OAuth or email and password.
 
 **AUTH-02 — Session management**  
 Sessions work across supported browsers, expire securely, and can be revoked from Settings.

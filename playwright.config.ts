@@ -12,7 +12,7 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["iPhone 13"], storageState: process.env.PLAYWRIGHT_AUTH_STORAGE_STATE } },
   ],
   webServer: {
-    command: "npm run dev",
+    command: "npm run build && npm run start",
     url: "http://127.0.0.1:3000",
     reuseExistingServer: !process.env.CI,
   },

@@ -43,7 +43,7 @@ The repository currently contains a Phase 0 prototype with these useful foundati
 
 - ✅ Next.js App Router, strict TypeScript, Tailwind CSS, and npm.
 - ✅ A connected Supabase pilot project and version-controlled migrations.
-- ✅ Invite-only email magic-link authentication with automatic signup disabled.
+- 🟡 Public email/password authentication and Google OAuth implementation; hosted-provider verification remains pending.
 - ✅ Original text captures are inserted before the proposal provider is called.
 - ✅ A server-only proposal provider boundary and an OpenRouter adapter.
 - ✅ Basic versioned proposal validation, review, editing, discard, retry, accept, and undo paths.
@@ -102,8 +102,8 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 **PRD gate:** 25–40 interviews; qualified users understand the workflow; at least one-third of qualified interviewees show willingness to pay at least US$12/month; an initial alpha/beta cohort is recruited.
 
-- [x] Build an invite-only interactive text capture and review prototype.
-- [x] Provision the Supabase pilot and configure invited testers.
+- [x] Build an interactive text capture and review prototype.
+- [x] Provision the Supabase pilot project.
 - [x] Preserve source text before attempting AI interpretation.
 - [x] Diagnose the current OpenRouter failure without logging capture contents.
 - [x] Verify a valid structured proposal succeeds with the configured model and ZDR route.
@@ -145,11 +145,11 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 ### Authentication and account lifecycle
 
-- [x] Support invited email magic links with automatic user creation disabled for the pilot.
+- [ ] Partial: implement public email/password authentication, password recovery, Google OAuth, and session controls; hosted-provider verification remains pending.
 - [x] Validate the session in server-side mutation handlers.
-- [ ] Implement the PRD’s email magic-link and Google OAuth sign-in options.
+- [ ] Implement the user-directed email/password and Google OAuth sign-in options.
 - [ ] Implement reliable session refresh, sign-out, session revocation, and account recovery.
-- [ ] Define invite-only beta and public-signup modes behind configuration.
+- [ ] Configure public Supabase email/password and Google OAuth authentication consistently across local, staging, and production environments.
 - [ ] Rate-limit authentication and protect redirect/callback handling.
 - [ ] Add account deletion initiation and reauthentication hooks; finish the workflow in Step 12.
 - [ ] Test expired links, replayed callbacks, invalid redirects, multiple tabs, and revoked sessions.
@@ -707,6 +707,7 @@ Add a dated row when a milestone or important checkbox becomes verified. Link co
 | 2026-08-02 | Initial problem interview | One qualified target-user interview, reported by the founder | Positive qualitative signal: participant liked the product and said they would pay. This is 1 of the required 25–40 interviews and cannot establish the PRD willingness-to-pay threshold. | Founder |
 | 2026-08-02 | Step 1 onboarding and authenticated shell | `20260803090000_step1_onboarding_foundation.sql`, `src/lib/onboarding.test.ts`, `npm run lint`, `npm test`, `npm run build` | Pass: existing and future accounts receive an incomplete profile, authenticated setup stores validated profile/timezone/locale data before completion, and the responsive shell preserves Inbox while keeping unfinished surfaces transparent. Browser specs exist but were skipped without dedicated authenticated local-Supabase fixture states. | Codex |
 | 2026-08-02 | Step 1 onboarding migration applied to `slipwell-phase0` | Remote migration history, schema/RLS/privilege verification query, Supabase security advisor | Pass: the profile backfill matches all auth users; onboarding columns, `user_preferences`, its RLS policy, and the auth-user trigger exist. The trigger function is not executable by `anon` or `authenticated`. The remaining advisor warning is unrelated leaked-password protection. | Codex |
+| 2026-08-02 | Step 1 public authentication implementation | `src/components/sign-in.tsx`, `src/app/auth/callback/route.ts`, `src/proxy.ts`, `src/lib/auth.test.ts`, `e2e/public-auth.spec.ts`, `npm run lint`, `npm test`, `npm run test:e2e`, `npm run build` | Partial: public email/password and Google entry, recovery UI, safe callback routing, SSR refresh, and session controls are implemented; 18 unit tests and 2 public-entry browser tests pass. Local Supabase integration, hosted Google configuration, identity-linking, and session-revocation checks remain unverified because Docker/local Supabase is unavailable and no staging provider credentials were supplied. | Codex |
 
 Canonical quality commands still needed:
 

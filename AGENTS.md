@@ -40,7 +40,7 @@ The PRD uses **Phase 0** for validation/prototyping and **P0** for requirements 
 The repository now contains an npm-based Phase 0 application scaffold and product documents:
 
 - Next.js 16 App Router, React 19, strict TypeScript, and Tailwind CSS 4 under `src/`.
-- Supabase SSR clients, invite-only email magic-link authentication, API routes, and version-controlled migrations under `supabase/migrations/`.
+- Supabase SSR clients, public email/password and Google OAuth authentication, API routes, and version-controlled migrations under `supabase/migrations/`.
 - A source-first text capture prototype, server-only OpenRouter proposal adapter, review/correction UI, retainer rollover lab, and Slipping lab.
 - Vitest unit tests for proposal validation and basic retainer/Slipping behavior.
 - `MVP-BUILD-TRACKER.md` records the audited state and the ordered path from this prototype to the commercial MVP.
