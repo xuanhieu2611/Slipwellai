@@ -8,6 +8,10 @@
   --moss: #215944;
   --moss-light: #dcecdf;
   --amber: #b77010;
+  --danger: #9b2c17;
+  --surface: #fffefa;
+  --surface-soft: #eef1ea;
+  --focus: #126e51;
 }
 
 @theme inline {
@@ -20,11 +24,95 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, sans-serif;
 }
 
 button, input, select, textarea {
   font: inherit;
 }
 
+button, a, input, select, textarea, summary { touch-action: manipulation; }
+
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
 ::selection { background: #cfe3d3; }
+
+.eyebrow { color: var(--moss); font-size: .75rem; font-weight: 700; letter-spacing: .12em; line-height: 1.3; text-transform: uppercase; }
+.button-base { align-items: center; border-radius: .75rem; display: inline-flex; font-size: .875rem; font-weight: 650; justify-content: center; min-height: 2.75rem; padding: .625rem .875rem; transition: background-color .2s ease, border-color .2s ease, color .2s ease, transform .2s ease; }
+.button-base:active { transform: translateY(1px); }
+.button-base:disabled { cursor: not-allowed; opacity: .55; }
+.button-primary { background: var(--moss); color: white; }
+.button-primary:hover { background: #174b37; }
+.button-primary kbd { border: 1px solid rgba(255,255,255,.35); border-radius: .35rem; font-size: .65rem; font-weight: 600; margin-left: .55rem; padding: .12rem .3rem; }
+.button-secondary { border: 1px solid var(--line); color: var(--foreground); background: var(--surface); }
+.button-secondary:hover { background: var(--surface-soft); }
+.button-quiet { color: var(--ink-muted); min-height: 2.25rem; padding: .4rem .55rem; }
+.field-base { background: var(--surface); border: 1px solid var(--line); border-radius: .7rem; color: var(--foreground); display: block; min-height: 2.85rem; padding: .65rem .75rem; width: 100%; }
+.field-base:hover { border-color: #afb7af; }
+.field-label { color: var(--foreground); display: grid; font-size: .875rem; font-weight: 600; gap: .5rem; }
+.field-label > span { color: var(--ink-muted); font-size: .75rem; font-weight: 500; }
+.form-help { color: var(--ink-muted); font-size: .75rem; line-height: 1.45; }
+.form-help code { color: var(--foreground); font-family: var(--font-geist-mono), monospace; }
+.status-message { border-radius: .75rem; font-size: .875rem; line-height: 1.4; margin-top: 1.25rem; padding: .8rem .9rem; }
+.status-message--neutral { background: var(--surface-soft); color: var(--foreground); }
+.status-message--success { background: var(--moss-light); color: #174b37; }
+.status-message--error { background: #f9e6e1; color: #7d2413; }
+.skeleton { animation: pulse 1.4s ease-in-out infinite; background: linear-gradient(90deg, #e7e8e1, #f3f3ed, #e7e8e1); background-size: 200% 100%; border-radius: .65rem; min-height: 1rem; }
+.dialog-backdrop { align-items: center; background: rgb(29 40 35 / .4); display: flex; inset: 0; justify-content: center; padding: 1rem; position: fixed; z-index: 50; }
+.dialog-panel { background: var(--surface); border-radius: 1.25rem; box-shadow: 0 24px 64px rgb(29 40 35 / .22); max-width: 32rem; padding: 1.5rem; width: 100%; }
+.toast { align-items: center; background: var(--foreground); border-radius: .85rem; bottom: 1rem; box-shadow: 0 12px 30px rgb(29 40 35 / .2); color: white; display: flex; gap: 1rem; justify-content: space-between; max-width: 28rem; padding: .75rem .9rem; position: fixed; right: 1rem; z-index: 60; }
+.toast .button-quiet { color: white; }
+.skip-link { background: var(--foreground); color: white; left: 1rem; padding: .6rem .8rem; position: fixed; top: -4rem; z-index: 100; }
+.skip-link:focus { top: 1rem; }
+
+.app-frame { min-height: 100dvh; }
+.app-sidebar { background: #edf0e9; border-right: 1px solid var(--line); display: flex; flex-direction: column; inset: 0 auto 0 0; padding: 1.5rem 1rem; position: fixed; width: 15rem; }
+.brand-mark { color: var(--foreground); display: grid; font-size: 1.15rem; font-weight: 700; letter-spacing: -.045em; line-height: 1; padding: .55rem .7rem 1.8rem; text-decoration: none; }
+.brand-mark small { color: var(--moss); font-size: .64rem; font-weight: 700; letter-spacing: .1em; margin-top: .38rem; text-transform: uppercase; }
+.app-nav { display: grid; gap: .2rem; }
+.app-nav-link, .mobile-nav-link { border-radius: .7rem; color: var(--ink-muted); display: block; font-size: .9rem; font-weight: 600; min-height: 2.75rem; padding: .72rem .75rem; text-decoration: none; }
+.app-nav-link:hover, .app-nav-link.is-current { background: var(--surface); color: var(--foreground); }
+.app-nav-link.is-current { box-shadow: inset 3px 0 var(--moss); }
+.more-menu { position: relative; }
+.more-menu summary { border-radius: .7rem; color: var(--ink-muted); cursor: pointer; font-size: .9rem; font-weight: 600; list-style: none; min-height: 2.75rem; padding: .72rem .75rem; }
+.more-menu summary::-webkit-details-marker { display: none; }
+.more-menu[open] > summary { background: var(--surface); color: var(--foreground); }
+.more-menu nav { background: var(--surface); border: 1px solid var(--line); border-radius: .75rem; box-shadow: 0 12px 24px rgb(29 40 35 / .12); display: grid; gap: .15rem; margin-top: .35rem; padding: .3rem; }
+.app-content { margin-left: 15rem; min-height: 100dvh; }
+.app-mobile-header, .mobile-nav { display: none; }
+
+.build-state { margin: 0 auto; max-width: 42rem; padding: clamp(3rem, 12vh, 8rem) 1.25rem; }
+.build-state h1, .onboarding-step h1 { font-size: clamp(2.25rem, 6vw, 4rem); font-weight: 650; letter-spacing: -.065em; line-height: .98; margin-top: 1rem; text-wrap: balance; }
+.build-state > p:not(.eyebrow) { color: var(--ink-muted); font-size: 1.05rem; line-height: 1.7; margin-top: 1.5rem; max-width: 39rem; }
+.build-state-rule { background: var(--moss); height: 2px; margin: 2.5rem 0 1.15rem; width: 4rem; }
+
+.onboarding-page { align-items: center; display: flex; justify-content: center; min-height: 100dvh; padding: 1.25rem; }
+.onboarding-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 1.5rem; box-shadow: 0 24px 64px rgb(29 40 35 / .1); max-width: 43rem; overflow: hidden; width: 100%; }
+.onboarding-progress { align-items: center; background: var(--surface-soft); display: flex; font-size: .78rem; font-variant-numeric: tabular-nums; justify-content: space-between; padding: 1rem 1.25rem; }
+.onboarding-step { padding: clamp(1.5rem, 6vw, 3.75rem); }
+.onboarding-step > p:not(.eyebrow) { color: var(--ink-muted); font-size: 1rem; line-height: 1.7; margin-top: 1.5rem; max-width: 38rem; }
+.onboarding-note { border-left: 2px solid var(--moss); display: grid; gap: .25rem; margin-top: 1.25rem; padding: .15rem 0 .15rem 1rem; }
+.onboarding-note strong { font-size: .9rem; }
+.onboarding-note span { color: var(--ink-muted); font-size: .88rem; line-height: 1.5; }
+
+@keyframes pulse { to { background-position: -200% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}
+
+@media (max-width: 767px) {
+  .app-sidebar { display: none; }
+  .app-content { margin-left: 0; padding-bottom: 5.5rem; }
+  .app-mobile-header { align-items: center; background: rgb(246 245 239 / .94); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; padding: .6rem .85rem; position: sticky; top: 0; z-index: 20; backdrop-filter: blur(12px); }
+  .app-mobile-header .brand-mark { padding: .35rem .25rem; }
+  .app-mobile-header .more-menu nav { position: absolute; right: 0; width: 13rem; z-index: 30; }
+  .mobile-nav { align-items: center; background: rgb(255 254 250 / .96); border-top: 1px solid var(--line); bottom: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); left: 0; padding: .45rem .25rem calc(.45rem + env(safe-area-inset-bottom)); position: fixed; right: 0; z-index: 30; backdrop-filter: blur(12px); }
+  .mobile-nav-link { font-size: .65rem; overflow: hidden; padding: .65rem .1rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile-nav-link.is-current { color: var(--moss); }
+  .mobile-capture { background: var(--moss); border: 3px solid var(--background); border-radius: 999px; color: white; font-size: 1.5rem; height: 3rem; margin: -1.55rem auto 0; padding: 0; width: 3rem; }
+  .build-state { padding-top: 4rem; }
+}

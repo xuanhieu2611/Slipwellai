@@ -165,20 +165,20 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 ### Onboarding, navigation, and design system
 
-- [ ] Explain the product through capture, retainer, and Slipping outcomes rather than a feature tour.
-- [ ] Collect display name, locale, work type, and optional company/brand name.
-- [ ] Collect and confirm timezone; store timestamps in UTC and render in the confirmed timezone.
-- [ ] Add concise privacy, low-sensitivity pilot, AI-provider, and calendar-permission explanations.
+- [x] Explain the product through capture, retainer, and Slipping outcomes rather than a feature tour.
+- [x] Collect display name, locale, work type, and optional company/brand name.
+- [x] Collect and confirm timezone; store timestamps in UTC and render in the confirmed timezone.
+- [x] Add concise privacy, low-sensitivity pilot, AI-provider, and calendar-permission explanations.
 - [ ] Suggest a small set of editable domains and allow the user to skip taxonomy setup.
 - [ ] Offer optional read-only Google Calendar connection and allow it to be skipped; implement the connection in Step 8.
 - [ ] Guide the first capture and first proposal review.
 - [ ] Guide users who manage ongoing client work through an optional first retainer.
 - [ ] Start every new account on the no-card 14-day Pro trial implemented in Step 13 and explain what happens afterward.
-- [ ] Define the six primary surfaces: Capture/Inbox, Today, Tasks, Projects/Retainers, People/Notes, and Search/Settings.
-- [ ] Keep global capture reachable on every signed-in screen.
-- [ ] Implement desktop navigation plus mobile bottom navigation for Today, Inbox, Tasks, Work, and Search, with More for People/Notes and Settings.
-- [ ] Create accessible primitives for buttons, fields, dialogs, status, errors, skeletons, and toasts.
-- [ ] Define calm typography, spacing, color, focus, touch-target, and responsive tokens.
+- [x] Define the six primary surfaces: Capture/Inbox, Today, Tasks, Projects/Retainers, People/Notes, and Search/Settings.
+- [x] Keep global capture reachable on every signed-in screen.
+- [x] Implement desktop navigation plus mobile bottom navigation for Today, Inbox, Tasks, Work, and Search, with More for People/Notes and Settings.
+- [x] Create accessible primitives for buttons, fields, dialogs, status, errors, skeletons, and toasts.
+- [x] Define calm typography, spacing, color, focus, touch-target, and responsive tokens.
 - [ ] Implement empty, loading, partial, failure, offline, over-limit, archived, and deleted states.
 - [ ] Meet WCAG 2.2 AA contrast/focus requirements and respect reduced motion.
 
@@ -700,6 +700,8 @@ Add a dated row when a milestone or important checkbox becomes verified. Link co
 | --- | --- | --- | --- | --- |
 | 2026-08-02 | Existing Phase 0 baseline | `npm run lint`, `npm test`, `npm run build` | Pass; four unit tests, no integration/E2E suite | Codex |
 | 2026-08-02 | Repository audit | App routes/services, Supabase migrations, PRD v1.0, strategy and assessment documents | Prototype is partial; commercial MVP is not complete | Codex |
+| 2026-08-02 | Step 1 onboarding and authenticated shell | `20260803090000_step1_onboarding_foundation.sql`, `src/lib/onboarding.test.ts`, `npm run lint`, `npm test`, `npm run build` | Pass: existing and future accounts receive an incomplete profile, authenticated setup stores validated profile/timezone/locale data before completion, and the responsive shell preserves Inbox while keeping unfinished surfaces transparent. Browser specs exist but were skipped without dedicated authenticated local-Supabase fixture states. | Codex |
+| 2026-08-02 | Step 1 onboarding migration applied to `slipwell-phase0` | Remote migration history, schema/RLS/privilege verification query, Supabase security advisor | Pass: the profile backfill matches all auth users; onboarding columns, `user_preferences`, its RLS policy, and the auth-user trigger exist. The trigger function is not executable by `anon` or `authenticated`. The remaining advisor warning is unrelated leaked-password protection. | Codex |
 
 Canonical quality commands still needed:
 
@@ -709,7 +711,7 @@ Canonical quality commands still needed:
 | Lint | `npm run lint` | ✅ Passing at baseline audit |
 | Type check | To be added to `package.json` | ⬜ Missing as a dedicated check |
 | Unit/integration | `npm test` | 🟡 Unit tests only |
-| End-to-end | To be added to `package.json` | ⬜ Missing |
+| End-to-end | `npm run test:e2e` | 🟡 Fixture-gated browser coverage; not yet run against local-Supabase fixtures |
 | Production build | `npm run build` | ✅ Passing at baseline audit |
 
 ## Immediate next milestones

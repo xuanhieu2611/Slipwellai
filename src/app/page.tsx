@@ -1,28 +1,31 @@
-import { Dashboard } from "@/components/dashboard";
+import { redirect } from "next/navigation";
 import { SignIn } from "@/components/sign-in";
-import { getDashboardData } from "@/lib/dashboard";
+import { getOnboardingState } from "@/lib/onboarding-service";
+import { createSupabaseOnboardingRepository } from "@/lib/supabase/onboarding-repository";
 import { requireUser } from "@/lib/supabase/server";
 
 export default async function Home() {
   const state = await getHomeState();
-  if (state.kind === "setup") {
-    return <main className="mx-auto flex min-h-screen max-w-xl items-center px-5"><section className="rounded-3xl border border-[var(--line)] bg-white p-8"><p className="text-sm font-semibold text-[var(--moss)]">Slipwell Phase 0</p><h1 className="mt-3 text-3xl font-semibold">Finish secure local setup.</h1><p className="mt-3 leading-7 text-[var(--ink-muted)]">Copy <code>.env.example</code> to <code>.env.local</code>, then add the Supabase URL, publishable key, OpenRouter API key, and selected model.</p></section></main>;
-  }
+  if (state.kind === "setup") return <SetupRequired />;
   if (state.kind === "signed-out") return <SignIn />;
-  return <Dashboard data={state.data} email={state.email} />;
+  redirect(state.completed ? "/inbox" : "/onboarding");
 }
 
 async function getHomeState(): Promise<
   | { kind: "setup" }
   | { kind: "signed-out" }
-  | { kind: "signed-in"; data: Awaited<ReturnType<typeof getDashboardData>>; email: string }
+  | { kind: "signed-in"; completed: boolean }
 > {
   try {
-    const { user } = await requireUser();
+    const { supabase, user } = await requireUser();
     if (!user) return { kind: "signed-out" };
-    const data = await getDashboardData();
-    return { kind: "signed-in", data, email: user.email ?? "Invited tester" };
+    const state = await getOnboardingState(createSupabaseOnboardingRepository(supabase), user.id);
+    return { kind: "signed-in", completed: state.completed };
   } catch {
     return { kind: "setup" };
   }
+}
+
+function SetupRequired() {
+  return <main className="mx-auto flex min-h-dvh max-w-xl items-center px-5"><section className="rounded-3xl border border-[var(--line)] bg-white p-8"><p className="eyebrow">Slipwell setup</p><h1 className="mt-3 text-3xl font-semibold tracking-tight">Finish secure local setup.</h1><p className="mt-3 leading-7 text-[var(--ink-muted)]">Copy <code>.env.example</code> to <code>.env.local</code>, then add the Supabase URL, publishable key, OpenRouter API key, and selected model.</p></section></main>;
 }

@@ -24,3 +24,9 @@ Use only low-sensitivity test captures during Phase 0. Capture text is sent only
 - `npm run build`
 
 The database migration is versioned at `supabase/migrations/20260802224924_phase0_foundation.sql` and has been applied to Supabase project `slipwell-phase0` in US West. All pilot tables have RLS policies keyed to the authenticated owner.
+
+The next migration, `supabase/migrations/20260803090000_step1_onboarding_foundation.sql`, adds required-once onboarding profiles and user preferences. Apply it through the normal Supabase migration promotion process before deploying this app change; existing pilot accounts retain their records and complete setup on their next sign-in.
+
+## Browser coverage
+
+`npm run test:e2e` contains desktop and mobile browser coverage for the authenticated shell and onboarding. It intentionally skips unless local-Supabase fixture storage-state paths are supplied through `PLAYWRIGHT_AUTH_STORAGE_STATE` and `PLAYWRIGHT_INCOMPLETE_ONBOARDING_STORAGE_STATE`; never use a real pilot account as either fixture.
