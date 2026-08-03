@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { proposalEnvelopeSchema } from "@/lib/proposals/schema";
+import { nextCycleMonth } from "@/lib/retainers";
 import type { DashboardData } from "@/lib/dashboard";
 
 const control = "rounded-lg px-3 py-2 text-sm font-semibold transition disabled:opacity-50";
@@ -42,11 +43,54 @@ function Review({ capture, done }: { capture: DashboardData["captures"][number];
 }
 
 function RetainerLab({ data, done }: { data: DashboardData; done: () => void }) {
-  const [name, setName] = useState(""); const [deliverable, setDeliverable] = useState(""); const [busy, setBusy] = useState(false); const month = new Date().toISOString().slice(0, 7);
-  async function create(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setBusy(true); try { await post("/api/retainers", { name, deliverableTitle: deliverable, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Vancouver", cycleDay: 1, expectedDay: 15 }); setName(""); setDeliverable(""); done(); } catch { setBusy(false); } }
-  async function cycle(retainerId: string) { setBusy(true); try { await post(`/api/retainers/${retainerId}/cycles`, { cycleMonth: month }); done(); } catch { setBusy(false); } }
-  async function slipping(retainerId: string) { setBusy(true); try { await post("/api/slipping/evaluate", { retainerId }); done(); } catch { setBusy(false); } }
-  return <section className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-sm"><p className="text-sm font-semibold text-[var(--moss)]">Retainer lab</p><h2 className="mt-1 text-xl font-semibold">Rollover with a memory</h2><p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">Cycle generation is idempotent. Incomplete work carries into the next cycle with a visible link back.</p><form className="mt-4 grid gap-2" onSubmit={create}><input required value={name} onChange={(event) => setName(event.target.value)} className="h-10 rounded-lg border border-[var(--line)] px-3 text-sm" placeholder="Acme monthly retainer" /><input required value={deliverable} onChange={(event) => setDeliverable(event.target.value)} className="h-10 rounded-lg border border-[var(--line)] px-3 text-sm" placeholder="Monthly analytics" /><button disabled={busy} className={`${control} bg-[#1d2823] text-white`} type="submit">Create retainer</button></form><div className="mt-5 space-y-3">{data.retainers.map((retainer) => { const cycleData = data.cycles.find((cycleItem) => cycleItem.retainer_id === retainer.id); const items = cycleData ? data.cycleItems.filter((item) => item.cycle_id === cycleData.id) : []; return <article className="rounded-xl border border-[var(--line)] p-4" key={retainer.id}><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold">{retainer.name}</p><p className="text-xs text-[var(--ink-muted)]">Monthly on day {retainer.cycle_day}</p></div><div className="flex gap-2"><button disabled={busy} onClick={() => cycle(retainer.id)} className={`${control} border border-[var(--line)]`}>Generate {month}</button><button disabled={busy || !cycleData} onClick={() => slipping(retainer.id)} className={`${control} bg-[#fff0d6] text-[#8a5200]`}>Check Slipping</button></div></div>{cycleData && <ul className="mt-3 space-y-2 border-t border-[var(--line)] pt-3">{items.map((item) => <li className="flex justify-between gap-3 text-sm" key={item.id}><span>{item.title}{item.carried_from_item_id && <em className="ml-2 text-xs text-[var(--ink-muted)]">carried forward</em>}</span><Pill warning={item.status === "open"}>{item.status}</Pill></li>)}</ul>}</article>; })}{data.retainers.length === 0 && <p className="rounded-xl bg-[#f6f8f4] p-3 text-sm text-[var(--ink-muted)]">Create a small test retainer to explore its lifecycle.</p>}</div></section>;
+  const [name, setName] = useState("");
+  const [deliverable, setDeliverable] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [message, setMessage] = useState("");
+  const cycleById = new Map(data.cycles.map((cycle) => [cycle.id, cycle]));
+  const itemById = new Map(data.cycleItems.map((item) => [item.id, item]));
+
+  async function create(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage("");
+    try {
+      await post("/api/retainers", { name, deliverableTitle: deliverable, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Vancouver", cycleDay: 1, expectedDay: 15 });
+      setName("");
+      setDeliverable("");
+      done();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not create the retainer.");
+      setBusy(false);
+    }
+  }
+
+  async function cycle(retainerId: string, cycleMonth: string) {
+    setBusy(true);
+    setMessage("");
+    try {
+      await post(`/api/retainers/${retainerId}/cycles`, { cycleMonth });
+      done();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not generate the cycle.");
+      setBusy(false);
+    }
+  }
+
+  async function slipping(retainerId: string) {
+    setBusy(true);
+    setMessage("");
+    try {
+      await post("/api/slipping/evaluate", { retainerId });
+      done();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not check Slipping.");
+      setBusy(false);
+    }
+  }
+
+  return <section className="rounded-2xl border border-[var(--line)] bg-white p-5 shadow-sm"><p className="text-sm font-semibold text-[var(--moss)]">Retainer lab</p><h2 className="mt-1 text-xl font-semibold">Rollover with a memory</h2><p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">Cycle generation is idempotent. Incomplete work carries into the next cycle with a visible link back.</p><form className="mt-4 grid gap-2" onSubmit={create}><input required value={name} onChange={(event) => setName(event.target.value)} className="h-10 rounded-lg border border-[var(--line)] px-3 text-sm" placeholder="Acme monthly retainer" /><input required value={deliverable} onChange={(event) => setDeliverable(event.target.value)} className="h-10 rounded-lg border border-[var(--line)] px-3 text-sm" placeholder="Monthly analytics" /><button disabled={busy} className={`${control} bg-[#1d2823] text-white`} type="submit">Create retainer</button></form><div className="mt-5 space-y-3">{data.retainers.map((retainer) => { const cycles = data.cycles.filter((cycleData) => cycleData.retainer_id === retainer.id); const latestCycle = cycles[0]; return <article className="rounded-xl border border-[var(--line)] p-4" key={retainer.id}><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold">{retainer.name}</p><p className="text-xs text-[var(--ink-muted)]">Monthly on day {retainer.cycle_day}</p></div><div className="grid w-full gap-2 sm:w-auto sm:grid-cols-[minmax(0,1fr)_auto_auto]"><label className="sr-only" htmlFor={`cycle-month-${retainer.id}`}>Cycle month</label><input id={`cycle-month-${retainer.id}`} type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="h-10 min-w-0 rounded-lg border border-[var(--line)] bg-white px-3 text-sm" /><button type="button" disabled={busy} onClick={() => cycle(retainer.id, month)} className={`${control} border border-[var(--line)]`}>Generate selected</button><button type="button" disabled={busy} onClick={() => cycle(retainer.id, nextCycleMonth(month))} className={`${control} border border-[var(--line)]`}>Generate next</button></div></div><button type="button" disabled={busy || !latestCycle} onClick={() => slipping(retainer.id)} className={`${control} mt-3 bg-[#fff0d6] text-[#8a5200]`}>Check Slipping</button>{cycles.length > 0 && <div className="mt-4 space-y-3 border-t border-[var(--line)] pt-3"><p className="text-sm font-semibold">Cycle history</p>{cycles.map((cycleData) => <section id={`cycle-${cycleData.id}`} className="rounded-lg bg-[#f6f8f4] p-3" key={cycleData.id}><p className="text-sm font-medium">{cycleData.cycle_start} to {cycleData.cycle_end}</p><ul className="mt-2 space-y-2">{data.cycleItems.filter((item) => item.cycle_id === cycleData.id).map((item) => { const sourceItem = item.carried_from_item_id ? itemById.get(item.carried_from_item_id) : undefined; const sourceCycle = sourceItem ? cycleById.get(sourceItem.cycle_id) : undefined; return <li id={`cycle-${cycleData.id}-item-${item.id}`} className="flex flex-wrap items-center justify-between gap-2 text-sm" key={item.id}><span>{item.title}{sourceItem && sourceCycle && <a className="ml-2 text-xs font-semibold text-[var(--moss)] underline" href={`#cycle-${sourceCycle.id}-item-${sourceItem.id}`}>Carried from {sourceCycle.cycle_start}</a>}</span><Pill warning={item.status === "open"}>{item.status}</Pill></li>; })}</ul></section>)}</div>}</article>; })}{data.retainers.length === 0 && <p className="rounded-xl bg-[#f6f8f4] p-3 text-sm text-[var(--ink-muted)]">Create a small test retainer to explore its lifecycle.</p>}</div>{message && <p role="alert" className="mt-3 text-sm text-[#9b2c17]">{message}</p>}</section>;
 }
 
 export function Dashboard({ data, email }: { data: DashboardData; email: string }) {

@@ -30,6 +30,11 @@ export const expectedDate = (month: string, expectedDay: number) => {
   return new Date(Date.UTC(year, monthIndex, boundedMonthDay(year, monthIndex, expectedDay))).toISOString().slice(0, 10);
 };
 
+export const nextCycleMonth = (month: string) => {
+  const [year, calendarMonth] = month.split("-").map(Number);
+  return new Date(Date.UTC(year, calendarMonth, 1)).toISOString().slice(0, 7);
+};
+
 export const slippingExplanation = ({
   expectedOn,
   lastMeaningfulAttention,

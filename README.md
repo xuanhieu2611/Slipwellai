@@ -5,6 +5,8 @@ Responsive Next.js + Tailwind prototype for capture → proposal → review, exp
 
 The ordered commercial-MVP plan, current implementation status, exit gates, and verification log live in [`MVP-BUILD-TRACKER.md`](MVP-BUILD-TRACKER.md). Update that tracker in the same change that completes an MVP item.
 
+For the Phase 0 interview guide, manual acceptance script, alpha recruitment copy, and decision-memo template, use [`docs/phase-0-validation.md`](docs/phase-0-validation.md).
+
 ## Run locally
 
 1. Use Node 24+ and `npm install`.

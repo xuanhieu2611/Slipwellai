@@ -105,12 +105,12 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 - [x] Build an invite-only interactive text capture and review prototype.
 - [x] Provision the Supabase pilot and configure invited testers.
 - [x] Preserve source text before attempting AI interpretation.
-- [ ] Diagnose the current OpenRouter failure without logging capture contents.
-- [ ] Verify a valid structured proposal succeeds with the configured model and ZDR route.
-- [ ] Verify invalid output, timeout, provider error, and retry remain recoverable.
-- [ ] Manually test the complete review path: accept, edit, change type/destination, discard, retry, and undo.
-- [ ] Manually test retainer creation, repeat cycle generation, carry-forward, history, and one Slipping outcome.
-- [ ] Test the core flow at 360 CSS pixels and with keyboard-only navigation.
+- [x] Diagnose the current OpenRouter failure without logging capture contents.
+- [x] Verify a valid structured proposal succeeds with the configured model and ZDR route.
+- [x] Verify invalid output, timeout, provider error, and retry remain recoverable.
+- [x] Manually test the complete review path: accept, edit, change type/destination, discard, retry, and undo.
+- [x] Manually test retainer creation, repeat cycle generation, carry-forward, history, and one Slipping outcome.
+- [x] Test the core flow at 360 CSS pixels and with keyboard-only navigation.
 - [ ] Conduct and record 25–40 target-user interviews.
 - [ ] Record problem frequency, existing workaround, trust concerns, and perceived value without private client data.
 - [ ] Test the capture, retainer, and Slipping positioning separately.
@@ -700,6 +700,11 @@ Add a dated row when a milestone or important checkbox becomes verified. Link co
 | --- | --- | --- | --- | --- |
 | 2026-08-02 | Existing Phase 0 baseline | `npm run lint`, `npm test`, `npm run build` | Pass; four unit tests, no integration/E2E suite | Codex |
 | 2026-08-02 | Repository audit | App routes/services, Supabase migrations, PRD v1.0, strategy and assessment documents | Prototype is partial; commercial MVP is not complete | Codex |
+| 2026-08-02 | OpenRouter Phase 0 diagnosis | Harmless fixture sent to configured `google/gemini-3.1-flash-lite` with JSON mode, `data_collection: deny`, and `zdr: true` | Valid schema v1 proposal returned in approximately 1.5 seconds; no current provider-route failure reproduced. Found and corrected the recoverability gap: failed attempts had no addressable Retry state. | Codex |
+| 2026-08-02 | Proposal failure recovery | `src/lib/proposals/provider.test.ts`, `src/lib/captures.test.ts`, `src/lib/dashboard.ts`, `npm test`, `npm run lint`, `npm run build` | Pass; timeouts, provider errors, and malformed output receive safe categories, preserve the source, create an addressable failed proposal for retry, and surface the newest retry state without storing provider response text. | Codex |
+| 2026-08-02 | Retainer Phase 0 testability | `src/components/dashboard.tsx`, `src/lib/retainers.ts`, `src/lib/retainers.test.ts`, `npm test`, `npm run lint`, `npm run build` | Pass; the prototype now supports a selected calendar month or one-click next-cycle generation and renders preserved cycle history with accessible links to carry-forward sources. | Codex |
+| 2026-08-02 | Authenticated Phase 0 manual acceptance | Founder manual verification with fictional low-sensitivity data: capture/review/undo/edit/discard/retry; retainer generation, idempotency, carry-forward, history, and Slipping action; 360 px and keyboard-only core flow | Pass, as reported by the founder. Browser name and defect IDs were not recorded. | Founder |
+| 2026-08-02 | Initial problem interview | One qualified target-user interview, reported by the founder | Positive qualitative signal: participant liked the product and said they would pay. This is 1 of the required 25–40 interviews and cannot establish the PRD willingness-to-pay threshold. | Founder |
 | 2026-08-02 | Step 1 onboarding and authenticated shell | `20260803090000_step1_onboarding_foundation.sql`, `src/lib/onboarding.test.ts`, `npm run lint`, `npm test`, `npm run build` | Pass: existing and future accounts receive an incomplete profile, authenticated setup stores validated profile/timezone/locale data before completion, and the responsive shell preserves Inbox while keeping unfinished surfaces transparent. Browser specs exist but were skipped without dedicated authenticated local-Supabase fixture states. | Codex |
 | 2026-08-02 | Step 1 onboarding migration applied to `slipwell-phase0` | Remote migration history, schema/RLS/privilege verification query, Supabase security advisor | Pass: the profile backfill matches all auth users; onboarding columns, `user_preferences`, its RLS policy, and the auth-user trigger exist. The trigger function is not executable by `anon` or `authenticated`. The remaining advisor warning is unrelated leaked-password protection. | Codex |
 

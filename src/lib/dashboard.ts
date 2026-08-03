@@ -19,6 +19,14 @@ export type DashboardData = {
   signals: Array<{ id: string; retainer_id: string; cycle_item_id: string | null; reason: string; severity: string; outcome: string }>;
 };
 
+export const newestProposalByCapture = <T extends { capture_id: string }>(proposals: T[]) => {
+  const proposalByCapture = new Map<string, T>();
+  for (const proposal of proposals) {
+    if (!proposalByCapture.has(proposal.capture_id)) proposalByCapture.set(proposal.capture_id, proposal);
+  }
+  return proposalByCapture;
+};
+
 export async function getDashboardData(): Promise<DashboardData> {
   const supabase = await createSupabaseServerClient();
   const [capturesResult, proposalsResult, recordsResult, retainersResult, cyclesResult, cycleItemsResult, signalsResult] = await Promise.all([
@@ -32,7 +40,8 @@ export async function getDashboardData(): Promise<DashboardData> {
   ]);
 
   const proposals = (proposalsResult.data ?? []) as Array<{ id: string; capture_id: string; status: string; proposal_json: unknown }>;
-  const proposalByCapture = new Map(proposals.map((proposal) => [proposal.capture_id, proposal]));
+  // The query is newest first. A retry creates a new proposal, so retain the newest state for each capture.
+  const proposalByCapture = newestProposalByCapture(proposals);
 
   return {
     captures: ((capturesResult.data ?? []) as DashboardData["captures"]).map((capture) => ({

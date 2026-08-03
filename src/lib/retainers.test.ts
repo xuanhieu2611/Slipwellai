@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cycleBounds, slippingExplanation } from "./retainers";
+import { cycleBounds, nextCycleMonth, slippingExplanation } from "./retainers";
 
 describe("retainer cycle bounds", () => {
   it("clamps a 31st-day cycle in February", () => {
@@ -10,5 +10,11 @@ describe("retainer cycle bounds", () => {
 describe("Slipping explanations", () => {
   it("explains overdue open work without treating a cosmetic edit as attention", () => {
     expect(slippingExplanation({ expectedOn: "2026-07-20", now: new Date("2026-08-02T10:00:00Z") })).toMatchObject({ severity: "urgent" });
+  });
+});
+
+describe("retainer cycle navigation", () => {
+  it("moves from December into January of the following year", () => {
+    expect(nextCycleMonth("2026-12")).toBe("2027-01");
   });
 });
