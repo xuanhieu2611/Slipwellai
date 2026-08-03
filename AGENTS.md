@@ -352,6 +352,12 @@ Before the commercial MVP can be declared complete, add and keep canonical `pack
 
 Run the smallest relevant checks during iteration and the complete required suite before declaring a risky change finished. If a check cannot run, report why and what remains unverified.
 
+### Manual and browser-driven testing against the dev server
+
+`npm run dev` points at a real hosted Supabase project (see `.env.local`), not a local instance. Email/password sign-up requires confirming a magic link, which blocks non-interactive testing; email confirmation has been turned off for this project so password sign-up works immediately.
+
+A standing test account exists for manual QA and Playwright/E2E-style checks: `test@test.com` / `testtest`. Use it to sign in at `http://localhost:3000` rather than creating new throwaway accounts.
+
 ## Analytics rules
 
 - Use the event names and metric definitions in `PRD.md`.

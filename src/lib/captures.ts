@@ -3,6 +3,18 @@ import type { ProposalEnvelope } from "@/lib/proposals/schema";
 
 type SupabaseClient = Awaited<ReturnType<typeof import("@/lib/supabase/server").createSupabaseServerClient>>;
 
+// Malformed JSON from the model is usually a one-off blip, so retry once before surfacing a failure.
+async function proposeWithRetry(provider: typeof proposalProvider, input: Parameters<typeof proposalProvider.propose>[0]): ReturnType<typeof proposalProvider.propose> {
+  try {
+    return await provider.propose(input);
+  } catch (error) {
+    if (error instanceof ProposalProviderError && error.code === "proposal_invalid_output") {
+      return provider.propose(input);
+    }
+    throw error;
+  }
+}
+
 export async function interpretCapture({
   supabase,
   capture,
@@ -14,9 +26,11 @@ export async function interpretCapture({
 }): Promise<{ proposal?: ProposalEnvelope; error?: string }> {
   await supabase.from("captures").update({ status: "interpreting", failure_code: null }).eq("id", capture.id);
   const startedAt = Date.now();
+  const { data: preferences } = await supabase.from("user_preferences").select("timezone").maybeSingle();
+  const timezone = preferences?.timezone ?? "America/Vancouver";
 
   try {
-    const proposal = await provider.propose({ captureId: capture.id, originalText: capture.original_text });
+    const proposal = await proposeWithRetry(provider, { captureId: capture.id, originalText: capture.original_text, now: new Date(), timezone });
     const { error: proposalError } = await supabase.from("proposals").insert({
       capture_id: capture.id,
       schema_version: proposal.schemaVersion,

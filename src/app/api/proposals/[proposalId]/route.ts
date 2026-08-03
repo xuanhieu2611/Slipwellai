@@ -56,10 +56,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
   const item = parsed.data.edited ?? envelope.data.proposals[parsed.data.proposalIndex];
   if (!item) return badRequest("Proposal item not found.");
   const insert = item.recordType === "task"
-    ? supabase.from("tasks").insert({ proposal_id: proposal.id, source_capture_id: proposal.capture_id, title: item.title, details: item.body ?? null, due_on: item.dueOn ?? null }).select("id").single()
+    ? supabase.from("tasks").insert({ proposal_id: proposal.id, source_capture_id: proposal.capture_id, title: item.title, details: item.body ?? null, due_on: item.dueOn ?? null, due_time: item.dueTime ?? null }).select("id").single()
     : item.recordType === "note"
       ? supabase.from("notes").insert({ proposal_id: proposal.id, source_capture_id: proposal.capture_id, title: item.title, body: item.body ?? null }).select("id").single()
-      : supabase.from("prototype_records").insert({ proposal_id: proposal.id, record_type: item.recordType, title: item.title, body: item.body ?? null, destination_name: item.destinationName ?? null, due_on: item.dueOn ?? null }).select("id").single();
+      : supabase.from("prototype_records").insert({ proposal_id: proposal.id, record_type: item.recordType, title: item.title, body: item.body ?? null, destination_name: item.destinationName ?? null, due_on: item.dueOn ?? null, due_time: item.dueTime ?? null }).select("id").single();
   const { data: record, error: recordError } = await insert;
   if (recordError || !record) return serverError();
   const wasEdited = Boolean(parsed.data.edited);

@@ -2,12 +2,15 @@ import { z } from "zod";
 
 export const recordTypeSchema = z.enum(["task", "note", "retainer_update"]);
 
+const dueTimeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use 24-hour HH:MM.");
+
 export const proposalItemSchema = z.object({
   recordType: recordTypeSchema,
   title: z.string().trim().min(1).max(280),
   body: z.string().trim().max(5000).optional(),
   destinationName: z.string().trim().max(160).optional(),
   dueOn: z.string().date().optional(),
+  dueTime: dueTimeSchema.optional(),
   confidence: z.object({
     recordType: z.number().min(0).max(1),
     title: z.number().min(0).max(1),
@@ -43,6 +46,7 @@ export const proposalActionSchema = z.object({
       body: z.string().trim().max(5000).optional(),
       destinationName: z.string().trim().max(160).optional(),
       dueOn: z.string().date().optional(),
+      dueTime: dueTimeSchema.optional(),
     })
     .optional(),
 });

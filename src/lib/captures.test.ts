@@ -19,6 +19,9 @@ describe("interpretCapture", () => {
             updates.push({ table, value });
             return { eq: () => ({}) };
           },
+          select() {
+            return { maybeSingle: () => ({ data: null }) };
+          },
         };
       },
     };
