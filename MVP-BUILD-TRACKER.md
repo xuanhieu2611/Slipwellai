@@ -57,7 +57,7 @@ Important limitations:
 - 🟡 Review displays only part of the supported multi-proposal output and does not provide the full PRD correction workflow.
 - 🟡 `prototype_records` is not the canonical task, note, project, person, or retainer data model.
 - 🟡 Retainer and Slipping logic are interactive labs, not production-grade durable workflows.
-- 🟡 A migration-backed working-prototype core for Today, manual tasks, domains, finite projects, routines, lightweight people/notes, and account-scoped search exists in source. It is awaiting normal Supabase migration promotion and has not yet received authenticated browser or database-integration verification.
+- 🟡 A migration-backed working-prototype core for Today, manual tasks, domains, finite projects, routines, lightweight people/notes, recurring tasks, project checklists, account-scoped search, and People interactions is applied to the linked pilot project. Authenticated browser and database-integration verification remain open.
 - ⬜ There is no calendar sync, voice capture, notification system, billing, export/deletion workflow, or production analytics/operations layer.
 - ⬜ There are no cross-user RLS integration tests or browser end-to-end tests.
 - ⬜ There is no installable PWA manifest/application-shell strategy or production deployment pipeline yet.
@@ -286,9 +286,9 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 ### Tasks and relationships
 
-- [ ] Partial: create the canonical task schema with owner, title, details, status, dates, priority, limited recurrence, primary relationships, provenance, archival fields, and RLS. The additive migrations are unpromoted and reminders/expanded recurrence remain open.
+- [ ] Partial: create the canonical task schema with owner, title, details, status, dates, priority, limited recurrence, primary relationships, provenance, archival fields, and RLS. The migrations are applied to the linked pilot; reminders/expanded recurrence and database tests remain open.
 - [ ] Support one or more reminder times and route their delivery through the durable notification system.
-- [ ] Partial: support fast manual task creation independent of AI in the working-prototype UI; migration promotion and authenticated browser verification remain open.
+- [ ] Partial: support fast manual task creation independent of AI in the working-prototype UI; authenticated browser/database verification remains open.
 - [ ] Partial: implement complete, reopen, and defer behavior in the working-prototype UI; cancellation, archive, recovery, and integration coverage remain open.
 - [ ] Partial: distinguish due, scheduled, defer/until, and limited recurrence semantics in storage and UI; timezone-boundary coverage remains open.
 - [ ] Partial: implement daily, weekly, and monthly task recurrence separately from routines. A recurring task requires a schedule and always advances from its scheduled date; yearly, weekdays, and custom intervals remain open.
@@ -332,12 +332,12 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 **Covers:** PRJ-01–06 and the activity-event model. PRJ-07 manual time logging is P1 and does not block this MVP.
 
 - [ ] Partial: create a finite project schema and manual create/list UI with outcome, state, dates, domain, person, provenance, milestones, and checklist snapshots; migration promotion and validation remain open.
-- [ ] Partial: add owner-scoped project milestones with ordered checkpoints, complete/reopen controls, and manually linked tasks; migration promotion and relationship/browser tests remain open.
-- [ ] Partial: create saved project checklist templates and apply them to a project as immutable versioned snapshots; migration promotion and authenticated browser/database verification remain open.
-- [ ] Partial: record template version and source template item on each generated checklist record; migration promotion and integration tests remain open.
+- [ ] Partial: add owner-scoped project milestones with ordered checkpoints, complete/reopen controls, and manually linked tasks; relationship/browser tests remain open.
+- [ ] Partial: create saved project checklist templates and apply them to a project as immutable versioned snapshots; authenticated browser/database verification remains open.
+- [ ] Partial: record template version and source template item on each generated checklist record; integration tests remain open.
 - [ ] Partial: adding a template step creates a new version and affects future applications only; explicit current/both scope controls and template editing UI remain open.
 - [ ] Partial: record task creation for a project, milestone changes, explicit progress, pause, completion, and Slipping resolution as append-only activity; decisions and richer activity updates remain open.
-- [ ] Partial: task/project prototype Slipping reads append-only meaningful activity, not `updated_at`; its migration and integration verification remain open.
+- [ ] Partial: task/project prototype Slipping reads append-only meaningful activity, not `updated_at`; integration verification remains open.
 - [ ] Partial: add project create, pause, and guarded completion flows; editing, archiving, full history UI, and validation remain open.
 - [ ] Partial: prevent project completion while linked open tasks remain; move/cancel resolution UI and archive behavior remain open.
 - [ ] Partial: schema input test covers template application IDs, and database uniqueness makes repeat application reconcile by project/template/version and source item; migration-backed idempotency, template-edit, completion, and cross-user tests remain open.
@@ -383,7 +383,7 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 - [x] Calculate a basic prototype signal for retainer cycle items using activity events.
 - [x] Show a basic plain-language reason and prototype severity.
 - [x] Record prototype mark-attention, defer, and dismiss outcomes.
-- [ ] Partial: support prototype retainer cycle deliverables plus task/project signals in the additive generic-episode migration; migration promotion and browser/database verification remain open.
+- [ ] Partial: support prototype retainer cycle deliverables plus task/project signals in the additive generic-episode migration; browser/database verification remains open.
 - [ ] Partial: calculate task/project cadence from append-only meaningful activity rather than generic `updated_at`.
 - [ ] Define remotely configurable audited defaults by record type.
 - [ ] Allow eligible users to override cadence without changing historical evidence.
@@ -439,14 +439,14 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 ### People and notes
 
 - [ ] Partial: add lightweight people records with name, optional pronouns, context, tags, default domain, and archive state in schema; working-prototype UI captures name/context/domain, while important dates remain open.
-- [ ] Partial: store owner-scoped timestamped interaction summaries and optionally create a linked follow-up task in the working prototype; migration promotion and browser/database verification remain open.
+- [ ] Partial: store owner-scoped timestamped interaction summaries and optionally create a linked follow-up task in the working prototype; browser/database verification remains open.
 - [ ] Store facts as discrete source-linked records; require review for sensitive AI-proposed facts.
 - [ ] Relate people to tasks, projects, retainers, notes, and source captures.
 - [ ] Suggest possible duplicate matches but never auto-merge people.
-- [ ] Partial: add notes that preserve reflective content, review date, and domain/project/person/source relationships in schema; working-prototype UI supports manual title/body/links but migration/browser verification remains open.
+- [ ] Partial: add notes that preserve reflective content, review date, and domain/project/person/source relationships in schema; working-prototype UI supports manual title/body/links but browser/database verification remains open.
 - [ ] Support note title, Markdown/plain-text body, tags, domain, review date, source, links, and archive state.
 - [ ] Propose a linked task for an explicit action inside a note rather than silently converting the note.
-- [ ] Partial: surface notes with a review date on or before Today in the working-prototype Today view; migration/browser verification and review acknowledgement remain open.
+- [ ] Partial: surface notes with a review date on or before Today in the working-prototype Today view; browser/database verification and review acknowledgement remain open.
 - [ ] Keep sensitive facts review-first and avoid invented identities/relationships.
 - [ ] Add archive/delete resolution and tenant-isolation tests.
 
@@ -716,6 +716,7 @@ Add a dated row when a milestone or important checkbox becomes verified. Link co
 | 2026-08-02 | Project checklist-template prototype | `20260803130000_project_checklist_templates.sql`, `src/app/api/workspace/route.ts`, `src/components/workspace.tsx`, `src/lib/workspace.test.ts`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 23 unit tests, lint, and production build. Source now supports saved templates, item addition/version increments, project-local snapshot application, unique retry-safe instance/item constraints, and item completion with meaningful project activity. Supabase migration promotion and authenticated browser/database verification remain pending. | Codex |
 | 2026-08-02 | Prototype JSON export | `src/app/api/export/route.ts`, `src/lib/export.test.ts`, `src/components/account-security.tsx`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 27 unit tests, lint, and production build. A signed-in user can request a private/no-store JSON download of current RLS-authorized prototype and canonical records. Export-route authorization/completeness/browser-download tests, durable delivery, and deletion remain pending. | Codex |
 | 2026-08-02 | People interactions and note review prototype | `20260803150000_people_interactions.sql`, `src/app/api/workspace/route.ts`, `src/components/workspace.tsx`, `src/lib/workspace.test.ts`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 28 unit tests, lint, and production build. Source now supports owner-scoped interaction summaries, optional linked follow-up tasks, and Today visibility for due note reviews. Supabase migration promotion and authenticated browser/database verification remain pending. | Codex |
+| 2026-08-02 | Linked pilot migration recovery and promotion | `npx supabase migration list`, `npx supabase migration repair`, `npx supabase db push` | Pass: the remote incorrectly marked the working-prototype migrations as applied while their tables were absent. Repaired only the false history entries, replayed the version-controlled working-prototype migrations, and verified every local migration through `20260803150000` now matches remote history. The linked pilot schema is ready for authenticated browser/database verification. | Codex |
 
 Canonical quality commands still needed:
 

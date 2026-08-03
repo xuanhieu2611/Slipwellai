@@ -1,7 +1,7 @@
 -- Saved checklists are templates; applying one produces an immutable project
 -- snapshot. The unique keys make repeat application/recovery reconcile safely.
 
-create type public.checklist_item_status as enum ('open', 'completed');
+do $$ begin create type public.checklist_item_status as enum ('open', 'completed'); exception when duplicate_object then null; end $$;
 
 create table public.project_checklist_templates (
   id uuid primary key default gen_random_uuid(),

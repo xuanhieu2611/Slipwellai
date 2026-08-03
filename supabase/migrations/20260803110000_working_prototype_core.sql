@@ -1,10 +1,10 @@
 -- This additive schema powers the working-prototype record surfaces. The Phase 0
 -- tables remain in place while the capture pipeline is migrated incrementally.
 
-create type public.task_status as enum ('open', 'completed', 'canceled', 'archived');
-create type public.project_status as enum ('planned', 'active', 'paused', 'completed', 'canceled', 'archived');
-create type public.routine_period as enum ('morning', 'afternoon', 'evening', 'anytime');
-create type public.routine_outcome as enum ('completed', 'skipped');
+do $$ begin create type public.task_status as enum ('open', 'completed', 'canceled', 'archived'); exception when duplicate_object then null; end $$;
+do $$ begin create type public.project_status as enum ('planned', 'active', 'paused', 'completed', 'canceled', 'archived'); exception when duplicate_object then null; end $$;
+do $$ begin create type public.routine_period as enum ('morning', 'afternoon', 'evening', 'anytime'); exception when duplicate_object then null; end $$;
+do $$ begin create type public.routine_outcome as enum ('completed', 'skipped'); exception when duplicate_object then null; end $$;
 
 create table public.domains (
   id uuid primary key default gen_random_uuid(),

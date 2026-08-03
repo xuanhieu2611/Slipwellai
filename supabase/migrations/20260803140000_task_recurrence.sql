@@ -1,4 +1,4 @@
-create type public.recurrence_frequency as enum ('daily', 'weekly', 'monthly');
+do $$ begin create type public.recurrence_frequency as enum ('daily', 'weekly', 'monthly'); exception when duplicate_object then null; end $$;
 
 alter table public.tasks
   add column recurrence_rule public.recurrence_frequency,

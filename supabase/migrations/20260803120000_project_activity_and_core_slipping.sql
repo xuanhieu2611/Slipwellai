@@ -1,7 +1,7 @@
 -- Project progress and generic Slipping episodes build on the working-prototype
 -- core. Activity events remain append-only and never use updated_at as attention.
 
-create type public.milestone_status as enum ('open', 'completed');
+do $$ begin create type public.milestone_status as enum ('open', 'completed'); exception when duplicate_object then null; end $$;
 
 create table public.project_milestones (
   id uuid primary key default gen_random_uuid(),
