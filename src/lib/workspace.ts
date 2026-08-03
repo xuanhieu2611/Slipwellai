@@ -10,6 +10,9 @@ export const workspaceCommandSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("create_task"), title: shortText(280), details: optionalText(10_000), dueOn: z.iso.date().optional().nullable(), scheduledFor: z.iso.date().optional().nullable(), priority: z.coerce.number().int().min(1).max(3).default(2), domainId: optionalId, projectId: optionalId, personId: optionalId }),
   z.object({ action: z.literal("create_project"), name: shortText(160), description: optionalText(10_000), domainId: optionalId, targetOn: z.iso.date().optional().nullable() }),
   z.object({ action: z.literal("create_milestone"), projectId: id, title: shortText(280) }),
+  z.object({ action: z.literal("create_checklist_template"), name: shortText(160), description: optionalText(1_000) }),
+  z.object({ action: z.literal("add_checklist_template_item"), templateId: id, title: shortText(280) }),
+  z.object({ action: z.literal("apply_checklist_template"), templateId: id, projectId: id }),
   z.object({ action: z.literal("create_person"), name: shortText(160), context: optionalText(1_000), domainId: optionalId }),
   z.object({ action: z.literal("create_note"), title: shortText(280), body: optionalText(20_000), domainId: optionalId, projectId: optionalId, personId: optionalId, reviewOn: z.iso.date().optional().nullable() }),
   z.object({ action: z.literal("create_routine"), name: shortText(160), period: z.enum(["morning", "afternoon", "evening", "anytime"]).default("anytime") }),
@@ -24,6 +27,8 @@ export const workspaceCommandSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("record_project_progress"), projectId: id }),
   z.object({ action: z.literal("pause_project"), projectId: id }),
   z.object({ action: z.literal("complete_project"), projectId: id }),
+  z.object({ action: z.literal("complete_checklist_item"), itemId: id }),
+  z.object({ action: z.literal("reopen_checklist_item"), itemId: id }),
 ]);
 
 export type WorkspaceCommand = z.infer<typeof workspaceCommandSchema>;
@@ -34,6 +39,10 @@ export type WorkspaceData = {
   tasks: Array<{ id: string; title: string; details: string | null; status: "open" | "completed" | "canceled" | "archived"; priority: number; due_on: string | null; scheduled_for: string | null; deferred_until: string | null; domain_id: string | null; project_id: string | null; person_id: string | null; top_three_date: string | null; top_three_order: number | null; created_at: string }>;
   projects: Array<{ id: string; name: string; description: string | null; status: string; domain_id: string | null; target_on: string | null; created_at: string }>;
   milestones: Array<{ id: string; project_id: string; title: string; position: number; status: "open" | "completed" }>;
+  checklistTemplates: Array<{ id: string; name: string; description: string | null; version: number }>;
+  checklistTemplateItems: Array<{ id: string; template_id: string; title: string; position: number }>;
+  checklistInstances: Array<{ id: string; project_id: string; template_id: string; template_version: number }>;
+  checklistItems: Array<{ id: string; instance_id: string; title: string; position: number; status: "open" | "completed" }>;
   people: Array<{ id: string; name: string; context: string | null; domain_id: string | null; created_at: string }>;
   notes: Array<{ id: string; title: string; body: string | null; domain_id: string | null; project_id: string | null; person_id: string | null; review_on: string | null; created_at: string }>;
   routines: Array<{ id: string; name: string; period: "morning" | "afternoon" | "evening" | "anytime" }>;

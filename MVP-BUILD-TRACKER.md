@@ -331,16 +331,16 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 **Covers:** PRJ-01–06 and the activity-event model. PRJ-07 manual time logging is P1 and does not block this MVP.
 
-- [ ] Partial: create a finite project schema and manual create/list UI with outcome, state, dates, domain, person, provenance, and RLS; notes/milestones/checklists and validation remain open.
+- [ ] Partial: create a finite project schema and manual create/list UI with outcome, state, dates, domain, person, provenance, milestones, and checklist snapshots; migration promotion and validation remain open.
 - [ ] Partial: add owner-scoped project milestones with ordered checkpoints, complete/reopen controls, and manually linked tasks; migration promotion and relationship/browser tests remain open.
-- [ ] Create reusable checklist/project templates with immutable version snapshots for generated work.
-- [ ] Record template version and source template item on each generated record.
-- [ ] Keep template edits scoped explicitly to current work, future work, or both.
+- [ ] Partial: create saved project checklist templates and apply them to a project as immutable versioned snapshots; migration promotion and authenticated browser/database verification remain open.
+- [ ] Partial: record template version and source template item on each generated checklist record; migration promotion and integration tests remain open.
+- [ ] Partial: adding a template step creates a new version and affects future applications only; explicit current/both scope controls and template editing UI remain open.
 - [ ] Partial: record task creation for a project, milestone changes, explicit progress, pause, completion, and Slipping resolution as append-only activity; decisions and richer activity updates remain open.
 - [ ] Partial: task/project prototype Slipping reads append-only meaningful activity, not `updated_at`; its migration and integration verification remain open.
 - [ ] Partial: add project create, pause, and guarded completion flows; editing, archiving, full history UI, and validation remain open.
 - [ ] Partial: prevent project completion while linked open tasks remain; move/cancel resolution UI and archive behavior remain open.
-- [ ] Test template generation idempotency, template edits, project completion, and cross-user relationships.
+- [ ] Partial: schema input test covers template application IDs, and database uniqueness makes repeat application reconcile by project/template/version and source item; migration-backed idempotency, template-edit, completion, and cross-user tests remain open.
 - [ ] End-to-end test proposal → project/task structure → meaningful progress event.
 
 **Exit gate:** projects represent finite outcomes, template-generated work is traceable, and meaningful activity is reliable enough to support Slipping.
@@ -712,6 +712,7 @@ Add a dated row when a milestone or important checkbox becomes verified. Link co
 | 2026-08-02 | Step 1 public authentication implementation | `src/components/sign-in.tsx`, `src/app/auth/callback/route.ts`, `src/proxy.ts`, `src/lib/auth.test.ts`, `e2e/public-auth.spec.ts`, `npm run lint`, `npm test`, `npm run test:e2e`, `npm run build`; founder manual Google sign-in | Partial: public email/password and Google entry, recovery UI, safe callback routing, SSR refresh, and session controls are implemented; 18 unit tests and 2 public-entry browser tests pass. Google sign-in was manually verified by the founder. Local Supabase integration, identity-linking, and session-revocation checks remain unverified because Docker/local Supabase is unavailable and no dedicated test identities were supplied. | Codex / Founder |
 | 2026-08-02 | Working-prototype record surfaces | `20260803110000_working_prototype_core.sql`, `src/components/workspace.tsx`, `src/app/api/workspace/route.ts`, `src/lib/workspace.test.ts`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 20 unit tests, lint, and production build. The source now has owner-scoped/RLS domains, tasks, projects, routines/completions, people, notes, Today/Top Three, manual record flows, and account-scoped prototype search. Supabase migration promotion and authenticated browser/database verification are pending; `supabase migration list` cannot run because this checkout is not linked to a project. | Codex |
 | 2026-08-02 | Project progress and core Slipping prototype | `20260803120000_project_activity_and_core_slipping.sql`, `src/lib/slipping.ts`, `src/lib/slipping.test.ts`, `src/app/api/slipping/*`, `src/components/workspace.tsx`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 22 unit tests, lint, and production build. Source now has owner-scoped ordered milestones, guarded project completion, append-only meaningful project activity, and one-open-episode task/project Slipping with explanations and resolutions in Today. Supabase migration promotion and authenticated browser/database verification remain pending. | Codex |
+| 2026-08-02 | Project checklist-template prototype | `20260803130000_project_checklist_templates.sql`, `src/app/api/workspace/route.ts`, `src/components/workspace.tsx`, `src/lib/workspace.test.ts`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 23 unit tests, lint, and production build. Source now supports saved templates, item addition/version increments, project-local snapshot application, unique retry-safe instance/item constraints, and item completion with meaningful project activity. Supabase migration promotion and authenticated browser/database verification remain pending. | Codex |
 
 Canonical quality commands still needed:
 

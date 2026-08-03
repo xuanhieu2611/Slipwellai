@@ -12,4 +12,9 @@ describe("working-prototype workspace commands", () => {
     expect(taskDateLabel({ due_on: null, scheduled_for: "2026-08-03", deferred_until: null })).toBe("Scheduled 2026-08-03");
     expect(taskDateLabel({ due_on: "2026-08-04", scheduled_for: null, deferred_until: "2026-08-06" })).toBe("Deferred until 2026-08-06");
   });
+
+  it("accepts a template application only with valid project and template identities", () => {
+    expect(workspaceCommandSchema.safeParse({ action: "apply_checklist_template", templateId: "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98", projectId: "847a0e15-63ef-4a68-98f7-51fdbe09f29d" }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "apply_checklist_template", templateId: "not-an-id", projectId: "847a0e15-63ef-4a68-98f7-51fdbe09f29d" }).success).toBe(false);
+  });
 });

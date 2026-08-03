@@ -47,6 +47,35 @@ export async function POST(request: NextRequest) {
       const { error } = await supabase.from("project_milestones").insert({ project_id: command.projectId, title: command.title, position: (count ?? 0) + 1 });
       if (error) throw error;
       await recordActivity("project", command.projectId, "milestone_created");
+    } else if (command.action === "create_checklist_template") {
+      const { error } = await supabase.from("project_checklist_templates").insert({ name: command.name, description: command.description });
+      if (error) throw error;
+    } else if (command.action === "add_checklist_template_item") {
+      const { data: template } = await supabase.from("project_checklist_templates").select("id, version").eq("id", command.templateId).maybeSingle();
+      if (!template) return badRequest("Checklist template not found.");
+      const { count, error: countError } = await supabase.from("project_checklist_template_items").select("id", { count: "exact", head: true }).eq("template_id", template.id);
+      if (countError) throw countError;
+      const { error } = await supabase.from("project_checklist_template_items").insert({ template_id: template.id, title: command.title, position: (count ?? 0) + 1 });
+      if (error) throw error;
+      const { error: versionError } = await supabase.from("project_checklist_templates").update({ version: template.version + 1 }).eq("id", template.id);
+      if (versionError) throw versionError;
+    } else if (command.action === "apply_checklist_template") {
+      const [templateResult, projectResult, itemsResult] = await Promise.all([
+        supabase.from("project_checklist_templates").select("id, version").eq("id", command.templateId).maybeSingle(),
+        supabase.from("projects").select("id").eq("id", command.projectId).maybeSingle(),
+        supabase.from("project_checklist_template_items").select("id, title, position").eq("template_id", command.templateId).order("position"),
+      ]);
+      const template = templateResult.data;
+      if (!template || !projectResult.data) return badRequest("Project or checklist template not found.");
+      if (itemsResult.error) throw itemsResult.error;
+      if (!itemsResult.data?.length) return badRequest("Add at least one checklist item before applying this template.");
+      const { error: instanceInsertError } = await supabase.from("project_checklist_instances").upsert({ project_id: projectResult.data.id, template_id: template.id, template_version: template.version }, { onConflict: "project_id,template_id,template_version", ignoreDuplicates: true });
+      if (instanceInsertError) throw instanceInsertError;
+      const { data: instance, error: instanceError } = await supabase.from("project_checklist_instances").select("id").eq("project_id", projectResult.data.id).eq("template_id", template.id).eq("template_version", template.version).single();
+      if (instanceError || !instance) throw instanceError ?? new Error("Checklist instance not found.");
+      const { error: itemError } = await supabase.from("project_checklist_items").upsert(itemsResult.data.map((item) => ({ instance_id: instance.id, source_template_item_id: item.id, title: item.title, position: item.position })), { onConflict: "instance_id,source_template_item_id", ignoreDuplicates: true });
+      if (itemError) throw itemError;
+      await recordActivity("project", projectResult.data.id, "checklist_applied");
     } else if (command.action === "create_person") {
       await verifyRelations(command);
       const { error } = await supabase.from("people").insert({ name: command.name, context: command.context, domain_id: command.domainId ?? null });
@@ -86,12 +115,27 @@ export async function POST(request: NextRequest) {
       const { error } = await supabase.from("project_milestones").update(command.action === "complete_milestone" ? { status: "completed", completed_at: new Date().toISOString() } : { status: "open", completed_at: null }).eq("id", milestone.id);
       if (error) throw error;
       await recordActivity("project", milestone.project_id, command.action === "complete_milestone" ? "milestone_completed" : "milestone_reopened");
+    } else if (command.action === "complete_checklist_item" || command.action === "reopen_checklist_item") {
+      const { data: item } = await supabase.from("project_checklist_items").select("id, instance_id").eq("id", command.itemId).maybeSingle();
+      if (!item) return badRequest("Checklist item not found.");
+      const { data: instance } = await supabase.from("project_checklist_instances").select("project_id").eq("id", item.instance_id).maybeSingle();
+      if (!instance) return badRequest("Checklist instance not found.");
+      const { error } = await supabase.from("project_checklist_items").update(command.action === "complete_checklist_item" ? { status: "completed", completed_at: new Date().toISOString() } : { status: "open", completed_at: null }).eq("id", item.id);
+      if (error) throw error;
+      await recordActivity("project", instance.project_id, command.action === "complete_checklist_item" ? "checklist_item_completed" : "checklist_item_reopened");
     } else if (command.action === "record_project_progress" || command.action === "pause_project" || command.action === "complete_project") {
       const { data: project } = await supabase.from("projects").select("id").eq("id", command.projectId).maybeSingle();
       if (!project) return badRequest("Project not found.");
       if (command.action === "complete_project") {
         const { count } = await supabase.from("tasks").select("id", { count: "exact", head: true }).eq("project_id", project.id).eq("status", "open");
         if ((count ?? 0) > 0) return badRequest("Resolve this project’s open tasks before completing it.");
+        const { data: instances, error: instancesError } = await supabase.from("project_checklist_instances").select("id").eq("project_id", project.id);
+        if (instancesError) throw instancesError;
+        if (instances?.length) {
+          const { count: checklistCount, error: checklistError } = await supabase.from("project_checklist_items").select("id", { count: "exact", head: true }).in("instance_id", instances.map((instance) => instance.id)).eq("status", "open");
+          if (checklistError) throw checklistError;
+          if ((checklistCount ?? 0) > 0) return badRequest("Resolve this project’s open checklist items before completing it.");
+        }
       }
       if (command.action !== "record_project_progress") {
         const { error } = await supabase.from("projects").update({ status: command.action === "pause_project" ? "paused" : "completed" }).eq("id", project.id);
