@@ -14,6 +14,7 @@ export const workspaceCommandSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("add_checklist_template_item"), templateId: id, title: shortText(280) }),
   z.object({ action: z.literal("apply_checklist_template"), templateId: id, projectId: id }),
   z.object({ action: z.literal("create_person"), name: shortText(160), context: optionalText(1_000), domainId: optionalId }),
+  z.object({ action: z.literal("create_person_interaction"), personId: id, summary: shortText(4_000), followUpTitle: optionalText(280) }),
   z.object({ action: z.literal("create_note"), title: shortText(280), body: optionalText(20_000), domainId: optionalId, projectId: optionalId, personId: optionalId, reviewOn: z.iso.date().optional().nullable() }),
   z.object({ action: z.literal("create_routine"), name: shortText(160), period: z.enum(["morning", "afternoon", "evening", "anytime"]).default("anytime") }),
   z.object({ action: z.literal("complete_task"), taskId: id }),
@@ -44,6 +45,7 @@ export type WorkspaceData = {
   checklistInstances: Array<{ id: string; project_id: string; template_id: string; template_version: number }>;
   checklistItems: Array<{ id: string; instance_id: string; title: string; position: number; status: "open" | "completed" }>;
   people: Array<{ id: string; name: string; context: string | null; domain_id: string | null; created_at: string }>;
+  personInteractions: Array<{ id: string; person_id: string; summary: string; follow_up_task_id: string | null; occurred_at: string }>;
   notes: Array<{ id: string; title: string; body: string | null; domain_id: string | null; project_id: string | null; person_id: string | null; review_on: string | null; created_at: string }>;
   routines: Array<{ id: string; name: string; period: "morning" | "afternoon" | "evening" | "anytime" }>;
   routineCompletions: Array<{ routine_id: string; local_date: string; outcome: "completed" | "skipped" }>;

@@ -438,15 +438,15 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 ### People and notes
 
-- [ ] Partial: add lightweight people records with name, optional pronouns, context, tags, default domain, and archive state in schema; working-prototype UI currently captures name/context/domain only and important dates remain open.
-- [ ] Store timestamped interactions and allow an optional linked follow-up task.
+- [ ] Partial: add lightweight people records with name, optional pronouns, context, tags, default domain, and archive state in schema; working-prototype UI captures name/context/domain, while important dates remain open.
+- [ ] Partial: store owner-scoped timestamped interaction summaries and optionally create a linked follow-up task in the working prototype; migration promotion and browser/database verification remain open.
 - [ ] Store facts as discrete source-linked records; require review for sensitive AI-proposed facts.
 - [ ] Relate people to tasks, projects, retainers, notes, and source captures.
 - [ ] Suggest possible duplicate matches but never auto-merge people.
 - [ ] Partial: add notes that preserve reflective content, review date, and domain/project/person/source relationships in schema; working-prototype UI supports manual title/body/links but migration/browser verification remains open.
 - [ ] Support note title, Markdown/plain-text body, tags, domain, review date, source, links, and archive state.
 - [ ] Propose a linked task for an explicit action inside a note rather than silently converting the note.
-- [ ] Surface notes with an explicit review date in Today or Inbox.
+- [ ] Partial: surface notes with a review date on or before Today in the working-prototype Today view; migration/browser verification and review acknowledgement remain open.
 - [ ] Keep sensitive facts review-first and avoid invented identities/relationships.
 - [ ] Add archive/delete resolution and tenant-isolation tests.
 
@@ -715,6 +715,7 @@ Add a dated row when a milestone or important checkbox becomes verified. Link co
 | 2026-08-02 | Recurring-task prototype | `20260803140000_task_recurrence.sql`, `src/lib/recurrence.ts`, `src/lib/recurrence.test.ts`, `src/app/api/workspace/route.ts`, `src/components/workspace.tsx`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 25 unit tests, lint, and production build. Source supports daily/weekly/monthly task recurrence from an explicit scheduled-date anchor, short-month/leap-year bounds, and a root/anchor uniqueness guard against duplicate next occurrences. Supabase migration promotion and authenticated browser/database verification remain pending. | Codex |
 | 2026-08-02 | Project checklist-template prototype | `20260803130000_project_checklist_templates.sql`, `src/app/api/workspace/route.ts`, `src/components/workspace.tsx`, `src/lib/workspace.test.ts`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 23 unit tests, lint, and production build. Source now supports saved templates, item addition/version increments, project-local snapshot application, unique retry-safe instance/item constraints, and item completion with meaningful project activity. Supabase migration promotion and authenticated browser/database verification remain pending. | Codex |
 | 2026-08-02 | Prototype JSON export | `src/app/api/export/route.ts`, `src/lib/export.test.ts`, `src/components/account-security.tsx`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 27 unit tests, lint, and production build. A signed-in user can request a private/no-store JSON download of current RLS-authorized prototype and canonical records. Export-route authorization/completeness/browser-download tests, durable delivery, and deletion remain pending. | Codex |
+| 2026-08-02 | People interactions and note review prototype | `20260803150000_people_interactions.sql`, `src/app/api/workspace/route.ts`, `src/components/workspace.tsx`, `src/lib/workspace.test.ts`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 28 unit tests, lint, and production build. Source now supports owner-scoped interaction summaries, optional linked follow-up tasks, and Today visibility for due note reviews. Supabase migration promotion and authenticated browser/database verification remain pending. | Codex |
 
 Canonical quality commands still needed:
 

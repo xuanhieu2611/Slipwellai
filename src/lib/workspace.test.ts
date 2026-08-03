@@ -22,4 +22,9 @@ describe("working-prototype workspace commands", () => {
     expect(workspaceCommandSchema.safeParse({ action: "apply_checklist_template", templateId: "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98", projectId: "847a0e15-63ef-4a68-98f7-51fdbe09f29d" }).success).toBe(true);
     expect(workspaceCommandSchema.safeParse({ action: "apply_checklist_template", templateId: "not-an-id", projectId: "847a0e15-63ef-4a68-98f7-51fdbe09f29d" }).success).toBe(false);
   });
+
+  it("requires a private person identity and interaction summary", () => {
+    expect(workspaceCommandSchema.safeParse({ action: "create_person_interaction", personId: "847a0e15-63ef-4a68-98f7-51fdbe09f29d", summary: "Discussed next month’s report", followUpTitle: "Send recap" }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "create_person_interaction", personId: "not-an-id", summary: "" }).success).toBe(false);
+  });
 });

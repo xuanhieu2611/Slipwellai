@@ -86,6 +86,17 @@ export async function POST(request: NextRequest) {
       await verifyRelations(command);
       const { error } = await supabase.from("people").insert({ name: command.name, context: command.context, domain_id: command.domainId ?? null });
       if (error) throw error;
+    } else if (command.action === "create_person_interaction") {
+      const { data: person } = await supabase.from("people").select("id").eq("id", command.personId).maybeSingle();
+      if (!person) return badRequest("Person not found.");
+      let followUpTaskId: string | null = null;
+      if (command.followUpTitle) {
+        const { data: task, error: taskError } = await supabase.from("tasks").insert({ title: command.followUpTitle, person_id: person.id }).select("id").single();
+        if (taskError || !task) throw taskError ?? new Error("Follow-up task creation failed.");
+        followUpTaskId = task.id;
+      }
+      const { error } = await supabase.from("person_interactions").insert({ person_id: person.id, summary: command.summary, follow_up_task_id: followUpTaskId });
+      if (error) throw error;
     } else if (command.action === "create_note") {
       await verifyRelations(command);
       const { error } = await supabase.from("notes").insert({ title: command.title, body: command.body, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null, review_on: command.reviewOn ?? null });
