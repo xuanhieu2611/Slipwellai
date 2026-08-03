@@ -58,7 +58,7 @@ Important limitations:
 - 🟡 `prototype_records` is not the canonical task, note, project, person, or retainer data model.
 - 🟡 Retainer and Slipping logic are interactive labs, not production-grade durable workflows.
 - 🟡 A migration-backed working-prototype core for Today, manual tasks, domains, finite projects, routines, lightweight people/notes, recurring tasks, project checklists, account-scoped search, and People interactions is applied to the linked pilot project. Authenticated browser and database-integration verification remain open.
-- 🟡 Browser voice recording, private audio storage, synchronous transcription, signed playback, and transcript correction exist as a Phase 0 slice; durable jobs, retention preferences, authenticated browser/database verification, and end-to-end recovery coverage remain open.
+- 🟡 Browser voice recording and transient synchronous transcription exist as a Phase 0 slice. By product-owner direction, recordings are never stored; a failed transcription is discarded and the user is directed to text capture. This intentionally does not meet CAP-05/REV-07’s original-audio preservation and recovery expectation.
 - ⬜ There is no calendar sync, notification system, billing, account-deletion workflow, or production analytics/operations layer.
 - ⬜ There are no cross-user RLS integration tests or browser end-to-end tests.
 - ⬜ There is no installable PWA manifest/application-shell strategy or production deployment pipeline yet.
@@ -470,14 +470,14 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 **Covers:** CAP-04 and voice-specific AI/non-functional requirements.
 
 - [ ] Partial: detect browser/media capability and microphone permission before recording; supported-browser and denied-permission browser verification remain open.
-- [ ] Partial: provide recording, paused, uploading, transcribing, failed, and retry states in the Phase 0 Inbox; interruption/tab-close recovery remains open.
+- [ ] Partial: provide recording, paused, transcribing, and failed-to-text-capture states in the Phase 0 Inbox; interruption/tab-close recovery remains open.
 - [ ] Partial: enforce supported MIME types, a five-minute duration, and a 25 MB size limit in the browser and route schema; server-side content inspection remains open.
-- [ ] Partial: store original audio in an owner-foldered private Supabase bucket before invoking transcription. Retention preferences and post-transcription deletion behavior remain open.
-- [ ] Partial: issue a 60-second signed URL for private playback after authenticated capture lookup.
-- [ ] Partial: use a stable voice-capture idempotency key for the create/upload attempt. Upload, transcription, and proposal scheduling remain synchronous rather than durable jobs.
-- [ ] Partial: preserve the original audio and show a retryable Inbox state when transcription fails.
-- [ ] Partial: let users edit the transcript and re-run interpretation without changing the original audio.
-- [ ] Partial: send only the uploaded audio to the server-only OpenAI transcription endpoint and record model/latency metadata. Provider approval, cost estimation, and durable safe telemetry remain open.
+- [ ] Product decision: do not store original audio in Supabase or retain it after sending it to the transcription provider. This is a user-requested exception to CAP-05 and means failed audio cannot be recovered.
+- [ ] Not applicable under the transient-audio decision: no private-audio playback or signed URLs are created.
+- [ ] Partial: use a stable voice-capture idempotency key for the submission. Transcription and proposal scheduling remain synchronous rather than durable jobs.
+- [ ] Product decision: discard failed voice audio and direct the user to text capture rather than preserving a retryable Inbox item. This is a user-requested exception to REV-07.
+- [ ] Partial: show the saved text transcript in review; direct transcript correction/re-interpretation remains open.
+- [ ] Partial: send the submitted audio only to the server-only OpenAI transcription endpoint, then retain only the resulting text and model/latency metadata. Provider approval, cost estimation, and durable safe telemetry remain open.
 - [x] Keep text capture available as an alternative.
 - [ ] Test permission denial, interruption, unsupported browser, upload retry, tab close, duplicate request, and provider failure.
 - [ ] End-to-end test record → transcribe → review → correct → file on supported browsers.
@@ -719,6 +719,7 @@ Add a dated row when a milestone or important checkbox becomes verified. Link co
 | 2026-08-02 | People interactions and note review prototype | `20260803150000_people_interactions.sql`, `src/app/api/workspace/route.ts`, `src/components/workspace.tsx`, `src/lib/workspace.test.ts`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 28 unit tests, lint, and production build. Source now supports owner-scoped interaction summaries, optional linked follow-up tasks, and Today visibility for due note reviews. Supabase migration promotion and authenticated browser/database verification remain pending. | Codex |
 | 2026-08-02 | Linked pilot migration recovery and promotion | `npx supabase migration list`, `npx supabase migration repair`, `npx supabase db push` | Pass: the remote incorrectly marked the working-prototype migrations as applied while their tables were absent. Repaired only the false history entries, replayed the version-controlled working-prototype migrations, and verified every local migration through `20260803150000` now matches remote history. The linked pilot schema is ready for authenticated browser/database verification. | Codex |
 | 2026-08-02 | Phase 0 browser voice-capture slice | `20260803160000_voice_capture_foundation.sql`, `npx supabase migration list`, `npx supabase db push`, `src/components/dashboard.tsx`, `src/app/api/voice-captures/*`, `src/lib/voice.test.ts`, `npm test`, `npm run lint`, `npm run test:e2e`, `npm run build` | Pass in static verification: 31 unit tests, lint, production build, and two public-entry browser tests (six authenticated specs skipped without dedicated fixture accounts). The migration was applied to the linked pilot. The source adds capability/permission-aware recording, preview/cancel/pause, private owner-foldered audio storage, bounded format/size/duration validation, signed playback, synchronous transcription with a recoverable retry state, and editable transcript re-interpretation. Authenticated supported/unsupported/denied-permission browser/database tests remain pending. | Codex |
+| 2026-08-02 | Transient voice-audio revision | `20260803161000_remove_voice_audio_storage.sql`, `npx supabase db push`, `npx supabase migration list`, storage-bucket count query, `src/app/api/voice-captures/route.ts`, `src/components/dashboard.tsx`, `src/lib/voice.test.ts`, `npm test`, `npm run lint`, `npm run build`, fresh-production Playwright auth interaction | Pass: product owner directed removal of all Supabase voice storage. The migration was applied to the linked pilot, the `capture-audio` bucket count is zero, and the one unusable voice capture without a transcript was removed. New recordings are sent directly to OpenAI, and transcription failure directs the user to keyboard capture. This deliberately overrides CAP-05/REV-07 audio preservation/recovery expectations. | Codex |
 
 Canonical quality commands still needed:
 

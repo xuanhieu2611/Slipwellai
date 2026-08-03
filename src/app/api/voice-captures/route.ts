@@ -1,44 +1,65 @@
 import { NextRequest, NextResponse } from "next/server";
+import { interpretCapture } from "@/lib/captures";
 import { badRequest, serverError, unauthorized } from "@/lib/http";
 import { requireUser } from "@/lib/supabase/server";
-import { captureAudioPath, createVoiceCaptureSchema } from "@/lib/voice";
+import { createVoiceCaptureSchema, validateVoiceCapture } from "@/lib/voice";
+import { TranscriptionError, transcribeAudio } from "@/lib/transcription";
 
 export async function POST(request: NextRequest) {
-  const parsed = createVoiceCaptureSchema.safeParse(await request.json());
+  const formData = await request.formData();
+  const audio = formData.get("audio");
+  const parsed = createVoiceCaptureSchema.safeParse({
+    idempotencyKey: formData.get("idempotencyKey"),
+    mimeType: audio instanceof File ? audio.type : "",
+    byteSize: audio instanceof File ? audio.size : 0,
+    durationMs: Number(formData.get("durationMs")),
+  });
   if (!parsed.success) return badRequest("That recording is too large, too long, or uses an unsupported audio format.");
+  if (!(audio instanceof File)) return badRequest("Choose a voice recording to transcribe.");
+  const validated = validateVoiceCapture(parsed.data);
+  if (!validated.ok) return badRequest(validated.error);
   const { supabase, user } = await requireUser();
   if (!user) return unauthorized();
 
   const idempotencyKey = parsed.data.idempotencyKey;
   const { data: existing } = await supabase
     .from("captures")
-    .select("id, audio_storage_path")
+    .select("id")
     .eq("idempotency_key", idempotencyKey)
     .maybeSingle();
-  if (existing?.audio_storage_path) return NextResponse.json({ captureId: existing.id, storagePath: existing.audio_storage_path, status: "duplicate" });
+  if (existing) return NextResponse.json({ captureId: existing.id, status: "duplicate" });
 
-  const storagePath = captureAudioPath(user.id, parsed.data.captureId, parsed.data.mimeType);
+  const startedAt = Date.now();
+  let transcript: string;
+  try {
+    transcript = await transcribeAudio({ audio, mimeType: validated.mimeType });
+  } catch (error) {
+    const message = error instanceof TranscriptionError && error.code === "transcription_not_configured"
+      ? "Voice transcription is not configured. Please use text capture instead."
+      : "Voice transcription failed and the recording was discarded. Please use text capture instead.";
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
+  if (transcript.length > 10_000) return badRequest("The transcript is too long to capture safely. Please use text capture instead.");
+
   const { data: capture, error } = await supabase
     .from("captures")
     .insert({
-      id: parsed.data.captureId,
-      original_text: null,
+      original_text: transcript,
       source_type: "voice",
-      status: "uploading",
+      status: "interpreting",
       idempotency_key: idempotencyKey,
-      audio_storage_path: storagePath,
-      audio_mime_type: parsed.data.mimeType.split(";", 1)[0],
-      audio_byte_size: parsed.data.byteSize,
-      audio_duration_ms: parsed.data.durationMs,
+      transcription_model: process.env.OPENAI_TRANSCRIPTION_MODEL ?? "gpt-4o-mini-transcribe",
+      transcription_latency_ms: Date.now() - startedAt,
     })
-    .select("id")
+    .select("id, original_text")
     .single();
 
   if (error?.code === "23505") {
-    const { data: duplicate } = await supabase.from("captures").select("id, audio_storage_path").eq("idempotency_key", idempotencyKey).single();
-    if (duplicate?.audio_storage_path) return NextResponse.json({ captureId: duplicate.id, storagePath: duplicate.audio_storage_path, status: "duplicate" });
+    const { data: duplicate } = await supabase.from("captures").select("id").eq("idempotency_key", idempotencyKey).single();
+    if (duplicate) return NextResponse.json({ captureId: duplicate.id, status: "duplicate" });
   }
   if (error || !capture) return serverError();
 
-  return NextResponse.json({ captureId: capture.id, storagePath, status: "uploading" });
+  const result = await interpretCapture({ supabase, capture });
+  return NextResponse.json({ captureId: capture.id, status: "needs_review", warning: result.error });
 }

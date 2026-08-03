@@ -28,12 +28,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
   }
 
   if (parsed.data.action === "retry") {
-    const { data: capture } = await supabase.from("captures").select("id, original_text, transcript_text").eq("id", proposal.capture_id).single();
+    const { data: capture } = await supabase.from("captures").select("id, original_text").eq("id", proposal.capture_id).single();
     if (!capture) return badRequest("Original capture not found.");
-    const sourceText = capture.original_text ?? capture.transcript_text;
-    if (!sourceText) return badRequest("This voice capture has no transcript yet. Retry transcription instead.");
     await supabase.from("proposals").update({ status: "superseded" }).eq("id", proposal.id);
-    const result = await interpretCapture({ supabase, capture: { id: capture.id, original_text: sourceText } });
+    const result = await interpretCapture({ supabase, capture });
     return NextResponse.json({ ok: true, warning: result.error });
   }
 

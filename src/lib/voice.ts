@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-export const captureAudioBucket = "capture-audio";
 export const maxVoiceCaptureDurationMs = 5 * 60 * 1_000;
 export const maxVoiceCaptureBytes = 25 * 1024 * 1024;
 
@@ -21,7 +20,6 @@ export function validateVoiceCapture({ mimeType, byteSize, durationMs }: { mimeT
 }
 
 export const createVoiceCaptureSchema = z.object({
-  captureId: z.uuid(),
   idempotencyKey: z.uuid(),
   mimeType: z.string().min(1).max(100),
   byteSize: z.number().int().positive().max(maxVoiceCaptureBytes),
@@ -33,16 +31,3 @@ export const createVoiceCaptureSchema = z.object({
 export const updateVoiceTranscriptSchema = z.object({
   transcript: z.string().trim().min(1).max(10_000),
 });
-
-export function audioExtension(mimeType: string) {
-  switch (normalizedAudioMimeType(mimeType)) {
-    case "audio/mp4": return "m4a";
-    case "audio/ogg": return "ogg";
-    case "audio/mpeg": return "mp3";
-    default: return "webm";
-  }
-}
-
-export function captureAudioPath(ownerId: string, captureId: string, mimeType: string) {
-  return `${ownerId}/${captureId}/original.${audioExtension(mimeType)}`;
-}

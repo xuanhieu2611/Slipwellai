@@ -31,9 +31,9 @@ Use only low-sensitivity test captures during Phase 0. Capture text is sent only
 
 The database migration is versioned at `supabase/migrations/20260802224924_phase0_foundation.sql` and has been applied to Supabase project `slipwell-phase0` in US West. All pilot tables have RLS policies keyed to the authenticated owner.
 
-The migrations through `supabase/migrations/20260803160000_voice_capture_foundation.sql` are applied to the linked pilot project. They add required-once onboarding, working-prototype records, project milestones, task/project Slipping, versioned project checklist snapshots, scheduled task recurrence, lightweight person interactions, and the Phase 0 voice-capture foundation. Apply the same version-controlled migration chain through the normal promotion process before deploying to any other environment; these migrations are additive and preserve existing pilot records.
+The migrations through `supabase/migrations/20260803161000_remove_voice_audio_storage.sql` are applied to the linked pilot project. They add required-once onboarding, working-prototype records, project milestones, task/project Slipping, versioned project checklist snapshots, scheduled task recurrence, lightweight person interactions, and the current transient-audio Phase 0 voice capture. Apply the same version-controlled migration chain through the normal promotion process before deploying to any other environment; these migrations are additive except for the explicit voice-audio cleanup migration.
 
-`20260803160000_voice_capture_foundation.sql` adds the Phase 0 browser-voice slice: an owner-scoped private `capture-audio` Storage bucket, source/audio metadata, transcription state, and a corrected-transcript field. Set `OPENAI_API_KEY` before trying it. The current transcription request is synchronous and is intentionally not the commercial MVP’s durable job implementation.
+`20260803160000_voice_capture_foundation.sql` and `20260803161000_remove_voice_audio_storage.sql` implement the current Phase 0 browser-voice decision: a submitted recording is sent directly to OpenAI for synchronous transcription and is not saved in Supabase Storage. If transcription fails, the recording is discarded and the user must use text capture. Set `OPENAI_API_KEY` before trying it.
 
 ## Browser coverage
 
