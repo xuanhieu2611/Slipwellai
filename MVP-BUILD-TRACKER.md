@@ -509,11 +509,11 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 **Covers:** SET-01–08 plus security/privacy non-functional requirements.
 
-- [ ] Build settings for profile, timezone, AI behavior, notifications, integrations, plan, export, and deletion.
+- [ ] Partial: expose account security and a direct JSON export in Settings; profile, preferences, integrations, notifications, plan, and deletion remain open.
 - [ ] Add capture preferences for auto-file threshold, original-audio retention, default domain, reminders, and confirmations.
-- [ ] Export all user-authored records, relationships, source metadata, and relevant audit history in documented portable formats.
-- [ ] Run exports as authenticated, idempotent jobs with expiring private downloads.
-- [ ] Make export available on Free and Pro.
+- [ ] Partial: export the current prototype’s RLS-authorized canonical/pilot records, relationships, source data, and activity as documented JSON. CSV, Markdown notes, media manifests, completeness testing, and documented format support remain open.
+- [ ] Partial: provide an authenticated direct download with `private, no-store` headers for normal-size prototype accounts. Durable idempotent jobs and expiring private downloads remain open.
+- [ ] Partial: the current direct export is reachable for every signed-in prototype account; durable plan/entitlement verification remains open.
 - [ ] Define a basic validated CSV/JSON import for supported canonical records, including preview, relationship handling, idempotency, and a clear error report; improved provider-specific imports remain later work.
 - [ ] Implement reauthenticated account deletion with explicit confirmation and cancellation/grace behavior if promised.
 - [ ] Propagate deletion to database rows, private files, search indexes, derived data, job payloads, caches, and provider-side data where applicable.
@@ -714,6 +714,7 @@ Add a dated row when a milestone or important checkbox becomes verified. Link co
 | 2026-08-02 | Project progress and core Slipping prototype | `20260803120000_project_activity_and_core_slipping.sql`, `src/lib/slipping.ts`, `src/lib/slipping.test.ts`, `src/app/api/slipping/*`, `src/components/workspace.tsx`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 22 unit tests, lint, and production build. Source now has owner-scoped ordered milestones, guarded project completion, append-only meaningful project activity, and one-open-episode task/project Slipping with explanations and resolutions in Today. Supabase migration promotion and authenticated browser/database verification remain pending. | Codex |
 | 2026-08-02 | Recurring-task prototype | `20260803140000_task_recurrence.sql`, `src/lib/recurrence.ts`, `src/lib/recurrence.test.ts`, `src/app/api/workspace/route.ts`, `src/components/workspace.tsx`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 25 unit tests, lint, and production build. Source supports daily/weekly/monthly task recurrence from an explicit scheduled-date anchor, short-month/leap-year bounds, and a root/anchor uniqueness guard against duplicate next occurrences. Supabase migration promotion and authenticated browser/database verification remain pending. | Codex |
 | 2026-08-02 | Project checklist-template prototype | `20260803130000_project_checklist_templates.sql`, `src/app/api/workspace/route.ts`, `src/components/workspace.tsx`, `src/lib/workspace.test.ts`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 23 unit tests, lint, and production build. Source now supports saved templates, item addition/version increments, project-local snapshot application, unique retry-safe instance/item constraints, and item completion with meaningful project activity. Supabase migration promotion and authenticated browser/database verification remain pending. | Codex |
+| 2026-08-02 | Prototype JSON export | `src/app/api/export/route.ts`, `src/lib/export.test.ts`, `src/components/account-security.tsx`, `npm run lint`, `npm test`, `npm run build` | Pass in static verification: 27 unit tests, lint, and production build. A signed-in user can request a private/no-store JSON download of current RLS-authorized prototype and canonical records. Export-route authorization/completeness/browser-download tests, durable delivery, and deletion remain pending. | Codex |
 
 Canonical quality commands still needed:
 

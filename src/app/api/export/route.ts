@@ -1,0 +1,51 @@
+import { NextResponse } from "next/server";
+import { exportFilename } from "@/lib/export";
+import { serverError, unauthorized } from "@/lib/http";
+import { requireUser } from "@/lib/supabase/server";
+
+export async function GET() {
+  const { supabase, user } = await requireUser();
+  if (!user) return unauthorized();
+  const [profile, preferences, captures, proposals, tasks, domains, projects, milestones, checklistTemplates, checklistTemplateItems, checklistInstances, checklistItems, people, notes, routines, routineCompletions, activityEvents, retainers, retainerTemplates, retainerCycles, retainerCycleItems, signals, prototypeRecords] = await Promise.all([
+    supabase.from("profiles").select("id, display_name, company_name, work_type, onboarding_version, onboarding_completed_at, created_at, updated_at"),
+    supabase.from("user_preferences").select("*"),
+    supabase.from("captures").select("*"),
+    supabase.from("proposals").select("*"),
+    supabase.from("tasks").select("*"),
+    supabase.from("domains").select("*"),
+    supabase.from("projects").select("*"),
+    supabase.from("project_milestones").select("*"),
+    supabase.from("project_checklist_templates").select("*"),
+    supabase.from("project_checklist_template_items").select("*"),
+    supabase.from("project_checklist_instances").select("*"),
+    supabase.from("project_checklist_items").select("*"),
+    supabase.from("people").select("*"),
+    supabase.from("notes").select("*"),
+    supabase.from("routines").select("*"),
+    supabase.from("routine_completions").select("*"),
+    supabase.from("activity_events").select("*"),
+    supabase.from("retainers").select("*"),
+    supabase.from("retainer_deliverable_templates").select("*"),
+    supabase.from("retainer_cycles").select("*"),
+    supabase.from("retainer_cycle_items").select("*"),
+    supabase.from("slipping_signals").select("*"),
+    supabase.from("prototype_records").select("*"),
+  ]);
+  const results = [profile, preferences, captures, proposals, tasks, domains, projects, milestones, checklistTemplates, checklistTemplateItems, checklistInstances, checklistItems, people, notes, routines, routineCompletions, activityEvents, retainers, retainerTemplates, retainerCycles, retainerCycleItems, signals, prototypeRecords];
+  if (results.some((result) => result.error)) return serverError();
+  const payload = {
+    schemaVersion: 1,
+    exportedAt: new Date().toISOString(),
+    account: { id: user.id, email: user.email ?? null },
+    records: {
+      profiles: profile.data ?? [], userPreferences: preferences.data ?? [], captures: captures.data ?? [], proposals: proposals.data ?? [], tasks: tasks.data ?? [], domains: domains.data ?? [], projects: projects.data ?? [], projectMilestones: milestones.data ?? [], projectChecklistTemplates: checklistTemplates.data ?? [], projectChecklistTemplateItems: checklistTemplateItems.data ?? [], projectChecklistInstances: checklistInstances.data ?? [], projectChecklistItems: checklistItems.data ?? [], people: people.data ?? [], notes: notes.data ?? [], routines: routines.data ?? [], routineCompletions: routineCompletions.data ?? [], activityEvents: activityEvents.data ?? [], retainers: retainers.data ?? [], retainerDeliverableTemplates: retainerTemplates.data ?? [], retainerCycles: retainerCycles.data ?? [], retainerCycleItems: retainerCycleItems.data ?? [], slippingSignals: signals.data ?? [], prototypeRecords: prototypeRecords.data ?? [],
+    },
+  };
+  return new NextResponse(JSON.stringify(payload, null, 2), {
+    headers: {
+      "Cache-Control": "private, no-store",
+      "Content-Disposition": `attachment; filename="${exportFilename()}"`,
+      "Content-Type": "application/json; charset=utf-8",
+    },
+  });
+}
