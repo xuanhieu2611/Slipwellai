@@ -6,5 +6,9 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|_next/webpack-hmr|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  // `sw.js`, the manifest, and the offline shell are public and must never
+  // depend on a session, so they skip the session refresh entirely.
+  matcher: [
+    "/((?!_next/static|_next/image|_next/webpack-hmr|favicon.ico|sw.js|manifest.webmanifest|offline|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };

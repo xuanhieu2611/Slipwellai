@@ -61,7 +61,8 @@ Important limitations:
 - 🟡 Browser voice recording and transient synchronous transcription exist as a Phase 0 slice. Recordings are never stored; a failed transcription is discarded and the user is directed to text capture.
 - ⬜ There is no calendar sync, notification system, billing, account-deletion workflow, or production analytics/operations layer.
 - ⬜ There are no cross-user RLS integration tests or browser end-to-end tests.
-- ⬜ There is no installable PWA manifest/application-shell strategy or production deployment pipeline yet.
+- 🟡 The app is installable: a generated web app manifest, icon set, capability-aware install guidance, and a shell-only service worker with an offline fallback exist. There is still no production deployment pipeline.
+- 🟡 Continuous integration runs lint, type check, unit tests, and the production build; end-to-end tests and a format check are not in CI yet.
 - ⬜ The product-validation interview and willingness-to-pay exit criteria have not been recorded as complete.
 
 Current implementation evidence:
@@ -73,6 +74,8 @@ Current implementation evidence:
 - Database schema and RLS: `supabase/migrations/20260802224924_phase0_foundation.sql`
 - Current setup and commands: `README.md`, `.env.example`, `package.json`
 - Working-prototype record model and surfaces: `supabase/migrations/20260803110000_working_prototype_core.sql`, `src/components/workspace.tsx`, `src/app/api/workspace/route.ts`
+- Installability, shell caching, and offline fallback: `src/app/manifest.ts`, `public/sw.js`, `public/icons/`, `src/components/service-worker-registrar.tsx`, `src/components/install-guidance.tsx`, `src/app/offline/page.tsx`
+- Continuous integration: `.github/workflows/ci.yml`
 
 ## Ordered MVP roadmap
 
@@ -140,9 +143,9 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 - [ ] Document migration promotion, rollback/forward-recovery, and seed-fixture procedures.
 - [ ] Add centrally managed feature flags and remotely configurable product defaults.
 - [ ] Add safe secret management and automated secret scanning.
-- [ ] Add canonical scripts for format check, lint, type check, unit/integration tests, end-to-end tests, and build.
-- [ ] Add CI that runs the full required suite on every release candidate.
-- [ ] Add a valid web app manifest, safe application-shell caching, install guidance, and browser capability fallbacks.
+- [ ] Partial: `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:e2e`, and `npm run build` are canonical scripts; a format check and a separate integration-test script remain open.
+- [ ] Partial: `.github/workflows/ci.yml` runs lint, type check, unit tests, and the production build on every push to `main` and every pull request; end-to-end tests and a format check are not in CI yet because they need a dedicated Supabase test project and fixture storage state.
+- [x] Add a valid web app manifest, safe application-shell caching, install guidance, and browser capability fallbacks.
 - [ ] Support current and previous major Chrome, Safari, Firefox, and Edge versions.
 - [ ] Keep canonical APIs, validation, and domain services independent from React so future Expo clients can reuse them.
 
@@ -722,17 +725,20 @@ Add a dated row when a milestone or important checkbox becomes verified. Link co
 | 2026-08-02 | Transient voice-audio revision | `20260803161000_remove_voice_audio_storage.sql`, `npx supabase db push`, `npx supabase migration list`, storage-bucket count query, `src/app/api/voice-captures/route.ts`, `src/components/dashboard.tsx`, `src/lib/voice.test.ts`, `npm test`, `npm run lint`, `npm run build`, fresh-production Playwright auth interaction | Pass: the migration was applied to the linked pilot, the `capture-audio` bucket count is zero, and the one unusable voice capture without a transcript was removed. New recordings are sent directly to OpenRouter with an OpenAI transcription model, and transcription failure directs the user to keyboard capture, consistent with the updated CAP-05 and REV-07. | Codex |
 | 2026-08-02 | OpenRouter voice-transcription adapter | `src/lib/transcription.ts`, `src/lib/transcription.test.ts`, `.env.example`, `README.md`, `supabase/config.toml`, `npm test -- src/lib/transcription.test.ts`, `npm run lint`, `npm run build` | Pass: transient browser audio is submitted as multipart data to OpenRouter's transcription endpoint with the configured `openai/gpt-4o-transcribe` default. The adapter accepts only a non-empty transcript and uses `OPENROUTER_API_KEY`; the app and local Supabase configuration no longer require `OPENAI_API_KEY`. | Codex |
 | 2026-08-03 | Visual identity rebuild | `src/app/globals.css`, `src/app/layout.tsx`, `src/components/theme-toggle.tsx`, `src/components/app-shell.tsx`, `src/components/sign-in.tsx`, `src/components/build-state-page.tsx`, `src/components/ui/primitives.tsx`, `npm run lint`, `npm test`, `npm run test:e2e`, `npm run build`; desktop/mobile screenshots in both themes | Pass: 33 unit tests, lint, build, and both public-auth browser tests (desktop and mobile). The moss/warm-paper brand was replaced, at the user's explicit direction, with a cobalt-on-graphite identity: rebuilt CSS-variable token layer, first dark mode (system preference plus a persisted manual toggle), one documented three-step radius scale, Space Grotesk/Instrument Sans/JetBrains Mono, and a Phosphor icon set. Contrast was measured for twelve foreground/background token pairs in both themes; all pass WCAG AA (lowest 5.16:1). Reduced-motion and reduced-transparency fallbacks are in place. WCAG 2.2 AA remains unchecked: target size, focus appearance, and keyboard-navigation conformance were not audited. Authenticated surfaces were verified against the linked pilot in a browser; the six onboarding browser tests stayed skipped for lack of an authenticated storage-state fixture. | Claude |
+| 2026-08-03 | Inbox review card rebuild and capture discard | `src/components/dashboard.tsx`, `src/app/globals.css`, `src/components/ui/primitives.tsx`, `src/lib/dashboard.ts`, `src/app/(authenticated)/[surface]/page.tsx`, `npm run lint`, `npx tsc --noEmit`, `npm test`, `npm run build`; authenticated browser verification against the linked pilot at 1280 px and 360 px in both themes | Pass: 33 unit tests, lint, type check, and build. The Inbox now uses the shared design system instead of ad-hoc styles, and each review card reads source → proposal → decision. Fixed in the process: a wrapped confidence chip, a clipped due-time input, proposal fields that carried no visible labels, and a controlled-input bug where clearing the title silently restored the model's value. A failed interpretation is now recoverable in two directions — `Interpret again` or `Discard`, with a two-step in-card confirmation — where the only prior action was retry; the failure explanation is now taken from the stored `failure_code`. Discard still routes through the existing proposal action, so a capture without any proposal row cannot be discarded from the Inbox. | Claude |
+| 2026-08-03 | Workspace command validation fix and toast feedback | `src/lib/workspace.ts`, `src/app/api/workspace/route.ts`, `src/lib/workspace.test.ts`, `src/components/ui/toast.tsx`, `src/components/ui/primitives.tsx`, `src/components/app-shell.tsx`, `src/components/workspace.tsx`, `src/app/globals.css`, `npm run lint`, `npx tsc --noEmit`, `npm test`, `npm run build` | Pass in static verification: 36 unit tests, lint, type check, and build. Fixed a release-blocking defect: every manual creation form (domain, project, task, person, note, checklist template, person interaction) was rejected with "That workspace change was not valid" whenever an optional text field was left blank, because the forms post `null` for a cleared field while `optionalText` accepted only `undefined`. The prior tests omitted those fields entirely and so never exercised the payload the browser actually sends; a regression test now asserts the real shape. Validation failures also name the offending field instead of failing anonymously. Workspace feedback moved from a page-top inline banner to a shared toast stack mounted in the app shell, with success confirmations that did not previously exist and mobile positioning clear of the tab bar and capture button. Authenticated browser verification against the linked pilot is pending — it needs a signed-in session that was not available in this environment. | Claude |
+| 2026-08-05 | Installable app shell, offline fallback, and CI | `src/app/manifest.ts`, `public/sw.js`, `public/icons/`, `src/components/service-worker-registrar.tsx`, `src/components/install-guidance.tsx`, `src/app/offline/page.tsx`, `src/lib/pwa.ts`, `src/lib/pwa.test.ts`, `src/lib/service-worker.test.ts`, `src/proxy.ts`, `.github/workflows/ci.yml`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`; authenticated browser verification of a production build against the linked pilot at 1280 px and 360 px | Pass: 52 unit tests, lint, type check, and build. Chrome fetched the generated manifest, offered its install prompt on Settings, and activated the service worker; the precache contained exactly `/offline` and the three icons. After signing in and browsing Inbox and Settings, the cache held only content-hashed `/_next/static/` assets plus those four public files — no API response, no `/auth/*` response, and no authenticated HTML — and an offline navigation to `/today` rendered the offline shell instead of stale data. Install guidance is unit-tested for the prompt, installed, iOS, macOS Safari, Firefox, and generic branches; only the Chromium prompt branch was exercised in a real browser. CI is not yet proven on GitHub because this is the first commit containing the workflow, and it does not yet run end-to-end tests or a format check. | Claude |
 
 Canonical quality commands still needed:
 
 | Check | Command | Current state |
 | --- | --- | --- |
 | Format check | To be added to `package.json` | ⬜ Missing |
-| Lint | `npm run lint` | ✅ Passing at baseline audit |
-| Type check | To be added to `package.json` | ⬜ Missing as a dedicated check |
-| Unit/integration | `npm test` | 🟡 Unit tests only |
+| Lint | `npm run lint` | ✅ Passing; runs in CI |
+| Type check | `npm run typecheck` | ✅ Passing; runs in CI |
+| Unit/integration | `npm test` | 🟡 Unit tests only; runs in CI |
 | End-to-end | `npm run test:e2e` | 🟡 Fixture-gated browser coverage; not yet run against local-Supabase fixtures |
-| Production build | `npm run build` | ✅ Passing at baseline audit |
+| Production build | `npm run build` | ✅ Passing; runs in CI |
 
 ## Immediate next milestones
 

@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Instrument_Sans, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { ServiceWorkerRegistrar } from "@/components/service-worker-registrar";
 import "./globals.css";
 
 const displayFont = Space_Grotesk({
@@ -23,6 +24,21 @@ const monoFont = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Slipwell",
   description: "Capture anything. Nothing important slips through.",
+  applicationName: "Slipwell",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  appleWebApp: { capable: true, title: "Slipwell", statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  // Matches the brand surface colours so an installed window does not flash a foreign chrome colour.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#eef1f6" },
+    { media: "(prefers-color-scheme: dark)", color: "#0c1017" },
+  ],
 };
 
 // Applies the stored theme before first paint so the page never flashes the wrong mode.
@@ -42,7 +58,10 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {children}
+        <ServiceWorkerRegistrar />
+      </body>
     </html>
   );
 }
