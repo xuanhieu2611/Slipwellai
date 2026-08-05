@@ -1,16 +1,27 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+export type ProposalApplication = {
+  proposal_id: string;
+  item_index: number;
+  outcome: "filed" | "dismissed";
+  record_type: string | null;
+  record_id: string | null;
+};
+
 export type DashboardData = {
   captures: Array<{
     id: string;
     original_text: string;
     source_type: "text" | "voice";
     status: string;
+    failure_code: string | null;
+    interpretation_claimed_at: string | null;
     created_at: string;
     proposal?: {
       id: string;
       status: string;
       proposal_json: unknown;
+      applications: ProposalApplication[];
     };
   }>;
   records: Array<{ id: string; proposal_id: string | null; record_type: string; title: string; destination_name: string | null; created_at: string }>;
@@ -30,9 +41,10 @@ export const newestProposalByCapture = <T extends { capture_id: string }>(propos
 
 export async function getDashboardData(): Promise<DashboardData> {
   const supabase = await createSupabaseServerClient();
-  const [capturesResult, proposalsResult, prototypeRecordsResult, taskRecordsResult, noteRecordsResult, retainersResult, cyclesResult, cycleItemsResult, signalsResult] = await Promise.all([
-    supabase.from("captures").select("id, original_text, source_type, status, created_at").order("created_at", { ascending: false }).limit(12),
+  const [capturesResult, proposalsResult, applicationsResult, prototypeRecordsResult, taskRecordsResult, noteRecordsResult, retainersResult, cyclesResult, cycleItemsResult, signalsResult] = await Promise.all([
+    supabase.from("captures").select("id, original_text, source_type, status, failure_code, interpretation_claimed_at, created_at").order("created_at", { ascending: false }).limit(12),
     supabase.from("proposals").select("id, capture_id, status, proposal_json").order("created_at", { ascending: false }),
+    supabase.from("proposal_applications").select("proposal_id, item_index, outcome, record_type, record_id"),
     supabase.from("prototype_records").select("id, proposal_id, record_type, title, destination_name, created_at").order("created_at", { ascending: false }).limit(8),
     supabase.from("tasks").select("id, proposal_id, title, created_at").not("proposal_id", "is", null).order("created_at", { ascending: false }).limit(8),
     supabase.from("notes").select("id, proposal_id, title, created_at").not("proposal_id", "is", null).order("created_at", { ascending: false }).limit(8),
@@ -45,12 +57,18 @@ export async function getDashboardData(): Promise<DashboardData> {
   const proposals = (proposalsResult.data ?? []) as Array<{ id: string; capture_id: string; status: string; proposal_json: unknown }>;
   // The query is newest first. A retry creates a new proposal, so retain the newest state for each capture.
   const proposalByCapture = newestProposalByCapture(proposals);
+  const applications = (applicationsResult.data ?? []) as ProposalApplication[];
 
   return {
-    captures: ((capturesResult.data ?? []) as DashboardData["captures"]).map((capture) => ({
-      ...capture,
-      proposal: proposalByCapture.get(capture.id),
-    })),
+    captures: ((capturesResult.data ?? []) as DashboardData["captures"]).map((capture) => {
+      const proposal = proposalByCapture.get(capture.id);
+      return {
+        ...capture,
+        proposal: proposal
+          ? { ...proposal, applications: applications.filter((application) => application.proposal_id === proposal.id) }
+          : undefined,
+      };
+    }),
     records: [
       ...((prototypeRecordsResult.data ?? []) as DashboardData["records"]),
       ...((taskRecordsResult.data ?? []).map((record) => ({ ...record, record_type: "task", destination_name: null })) as DashboardData["records"]),

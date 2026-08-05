@@ -2,7 +2,8 @@ import { z } from "zod";
 
 const id = z.uuid();
 const shortText = (max: number) => z.string().trim().min(1).max(max);
-const optionalText = (max: number) => z.string().trim().max(max).optional().transform((value) => value || null);
+/* The forms post null for every cleared optional field, so nullish is the shape the client actually sends. */
+const optionalText = (max: number) => z.string().trim().max(max).nullish().transform((value) => value || null);
 const optionalId = id.optional().nullable();
 
 export const workspaceCommandSchema = z.discriminatedUnion("action", [

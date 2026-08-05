@@ -8,7 +8,11 @@ const relationTables = { domainId: "domains", projectId: "projects", personId: "
 
 export async function POST(request: NextRequest) {
   const parsed = workspaceCommandSchema.safeParse(await request.json());
-  if (!parsed.success) return badRequest("That workspace change was not valid.");
+  if (!parsed.success) {
+    /* Name the offending field: a bare rejection gives the person no way to tell which input to fix. */
+    const field = parsed.error.issues[0]?.path.filter((segment) => typeof segment === "string").join(".");
+    return badRequest(field ? `That workspace change was not valid (${field}).` : "That workspace change was not valid.");
+  }
   const { supabase, user } = await requireUser();
   if (!user) return unauthorized();
   const command = parsed.data;

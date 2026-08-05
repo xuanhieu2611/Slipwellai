@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { interpretCapture } from "@/lib/captures";
 import { env } from "@/lib/env";
 import { badRequest, serverError, unauthorized } from "@/lib/http";
 import { requireUser } from "@/lib/supabase/server";
@@ -47,20 +46,21 @@ export async function POST(request: NextRequest) {
     .insert({
       original_text: transcript,
       source_type: "voice",
-      status: "interpreting",
+      status: "queued",
       idempotency_key: idempotencyKey,
       transcription_model: env.openRouterTranscriptionModel(),
       transcription_latency_ms: Date.now() - startedAt,
     })
-    .select("id, original_text")
+    .select("id, status")
     .single();
 
   if (error?.code === "23505") {
-    const { data: duplicate } = await supabase.from("captures").select("id").eq("idempotency_key", idempotencyKey).single();
-    if (duplicate) return NextResponse.json({ captureId: duplicate.id, status: "duplicate" });
+    const { data: duplicate } = await supabase.from("captures").select("id, status").eq("idempotency_key", idempotencyKey).single();
+    if (duplicate) return NextResponse.json({ captureId: duplicate.id, status: duplicate.status, duplicate: true });
   }
   if (error || !capture) return serverError();
 
-  const result = await interpretCapture({ supabase, capture });
-  return NextResponse.json({ captureId: capture.id, status: "needs_review", warning: result.error });
+  /* The transcript is the source and is now stored. Interpretation runs as its own
+     request, the same as typed capture, so a queued voice capture stays recoverable. */
+  return NextResponse.json({ captureId: capture.id, status: capture.status });
 }

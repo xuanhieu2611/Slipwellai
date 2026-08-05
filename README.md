@@ -23,11 +23,20 @@ The checked-in local config leaves Google disabled until local credentials are s
 
 Use only low-sensitivity test captures during Phase 0. Capture text is sent only to the configured OpenRouter model with zero-data-retention and provider data collection denied. Its original text is stored before interpretation and no capture content is logged by application code.
 
+## Install and offline behaviour
+
+Slipwell is an installable web app. `/manifest.webmanifest` is generated from `src/app/manifest.ts`, icons live in `public/icons/`, and Settings shows capability-aware install guidance: the browser's own install prompt where one exists, written steps for iOS/macOS Safari, and an honest note in Firefox, which does not install web apps.
+
+`public/sw.js` caches the application shell only. Content-hashed `/_next/static/` assets and the public icons are served cache-first; the precached `/offline` page is shown when a navigation fails without a connection. API responses, `/auth/*`, and authenticated HTML are never written to the cache, so a shared device cannot replay another person's records. The service worker registers in production builds only — bump `CACHE_VERSION` in `public/sw.js` whenever the precached shell changes.
+
 ## Checks
 
 - `npm run lint`
+- `npm run typecheck`
 - `npm test`
 - `npm run build`
+
+`.github/workflows/ci.yml` runs those four on every push to `main` and every pull request. A dedicated format check and end-to-end tests in CI are still outstanding; see the tracker.
 
 The database migration is versioned at `supabase/migrations/20260802224924_phase0_foundation.sql` and has been applied to Supabase project `slipwell-phase0` in US West. All pilot tables have RLS policies keyed to the authenticated owner.
 

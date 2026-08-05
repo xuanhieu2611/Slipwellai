@@ -1,14 +1,14 @@
 "use client";
 
-import { type FormEvent, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { type FormEvent, useState, useSyncExternalStore } from "react";
+import { ArrowClockwise, Check, Keyboard, Microphone, Plus, TrashSimple, WarningCircle } from "@phosphor-icons/react";
+import type { z } from "zod";
+import { isStrandedCapture } from "@/lib/capture-pipeline";
 import { proposalEnvelopeSchema } from "@/lib/proposals/schema";
 import { nextCycleMonth } from "@/lib/retainers";
 import type { DashboardData } from "@/lib/dashboard";
-import { validateVoiceCapture } from "@/lib/voice";
-
-const control = "rounded-md px-3 py-2 text-sm font-semibold transition disabled:opacity-50";
+import { Button, EmptyState, SelectField, StatusMessage, TextField } from "@/components/ui/primitives";
+import { useCapture } from "@/components/capture-dialog";
 
 async function post(path: string, body: unknown) {
   const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -17,134 +17,276 @@ async function post(path: string, body: unknown) {
   return data;
 }
 
-function Pill({ children, warning = false }: { children: React.ReactNode; warning?: boolean }) {
-  return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${warning ? "bg-[var(--attention-soft)] text-[var(--attention)]" : "bg-[var(--accent-soft)] text-[var(--accent-ink)]"}`}>{children}</span>;
+function captureAge(iso: string) {
+  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hr ago`;
+  const days = Math.round(hours / 24);
+  return days <= 1 ? "yesterday" : `${days} days ago`;
 }
 
-function VoiceRecorder({ done }: { done: () => void }) {
-  const [capability, setCapability] = useState<"checking" | "ready" | "unsupported">("checking");
-  const [permission, setPermission] = useState("unknown");
-  const [state, setState] = useState<"idle" | "recording" | "paused" | "transcribing" | "failed">("idle");
+const noSubscription = () => () => {};
+
+/* Client-only so a relative label never disagrees with the server-rendered markup. */
+function CaptureAge({ iso }: { iso: string }) {
+  const label = useSyncExternalStore(noSubscription, () => captureAge(iso), () => "");
+  return label ? <time dateTime={iso}>{label}</time> : null;
+}
+
+const failureCopy: Record<string, string> = {
+  proposal_timeout: "Interpreting this capture took too long. Try again, or discard it if you no longer need it.",
+  proposal_invalid_output: "Slipwell could not read a usable record out of these words. Try again, or discard this and capture it with a little more context.",
+  proposal_provider_error: "The interpretation service did not respond. Your words are saved — try again in a moment.",
+};
+
+const recordTypeLabels = { task: "Task", note: "Note", retainer_update: "Retainer update" } as const;
+
+function CaptureOrigin({ capture }: { capture: DashboardData["captures"][number] }) {
+  return <span className="review-origin">
+    {capture.source_type === "voice" ? <Microphone aria-hidden size={15} /> : <Keyboard aria-hidden size={15} />}
+    {capture.source_type === "voice" ? "Voice transcript" : "Typed"}
+    <CaptureAge iso={capture.created_at} />
+  </span>;
+}
+
+/* Filing without waiting for the model. Available whenever interpretation has not
+   produced something reviewable, so the words are never held hostage by the provider. */
+function ManualFile({ capture, done }: { capture: DashboardData["captures"][number]; done: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const startedAtRef = useRef(0);
-  const idempotencyKeyRef = useRef<string | null>(null);
+  const [draft, setDraft] = useState({ recordType: "task" as "task" | "note", title: capture.original_text.slice(0, 120) });
 
-  useEffect(() => {
-    const supported = typeof window !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia) && typeof MediaRecorder !== "undefined";
-    const timer = window.setTimeout(() => setCapability(supported ? "ready" : "unsupported"), 0);
-    if (!supported || !navigator.permissions?.query) return () => window.clearTimeout(timer);
-    void navigator.permissions.query({ name: "microphone" as PermissionName }).then((result) => {
-      setPermission(result.state);
-      result.onchange = () => setPermission(result.state);
-    }).catch(() => setPermission("unknown"));
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  async function transcribe(audio: Blob, durationMs: number) {
-    const validated = validateVoiceCapture({ mimeType: audio.type, byteSize: audio.size, durationMs });
-    if (!validated.ok) { setState("failed"); setMessage(validated.error); return; }
-    setState("transcribing");
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
     setMessage("");
     try {
-      idempotencyKeyRef.current ??= crypto.randomUUID();
-      const formData = new FormData();
-      formData.set("audio", new Blob([audio], { type: validated.mimeType }), "capture.webm");
-      formData.set("durationMs", String(durationMs));
-      formData.set("idempotencyKey", idempotencyKeyRef.current);
-      const response = await fetch("/api/voice-captures", { method: "POST", body: formData });
-      const payload: unknown = await response.json();
-      if (!response.ok) throw new Error(typeof payload === "object" && payload && "error" in payload ? String(payload.error) : "Voice transcription failed. Please use text capture instead.");
-      idempotencyKeyRef.current = null;
-      setState("idle");
+      await post(`/api/captures/${capture.id}/file`, { recordType: draft.recordType, title: draft.title.trim(), body: capture.original_text });
       done();
     } catch (error) {
-      idempotencyKeyRef.current = null;
-      setState("failed");
-      setMessage(error instanceof Error ? error.message : "Voice transcription failed. Please use text capture instead.");
+      setMessage(error instanceof Error ? error.message : "That did not file.");
+      setBusy(false);
     }
   }
 
-  async function begin() {
-    if (capability !== "ready") return;
+  if (!open) return <Button className="button-secondary" onClick={() => setOpen(true)}><Check aria-hidden size={16} />File it myself</Button>;
+
+  return <form className="review-fields w-full" onSubmit={submit}>
+    <label className="field-label form-span"><span>Title</span>
+      <TextField autoFocus maxLength={280} onChange={(event) => setDraft({ ...draft, title: event.target.value })} required value={draft.title} />
+    </label>
+    <label className="field-label"><span>File it as</span>
+      <SelectField onChange={(event) => setDraft({ ...draft, recordType: event.target.value as "task" | "note" })} value={draft.recordType}>
+        <option value="task">Task</option>
+        <option value="note">Note</option>
+      </SelectField>
+    </label>
+    <div className="form-span flex flex-wrap gap-2">
+      <Button className="button-primary" disabled={busy || !draft.title.trim()} type="submit">{busy ? "Filing…" : "File it"}</Button>
+      <Button className="button-quiet" disabled={busy} onClick={() => setOpen(false)}>Cancel</Button>
+      <p className="form-help form-span">Your full capture is kept as the record&apos;s body.</p>
+    </div>
+    {message && <div className="form-span"><StatusMessage tone="error">{message}</StatusMessage></div>}
+  </form>;
+}
+
+/* A capture whose interpretation never finished. It stays visible and re-runnable
+   instead of disappearing between the queued and needs-review states. */
+function PendingCapture({ capture, done }: { capture: DashboardData["captures"][number]; done: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const stranded = useSyncExternalStore(noSubscription, () => isStrandedCapture(capture), () => false);
+
+  async function interpret() {
+    setBusy(true);
     setMessage("");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const candidates = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus"];
-      const mimeType = candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate));
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-      chunksRef.current = [];
-      recorder.ondataavailable = (event) => { if (event.data.size > 0) chunksRef.current.push(event.data); };
-      recorder.onstop = () => {
-        stream.getTracks().forEach((track) => track.stop());
-        const audio = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        void transcribe(audio, Date.now() - startedAtRef.current);
-      };
-      recorderRef.current = recorder;
-      startedAtRef.current = Date.now();
-      recorder.start();
-      setState("recording");
+      await post(`/api/captures/${capture.id}/interpret`, {});
+      done();
     } catch (error) {
-      setPermission("denied");
-      setState("failed");
-      setMessage(error instanceof DOMException && error.name === "NotAllowedError" ? "Microphone access was denied. You can still use text capture." : "Slipwell could not start the microphone. You can still use text capture.");
+      setMessage(error instanceof Error ? error.message : "Interpretation could not start.");
+      setBusy(false);
     }
   }
 
-  function pauseOrResume() {
-    const recorder = recorderRef.current;
-    if (!recorder) return;
-    if (recorder.state === "recording") { recorder.pause(); setState("paused"); }
-    else if (recorder.state === "paused") { recorder.resume(); setState("recording"); }
+  return <article className="review-card">
+    <div className="review-head">
+      <CaptureOrigin capture={capture} />
+      <span className="tag">{stranded ? "Waiting to interpret" : "Interpreting"}</span>
+    </div>
+    <blockquote className="review-source">{capture.original_text}</blockquote>
+    <div className="review-panel">
+      <p className="review-reason">
+        {stranded
+          ? "Your words are stored. Interpretation did not finish — most likely the tab closed or the connection dropped. Nothing was lost."
+          : "Stored. Slipwell is reading it now; refresh in a moment to review it."}
+      </p>
+    </div>
+    <div className="review-actions">
+      <Button className="button-primary" disabled={busy} onClick={interpret}><ArrowClockwise aria-hidden size={16} />{busy ? "Interpreting…" : stranded ? "Interpret it now" : "Check again"}</Button>
+      <ManualFile capture={capture} done={done} />
+    </div>
+    {message && <div className="px-[1.05rem] pb-[1.05rem]"><StatusMessage tone="error">{message}</StatusMessage></div>}
+  </article>;
+}
+
+type ProposalItem = z.infer<typeof proposalEnvelopeSchema>["proposals"][number];
+
+function ProposedItem({
+  item,
+  index,
+  total,
+  proposalId,
+  done,
+}: {
+  item: ProposalItem;
+  index: number;
+  total: number;
+  proposalId: string;
+  done: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [draft, setDraft] = useState({
+    recordType: item.recordType,
+    title: item.title,
+    destinationName: item.destinationName ?? "",
+    dueOn: item.dueOn ?? "",
+    dueTime: item.dueTime ?? "",
+  });
+
+  async function action(choice: "accept" | "dismiss_item") {
+    setBusy(true);
+    setMessage("");
+    try {
+      await post(`/api/proposals/${proposalId}`, choice === "accept"
+        ? {
+            action: choice,
+            proposalIndex: index,
+            edited: {
+              recordType: draft.recordType,
+              title: draft.title.trim() || item.title,
+              body: item.body,
+              destinationName: draft.destinationName.trim() || undefined,
+              dueOn: draft.dueOn || undefined,
+              dueTime: draft.dueTime || undefined,
+            },
+          }
+        : { action: choice, proposalIndex: index });
+      done();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "That action did not go through.");
+      setBusy(false);
+    }
   }
 
-  function stop() { recorderRef.current?.stop(); }
+  const titleConfidence = Math.round(item.confidence.title * 100);
 
-  if (capability === "unsupported") return <p className="text-sm text-[var(--ink-muted)]">Voice capture is unavailable in this browser. Text capture is always available.</p>;
-
-  const canRecord = state === "idle" || state === "failed";
-  return <div className="flex flex-col items-center gap-3 py-2 text-center">
-    {state !== "recording" && state !== "paused" && <button type="button" disabled={capability !== "ready" || !canRecord} onClick={begin} className={`${control} h-14 rounded-full bg-[var(--accent)] px-8 text-base text-[var(--accent-on)] hover:bg-[var(--accent-hover)] disabled:hover:bg-[var(--accent)]`}>
-      {state === "transcribing" ? <span className="inline-flex items-center gap-2"><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--accent-on)]/35 border-t-[var(--accent-on)]" aria-hidden="true" />Transcribing…</span> : "Record voice"}
-    </button>}
-    {(state === "recording" || state === "paused") && <div className="flex items-center gap-3">
-      <span className="flex items-center gap-2 text-sm font-medium text-[var(--danger)]"><span className={`h-2.5 w-2.5 rounded-full bg-[var(--danger)] ${state === "recording" ? "animate-pulse" : ""}`} aria-hidden="true" />{state === "paused" ? "Paused" : "Recording"}</span>
-      <button type="button" onClick={pauseOrResume} className={`${control} border border-[var(--line)] bg-[var(--surface)]`}>{state === "paused" ? "Resume" : "Pause"}</button>
-      <button type="button" onClick={stop} className={`${control} h-14 rounded-full bg-[var(--accent)] px-8 text-base text-[var(--accent-on)] hover:bg-[var(--accent-hover)]`}>Done</button>
-    </div>}
-    <p className="text-xs text-[var(--ink-muted)]">{permission === "denied" ? "Microphone access is blocked" : state === "recording" ? "Recording, click Done when you're finished." : state === "transcribing" ? "Turning your words into an inbox item…" : "One click. Speak. It lands in review, transcribed."}</p>
-    {message && <p role="alert" className="text-sm text-[var(--danger)]">{message}</p>}
+  return <div className="review-panel">
+    <div className="review-panel-head">
+      <h4>{total > 1 ? `Record ${index + 1} of ${total}` : "Slipwell suggests filing this"}</h4>
+      <span className="review-tags">
+        <span className="tag tag--accent">{recordTypeLabels[item.recordType]}</span>
+        <span className={`tag${titleConfidence < 70 ? " tag--attention" : ""}`}>Title {titleConfidence}% sure</span>
+      </span>
+    </div>
+    <p className="review-reason">{item.reason}</p>
+    <div className="review-fields">
+      <label className="field-label form-span"><span>Title</span>
+        <TextField maxLength={280} onChange={(event) => setDraft({ ...draft, title: event.target.value })} required value={draft.title} />
+      </label>
+      <label className="field-label"><span>Record type</span>
+        <SelectField onChange={(event) => setDraft({ ...draft, recordType: event.target.value as typeof draft.recordType })} value={draft.recordType}>
+          <option value="task">Task</option>
+          <option value="note">Note</option>
+          <option value="retainer_update">Retainer update</option>
+        </SelectField>
+      </label>
+      <label className="field-label"><span>Person or client (optional)</span>
+        <TextField maxLength={160} onChange={(event) => setDraft({ ...draft, destinationName: event.target.value })} placeholder="Nobody in particular" value={draft.destinationName} />
+      </label>
+      <label className="field-label"><span>Due date (optional)</span>
+        <TextField onChange={(event) => setDraft({ ...draft, dueOn: event.target.value })} type="date" value={draft.dueOn} />
+      </label>
+      <label className="field-label"><span>Due time (optional)</span>
+        <TextField onChange={(event) => setDraft({ ...draft, dueTime: event.target.value })} type="time" value={draft.dueTime} />
+      </label>
+      <div className="form-span flex flex-wrap gap-2">
+        <Button className="button-primary" disabled={busy || !draft.title.trim()} onClick={() => action("accept")}><Check aria-hidden size={16} weight="bold" />{busy ? "Filing…" : "Accept and file"}</Button>
+        <Button className="button-quiet" disabled={busy} onClick={() => action("dismiss_item")}>Not this one</Button>
+      </div>
+      {message && <div className="form-span"><StatusMessage tone="error">{message}</StatusMessage></div>}
+    </div>
   </div>;
 }
 
-function Composer({ done, focusOnLoad }: { done: () => void; focusOnLoad: boolean }) {
-  const [text, setText] = useState(""); const [busy, setBusy] = useState(false); const [message, setMessage] = useState("");
-  const [showText, setShowText] = useState(focusOnLoad);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => {
-    if (focusOnLoad) inputRef.current?.focus();
-  }, [focusOnLoad]);
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setMessage("");
-    try { await post("/api/captures", { text, idempotencyKey: crypto.randomUUID() }); setText(""); done(); } catch (error) { setMessage(error instanceof Error ? error.message : "Capture failed."); setBusy(false); }
-  }
-  return <section className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm sm:p-6">
-    <div className="flex items-start justify-between gap-4"><div><p className="text-sm font-semibold text-[var(--accent)]">Universal capture</p><h2 className="mt-1 text-2xl font-semibold tracking-tight">What needs a place?</h2></div><Pill>Review-first</Pill></div>
-    <div className="mt-5 rounded-md bg-[var(--surface-sunken)] p-4"><VoiceRecorder done={done} /></div>
-    <div className="mt-4 flex items-center gap-3"><div className="h-px flex-1 bg-[var(--line)]" /><button type="button" onClick={() => setShowText((value) => !value)} className="text-xs font-semibold text-[var(--ink-muted)] hover:text-[var(--accent)]">{showText ? "Hide text capture" : "Type it instead"}</button><div className="h-px flex-1 bg-[var(--line)]" /></div>
-    {showText && <form className="mt-4" onSubmit={submit}><label className="sr-only" htmlFor="capture">Capture text</label><textarea ref={inputRef} id="capture" required maxLength={10000} value={text} onChange={(event) => setText(event.target.value)} className="min-h-20 w-full rounded-md border border-[var(--line)] bg-[var(--surface)] p-4 text-sm outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent-soft)]" placeholder="Send Rivera Studio the July analytics by Friday…" /><div className="mt-3 flex items-center justify-between gap-3"><p className="text-xs text-[var(--ink-muted)]">Original words are stored before AI runs.</p><button disabled={busy || !text.trim()} className={`${control} border border-[var(--line)] bg-[var(--surface)] hover:border-[var(--accent)] hover:text-[var(--accent)]`} type="submit">{busy ? "Interpreting…" : "Create proposal"}</button></div></form>}
-    {message && <p role="alert" className="mt-3 text-sm text-[var(--danger)]">{message}</p>}
-  </section>;
-}
-
 function Review({ capture, done }: { capture: DashboardData["captures"][number]; done: () => void }) {
-  const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); const [title, setTitle] = useState(""); const [recordType, setRecordType] = useState(""); const [destination, setDestination] = useState(""); const [dueOn, setDueOn] = useState(""); const [dueTime, setDueTime] = useState("");
   const parsed = capture.proposal ? proposalEnvelopeSchema.safeParse(capture.proposal.proposal_json) : null;
-  const item = parsed?.success ? parsed.data.proposals[0] : null;
+  const items = parsed?.success ? parsed.data.proposals : [];
+  const applications = capture.proposal?.applications ?? [];
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   if (capture.status !== "needs_review") return null;
-  async function action(action: "accept" | "retry" | "discard") { if (!capture.proposal) return; setBusy(true); try { await post(`/api/proposals/${capture.proposal.id}`, action === "accept" && item ? { action, proposalIndex: 0, edited: { recordType: recordType || item.recordType, title: title || item.title, body: item.body, destinationName: destination || item.destinationName, dueOn: dueOn || item.dueOn, dueTime: (dueTime || item.dueTime) || undefined } } : { action }); done(); } catch (error) { setMessage(error instanceof Error ? error.message : "Action failed."); setBusy(false); } }
-  return <article className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm"><div className="flex items-center justify-between"><h3 className="font-semibold">Review capture</h3><Pill warning>Needs review</Pill></div>{capture.source_type === "voice" && <p className="mt-4 text-sm font-medium text-[var(--ink-muted)]">Voice transcript (the recording was not saved)</p>}<blockquote className="mt-2 border-l-2 border-[var(--accent)] pl-3 text-sm leading-6">{capture.original_text}</blockquote>{item ? <div className="mt-4 rounded-md bg-[var(--surface-sunken)] p-4"><div className="flex justify-between gap-3"><div><p className="font-semibold capitalize">{item.recordType.replace("_", " ")}: {item.title}</p><p className="mt-1 text-sm text-[var(--ink-muted)]">{item.reason}</p></div><Pill>{Math.round(item.confidence.title * 100)}% title</Pill></div><div className="mt-3 grid gap-2 sm:grid-cols-[1fr_130px]"><input aria-label="Proposal title" value={title || item.title} onChange={(event) => setTitle(event.target.value)} className="h-10 rounded-sm border border-[var(--line)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]" /><select aria-label="Proposal record type" value={recordType || item.recordType} onChange={(event) => setRecordType(event.target.value)} className="h-10 rounded-sm border border-[var(--line)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]"><option value="task">Task</option><option value="note">Note</option><option value="retainer_update">Retainer update</option></select><input aria-label="Proposal destination" value={destination || item.destinationName || ""} onChange={(event) => setDestination(event.target.value)} className="h-10 rounded-sm border border-[var(--line)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)] sm:col-span-2" placeholder="Optional destination" /><input aria-label="Due date" type="date" value={dueOn || item.dueOn || ""} onChange={(event) => setDueOn(event.target.value)} className="h-10 rounded-sm border border-[var(--line)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]" /><input aria-label="Due time" type="time" value={dueTime || item.dueTime || ""} onChange={(event) => setDueTime(event.target.value)} className="h-10 rounded-sm border border-[var(--line)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]" /></div><div className="mt-3 flex flex-wrap gap-2"><button disabled={busy} onClick={() => action("accept")} className={`${control} bg-[var(--accent)] text-[var(--accent-on)]`}>Accept changes</button><button disabled={busy} onClick={() => action("retry")} className={`${control} border border-[var(--line)]`}>Retry</button><button disabled={busy} onClick={() => action("discard")} className={`${control} text-[var(--danger)]`}>Discard</button></div></div> : <div className="mt-4 rounded-md bg-[var(--attention-soft)] p-4"><p className="text-sm text-[var(--attention)]">The proposal service did not return a safe result. Your source capture is preserved.</p>{capture.proposal && <button disabled={busy} onClick={() => action("retry")} className={`${control} mt-3 border border-[var(--attention-line)] text-[var(--attention)]`}>Retry proposal</button>}</div>}{message && <p role="alert" className="mt-3 text-sm text-[var(--danger)]">{message}</p>}</article>;
+
+  async function action(choice: "retry" | "discard") {
+    if (!capture.proposal) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      await post(`/api/proposals/${capture.proposal.id}`, { action: choice });
+      done();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "That action did not go through.");
+      setBusy(false);
+      setConfirmingDiscard(false);
+    }
+  }
+
+  const outcomeByIndex = new Map(applications.map((application) => [application.item_index, application]));
+  const undecided = items.filter((_, index) => !outcomeByIndex.has(index));
+
+  return <article className={`review-card${items.length > 0 ? "" : " review-card--attention"}`}>
+    <div className="review-head">
+      <CaptureOrigin capture={capture} />
+      {/* A multi-intent capture is not finished when the first record is filed; say how many are left. */}
+      <span className="tag tag--attention">{items.length > 1 ? `${undecided.length} of ${items.length} to decide` : "Needs review"}</span>
+    </div>
+
+    <blockquote className="review-source">{capture.original_text}</blockquote>
+
+    {items.length > 0 ? items.map((item, index) => {
+      const outcome = outcomeByIndex.get(index);
+      if (!outcome) return <ProposedItem done={done} index={index} item={item} key={index} proposalId={capture.proposal!.id} total={items.length} />;
+      return <div className="review-panel" key={index}>
+        <div className="review-panel-head">
+          <h4>{items.length > 1 ? `Record ${index + 1} of ${items.length}` : "Decided"}</h4>
+          <span className="tag">{outcome.outcome === "filed" ? "Filed" : "Not this one"}</span>
+        </div>
+        <p className="review-reason">{item.title}</p>
+      </div>;
+    }) : <div className="review-panel">
+      <div className="review-panel-head"><h4><WarningCircle aria-hidden className="mb-0.5 mr-1.5 inline text-[var(--attention)]" size={16} weight="fill" />Not interpreted</h4></div>
+      <p className="review-reason">{(capture.failure_code && failureCopy[capture.failure_code]) ?? failureCopy.proposal_provider_error}</p>
+    </div>}
+
+    {confirmingDiscard ? <div className="review-confirm" role="group" aria-label="Confirm discard">
+      <p>Discard this capture? It leaves your inbox. The original words stay in Capture recovery on Today.</p>
+      <Button autoFocus className="button-danger" disabled={busy} onClick={() => action("discard")}>{busy ? "Discarding…" : "Discard it"}</Button>
+      <Button className="button-secondary" disabled={busy} onClick={() => setConfirmingDiscard(false)}>Keep it</Button>
+    </div> : <div className="review-actions">
+      {capture.proposal && <Button className={items.length > 0 ? "button-secondary" : "button-primary"} disabled={busy} onClick={() => action("retry")}><ArrowClockwise aria-hidden size={16} />Interpret again</Button>}
+      {items.length === 0 && <ManualFile capture={capture} done={done} />}
+      {capture.proposal
+        ? <Button className="button-danger review-discard" disabled={busy} onClick={() => setConfirmingDiscard(true)}><TrashSimple aria-hidden size={16} />Discard</Button>
+        : <p className="form-help">Slipwell has not returned a proposal for this capture yet. Reload in a moment.</p>}
+    </div>}
+
+    {message && <div className="px-[1.05rem] pb-[1.05rem]"><StatusMessage tone="error">{message}</StatusMessage></div>}
+  </article>;
 }
 
 function RetainerLab({ data, done }: { data: DashboardData; done: () => void }) {
@@ -195,14 +337,116 @@ function RetainerLab({ data, done }: { data: DashboardData; done: () => void }) 
     }
   }
 
-  return <section className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm"><p className="text-sm font-semibold text-[var(--accent)]">Retainer lab</p><h2 className="mt-1 text-xl font-semibold">Rollover with a memory</h2><p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">Cycle generation is idempotent. Incomplete work carries into the next cycle with a visible link back.</p><form className="mt-4 grid gap-2" onSubmit={create}><input required value={name} onChange={(event) => setName(event.target.value)} className="h-10 rounded-sm border border-[var(--line)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]" placeholder="Rivera Studio monthly retainer" /><input required value={deliverable} onChange={(event) => setDeliverable(event.target.value)} className="h-10 rounded-sm border border-[var(--line)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]" placeholder="Monthly analytics" /><button disabled={busy} className={`${control} bg-[var(--accent)] text-[var(--accent-on)] hover:bg-[var(--accent-hover)]`} type="submit">Create retainer</button></form><div className="mt-5 space-y-3">{data.retainers.map((retainer) => { const cycles = data.cycles.filter((cycleData) => cycleData.retainer_id === retainer.id); const latestCycle = cycles[0]; return <article className="rounded-md border border-[var(--line)] p-4" key={retainer.id}><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold">{retainer.name}</p><p className="text-xs text-[var(--ink-muted)]">Monthly on day {retainer.cycle_day}</p></div><div className="grid w-full gap-2 sm:w-auto sm:grid-cols-[minmax(0,1fr)_auto_auto]"><label className="sr-only" htmlFor={`cycle-month-${retainer.id}`}>Cycle month</label><input id={`cycle-month-${retainer.id}`} type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="h-10 min-w-0 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 text-sm" /><button type="button" disabled={busy} onClick={() => cycle(retainer.id, month)} className={`${control} border border-[var(--line)]`}>Generate selected</button><button type="button" disabled={busy} onClick={() => cycle(retainer.id, nextCycleMonth(month))} className={`${control} border border-[var(--line)]`}>Generate next</button></div></div><button type="button" disabled={busy || !latestCycle} onClick={() => slipping(retainer.id)} className={`${control} mt-3 bg-[var(--attention-soft)] text-[var(--attention)]`}>Check Slipping</button>{cycles.length > 0 && <div className="mt-4 space-y-3 border-t border-[var(--line)] pt-3"><p className="text-sm font-semibold">Cycle history</p>{cycles.map((cycleData) => <section id={`cycle-${cycleData.id}`} className="rounded-lg bg-[var(--surface-sunken)] p-3" key={cycleData.id}><p className="text-sm font-medium">{cycleData.cycle_start} to {cycleData.cycle_end}</p><ul className="mt-2 space-y-2">{data.cycleItems.filter((item) => item.cycle_id === cycleData.id).map((item) => { const sourceItem = item.carried_from_item_id ? itemById.get(item.carried_from_item_id) : undefined; const sourceCycle = sourceItem ? cycleById.get(sourceItem.cycle_id) : undefined; return <li id={`cycle-${cycleData.id}-item-${item.id}`} className="flex flex-wrap items-center justify-between gap-2 text-sm" key={item.id}><span>{item.title}{sourceItem && sourceCycle && <a className="ml-2 text-xs font-semibold text-[var(--accent)] underline" href={`#cycle-${sourceCycle.id}-item-${sourceItem.id}`}>Carried from {sourceCycle.cycle_start}</a>}</span><Pill warning={item.status === "open"}>{item.status}</Pill></li>; })}</ul></section>)}</div>}</article>; })}{data.retainers.length === 0 && <p className="rounded-md bg-[var(--surface-sunken)] p-3 text-sm text-[var(--ink-muted)]">Create a small test retainer to explore its lifecycle.</p>}</div>{message && <p role="alert" className="mt-3 text-sm text-[var(--danger)]">{message}</p>}</section>;
+  return <section className="workspace-section mt-0">
+    <div className="section-heading"><div><h2>Rollover with a memory</h2><p className="section-note">Retainer lab</p></div></div>
+    <p className="record-copy">Cycle generation is idempotent. Incomplete work carries into the next cycle with a visible link back.</p>
+    <form className="mt-4 grid gap-2" onSubmit={create}>
+      <label className="field-label" htmlFor="retainer-name"><span>Retainer</span><TextField id="retainer-name" required value={name} onChange={(event) => setName(event.target.value)} placeholder="Rivera Studio monthly retainer" /></label>
+      <label className="field-label" htmlFor="retainer-deliverable"><span>First deliverable</span><TextField id="retainer-deliverable" required value={deliverable} onChange={(event) => setDeliverable(event.target.value)} placeholder="Monthly analytics" /></label>
+      <Button className="button-primary justify-self-start" disabled={busy} type="submit">Create retainer</Button>
+    </form>
+    <div className="mt-5 space-y-3">{data.retainers.map((retainer) => {
+      const cycles = data.cycles.filter((cycleData) => cycleData.retainer_id === retainer.id);
+      const latestCycle = cycles[0];
+      return <article className="rounded-[var(--r-md)] border border-[var(--line)] p-4" key={retainer.id}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><p className="font-semibold">{retainer.name}</p><p className="record-meta">Monthly on day {retainer.cycle_day}</p></div>
+          <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+            <label className="sr-only" htmlFor={`cycle-month-${retainer.id}`}>Cycle month</label>
+            <TextField id={`cycle-month-${retainer.id}`} type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="min-w-0" />
+            <Button className="button-secondary" disabled={busy} onClick={() => cycle(retainer.id, month)}>Generate selected</Button>
+            <Button className="button-secondary" disabled={busy} onClick={() => cycle(retainer.id, nextCycleMonth(month))}>Generate next</Button>
+          </div>
+        </div>
+        <Button className="button-secondary mt-3" disabled={busy || !latestCycle} onClick={() => slipping(retainer.id)}>Check Slipping</Button>
+        {cycles.length > 0 && <div className="mt-4 space-y-3 border-t border-[var(--line)] pt-3">
+          <p className="text-sm font-semibold">Cycle history</p>
+          {cycles.map((cycleData) => <section id={`cycle-${cycleData.id}`} className="rounded-[var(--r-md)] bg-[var(--surface-sunken)] p-3" key={cycleData.id}>
+            <p className="text-sm font-medium">{cycleData.cycle_start} to {cycleData.cycle_end}</p>
+            <ul className="mt-2 space-y-2">{data.cycleItems.filter((item) => item.cycle_id === cycleData.id).map((item) => {
+              const sourceItem = item.carried_from_item_id ? itemById.get(item.carried_from_item_id) : undefined;
+              const sourceCycle = sourceItem ? cycleById.get(sourceItem.cycle_id) : undefined;
+              return <li id={`cycle-${cycleData.id}-item-${item.id}`} className="flex flex-wrap items-center justify-between gap-2 text-sm" key={item.id}>
+                <span>{item.title}{sourceItem && sourceCycle && <a className="ml-2 text-xs font-semibold text-[var(--accent)] underline" href={`#cycle-${sourceCycle.id}-item-${sourceItem.id}`}>Carried from {sourceCycle.cycle_start}</a>}</span>
+                <span className={`tag${item.status === "open" ? " tag--attention" : ""}`}>{item.status}</span>
+              </li>;
+            })}</ul>
+          </section>)}
+        </div>}
+      </article>;
+    })}{data.retainers.length === 0 && <p className="empty-state">Create a small test retainer to explore its lifecycle.</p>}</div>
+    {message && <StatusMessage tone="error">{message}</StatusMessage>}
+  </section>;
 }
 
-export function Dashboard({ data, email }: { data: DashboardData; email: string }) {
-  const [refreshing, setRefreshing] = useState(false); const refresh = () => { setRefreshing(true); window.location.reload(); };
-  const searchParams = useSearchParams();
+export function Dashboard({ data }: { data: DashboardData }) {
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = () => { setRefreshing(true); window.location.reload(); };
+  const { open: openCapture } = useCapture();
   async function resolveSignal(id: string, outcome: "marked_attention" | "deferred" | "dismissed") { await post(`/api/slipping/${id}`, { outcome }); refresh(); }
   async function undoRecord(record: DashboardData["records"][number]) { if (!record.proposal_id) return; await post(`/api/proposals/${record.proposal_id}`, { action: "undo", recordId: record.id }); refresh(); }
-  async function signOut() { await createSupabaseBrowserClient().auth.signOut({ scope: "local" }); window.location.assign("/"); }
-  return <div className="mx-auto max-w-6xl px-4 py-6 sm:px-7 sm:py-8"><header className="mb-7 flex flex-wrap items-center justify-between gap-4"><div><h1 className="text-3xl font-semibold tracking-tight">Nothing important slips through.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--ink-muted)]">This is the active pilot loop for capture, review, retainer rollover, and Slipping while production record models are built.</p></div><div className="flex items-center gap-3"><span className="hidden text-sm text-[var(--ink-muted)] sm:block">{email}</span><button onClick={signOut} className={`${control} border border-[var(--line)] bg-[var(--surface)]`}>Sign out</button></div></header><div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]"><div className="space-y-5"><Composer done={refresh} focusOnLoad={searchParams.get("compose") === "1"} /><section><div className="mb-3 flex justify-between"><h2 className="text-lg font-semibold">Review inbox</h2><span className="text-sm text-[var(--ink-muted)]">{refreshing ? "Refreshing…" : "Originals stay in reach"}</span></div><div className="space-y-3">{data.captures.map((capture) => <Review key={capture.id} capture={capture} done={refresh} />)}{data.captures.filter((capture) => capture.status === "needs_review").length === 0 && <p className="rounded-lg border border-dashed border-[var(--line)] bg-[var(--surface)] p-6 text-sm text-[var(--ink-muted)]">Your review inbox is calm.</p>}</div></section></div><aside className="space-y-5"><section className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5"><p className="text-sm font-semibold text-[var(--accent)]">Slipping</p><h2 className="mt-1 text-xl font-semibold">Attention, not shame.</h2><p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">Each signal explains what needs attention and gives you an intentional next step.</p><div className="mt-4 space-y-3">{data.signals.map((signal) => <article className="rounded-md bg-[var(--surface-soft)] p-3" key={signal.id}><Pill warning>{signal.severity}</Pill><p className="mt-2 text-sm leading-5">{signal.reason}</p><div className="mt-3 flex flex-wrap gap-2"><button onClick={() => resolveSignal(signal.id, "marked_attention")} className={`${control} bg-[var(--surface)] text-[var(--accent-ink)]`}>Mark attention</button><button onClick={() => resolveSignal(signal.id, "deferred")} className={`${control} border border-[var(--line-strong)]`}>Defer</button><button onClick={() => resolveSignal(signal.id, "dismissed")} className={`${control} text-[var(--ink-muted)]`}>Dismiss</button></div></article>)}{data.signals.length === 0 && <p className="rounded-md bg-[var(--surface-soft)] p-3 text-sm text-[var(--ink-muted)]">No active signals. Generate a cycle with an overdue open deliverable to test one.</p>}</div></section><RetainerLab data={data} done={refresh} /><section className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5"><h2 className="font-semibold">Recently filed</h2><ul className="mt-3 space-y-3">{data.records.map((record) => <li key={record.id} className="flex items-start justify-between gap-3 text-sm"><div><p className="font-medium">{record.title}</p><p className="text-xs text-[var(--ink-muted)]">{record.record_type.replace("_", " ")}{record.destination_name ? ` · ${record.destination_name}` : ""}</p></div>{record.proposal_id && <button onClick={() => undoRecord(record)} className={`${control} border border-[var(--line)] text-xs`}>Undo</button>}</li>)}{data.records.length === 0 && <li className="text-sm text-[var(--ink-muted)]">Accepted proposals appear here.</li>}</ul></section></aside></div></div>;
+  const needsReview = data.captures.filter((capture) => capture.status === "needs_review");
+  /* Stored but not yet interpreted. These used to be invisible, which made a capture
+     look lost whenever interpretation did not finish. */
+  const pending = data.captures.filter((capture) => capture.status === "queued" || capture.status === "interpreting");
+
+  return <main className="workspace-page">
+    <header className="page-intro">
+      <p className="eyebrow">Inbox</p>
+      <h1>Capture it now, decide in one pass.</h1>
+      <p>Slipwell keeps your original words and proposes where each one belongs. Accept it, edit it, or discard it — nothing files itself.</p>
+    </header>
+
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+      <div className="space-y-4">
+        <section className="workspace-section mt-0">
+          <div className="section-heading">
+            <div><h2>What needs a place?</h2><p className="section-note">Press ⌘J anywhere, or start here. Your words are stored before any interpretation runs.</p></div>
+          </div>
+          <Button className="button-primary" onClick={openCapture}><Plus aria-hidden size={16} weight="bold" />New capture<kbd>⌘J</kbd></Button>
+        </section>
+        <section className="workspace-section mt-0">
+          <div className="section-heading">
+            <div><h2>Waiting on you</h2><p className="section-note">{refreshing ? "Refreshing…" : "Originals stay in reach"}</p></div>
+            {needsReview.length > 0 && <span className="tag">{needsReview.length} to review</span>}
+          </div>
+          <div className="space-y-3">
+            {pending.map((capture) => <PendingCapture key={capture.id} capture={capture} done={refresh} />)}
+            {needsReview.map((capture) => <Review key={capture.id} capture={capture} done={refresh} />)}
+            {needsReview.length === 0 && pending.length === 0 && <EmptyState>Your inbox is clear. Capture the next thing before it slips.</EmptyState>}
+          </div>
+        </section>
+      </div>
+
+      <aside className="space-y-4">
+        <section className="workspace-section mt-0">
+          <div className="section-heading"><div><h2>Attention, not shame</h2><p className="section-note">Slipping</p></div></div>
+          <div className="space-y-3">
+            {data.signals.map((signal) => <article className="record-card flex-col items-stretch" key={signal.id}>
+              <div><span className="tag tag--attention">{signal.severity}</span><p className="record-copy">{signal.reason}</p></div>
+              <div className="record-actions justify-start">
+                <Button className="button-primary" onClick={() => resolveSignal(signal.id, "marked_attention")}>Mark attention</Button>
+                <Button className="button-secondary" onClick={() => resolveSignal(signal.id, "deferred")}>Defer</Button>
+                <Button className="button-quiet" onClick={() => resolveSignal(signal.id, "dismissed")}>Dismiss</Button>
+              </div>
+            </article>)}
+            {data.signals.length === 0 && <p className="empty-state">No active signals. Generate a cycle with an overdue open deliverable to test one.</p>}
+          </div>
+        </section>
+
+        <RetainerLab data={data} done={refresh} />
+
+        <section className="workspace-section mt-0">
+          <div className="section-heading"><div><h2>Recently filed</h2><p className="section-note">Undo puts a record back in review</p></div></div>
+          <div className="space-y-2">
+            {data.records.map((record) => <div className="compact-row" key={record.id}>
+              <span className="flex-col items-start"><span className="font-medium">{record.title}</span><span className="record-meta">{record.record_type.replace("_", " ")}{record.destination_name ? ` · ${record.destination_name}` : ""}</span></span>
+              {record.proposal_id && <Button className="button-quiet" onClick={() => undoRecord(record)}>Undo</Button>}
+            </div>)}
+            {data.records.length === 0 && <p className="empty-state">Accepted proposals appear here.</p>}
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>;
 }

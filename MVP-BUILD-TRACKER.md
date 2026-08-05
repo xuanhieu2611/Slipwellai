@@ -54,25 +54,30 @@ The repository currently contains a Phase 0 prototype with these useful foundati
 Important limitations:
 
 - 🟡 The tested AI request currently falls back to “proposal service did not return a safe result”; the happy path is not verified.
-- 🟡 Review displays only part of the supported multi-proposal output and does not provide the full PRD correction workflow.
+- 🟡 Review now displays and resolves every proposal from a multi-intent capture, and a repeated apply is blocked by a database constraint. Split, merge, and add-manual-record corrections remain open.
+- 🟡 A capture is acknowledged as soon as its source is stored; interpretation runs as a separate claimed request, not yet as a durable background job.
 - 🟡 `prototype_records` is not the canonical task, note, project, person, or retainer data model.
 - 🟡 Retainer and Slipping logic are interactive labs, not production-grade durable workflows.
 - 🟡 A migration-backed working-prototype core for Today, manual tasks, domains, finite projects, routines, lightweight people/notes, recurring tasks, project checklists, account-scoped search, and People interactions is applied to the linked pilot project. Authenticated browser and database-integration verification remain open.
 - 🟡 Browser voice recording and transient synchronous transcription exist as a Phase 0 slice. Recordings are never stored; a failed transcription is discarded and the user is directed to text capture.
 - ⬜ There is no calendar sync, notification system, billing, account-deletion workflow, or production analytics/operations layer.
 - ⬜ There are no cross-user RLS integration tests or browser end-to-end tests.
-- ⬜ There is no installable PWA manifest/application-shell strategy or production deployment pipeline yet.
+- 🟡 The app is installable: a generated web app manifest, icon set, capability-aware install guidance, and a shell-only service worker with an offline fallback exist. There is still no production deployment pipeline.
+- 🟡 Continuous integration runs lint, type check, unit tests, and the production build; end-to-end tests and a format check are not in CI yet.
 - ⬜ The product-validation interview and willingness-to-pay exit criteria have not been recorded as complete.
 
 Current implementation evidence:
 
 - Capture API and source-first insert: `src/app/api/captures/route.ts`, `src/lib/captures.ts`
+- Capture pipeline states, interpretation claim, and multi-item outcomes: `src/lib/capture-pipeline.ts`, `src/app/api/captures/[captureId]/interpret/route.ts`, `src/app/api/captures/[captureId]/file/route.ts`, `supabase/migrations/20260805120000_capture_pipeline_and_multi_proposal.sql`
 - Proposal provider and schema: `src/lib/proposals/provider.ts`, `src/lib/proposals/schema.ts`
 - Prototype review, retainer, and Slipping UI: `src/components/dashboard.tsx`
 - Prototype retainer and Slipping rules: `src/lib/retainers.ts`
 - Database schema and RLS: `supabase/migrations/20260802224924_phase0_foundation.sql`
 - Current setup and commands: `README.md`, `.env.example`, `package.json`
 - Working-prototype record model and surfaces: `supabase/migrations/20260803110000_working_prototype_core.sql`, `src/components/workspace.tsx`, `src/app/api/workspace/route.ts`
+- Installability, shell caching, and offline fallback: `src/app/manifest.ts`, `public/sw.js`, `public/icons/`, `src/components/service-worker-registrar.tsx`, `src/components/install-guidance.tsx`, `src/app/offline/page.tsx`
+- Continuous integration: `.github/workflows/ci.yml`
 
 ## Ordered MVP roadmap
 
@@ -140,9 +145,9 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 - [ ] Document migration promotion, rollback/forward-recovery, and seed-fixture procedures.
 - [ ] Add centrally managed feature flags and remotely configurable product defaults.
 - [ ] Add safe secret management and automated secret scanning.
-- [ ] Add canonical scripts for format check, lint, type check, unit/integration tests, end-to-end tests, and build.
-- [ ] Add CI that runs the full required suite on every release candidate.
-- [ ] Add a valid web app manifest, safe application-shell caching, install guidance, and browser capability fallbacks.
+- [ ] Partial: `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:e2e`, and `npm run build` are canonical scripts; a format check and a separate integration-test script remain open.
+- [ ] Partial: `.github/workflows/ci.yml` runs lint, type check, unit tests, and the production build on every push to `main` and every pull request; end-to-end tests and a format check are not in CI yet because they need a dedicated Supabase test project and fixture storage state.
+- [x] Add a valid web app manifest, safe application-shell caching, install guidance, and browser capability fallbacks.
 - [ ] Support current and previous major Chrome, Safari, Firefox, and Edge versions.
 - [ ] Keep canonical APIs, validation, and domain services independent from React so future Expo clients can reuse them.
 
@@ -208,16 +213,16 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 - [x] Never overwrite the original source with cleaned text.
 - [ ] Replace the prototype capture shape with the canonical versioned capture model.
 - [ ] Store source type, original text/media reference, processing state, timestamps, owner, and source metadata.
-- [ ] Support explicit queued, processing, retrying, needs-review, filed, failed, and manually-filed states.
-- [ ] Make text capture available globally with a visible button and `Cmd/Ctrl+J` shortcut.
-- [ ] Acknowledge a successfully persisted capture within the PRD’s 500 ms target.
-- [ ] Move downstream processing out of the browser request lifecycle.
-- [ ] Allow manual filing when AI is disabled, unavailable, or unwanted.
-- [ ] Preserve an unsent draft locally on network/offline failure and clearly show its state.
+- [ ] Partial: queued, interpreting, needs-review, filed, failed, and discarded states exist and are visible; an explicit retrying state and a distinct manually-filed state remain open. Manual filing is currently recorded as a `manually_filed` activity event on a `filed` capture.
+- [ ] Partial: text capture is reachable from every signed-in screen through the shell button and the mobile capture button; the `Cmd/Ctrl+J` handler exists but was not exercised in a browser this session.
+- [ ] Partial: the capture request now returns as soon as the source is stored, measured at 177 ms warm against the linked pilot; a p95 measurement against a production-like environment remains open.
+- [ ] Partial: interpretation no longer runs inside the capture request — it is a separately claimed request against the stored capture. A durable background-job system remains open in Step 11.
+- [x] Allow manual filing when AI is disabled, unavailable, or unwanted.
+- [ ] Partial: an unsent draft and its idempotency key survive refresh and a failed submission through local storage, and the restored state is labelled; browser verification of the offline transition remains open.
 - [ ] Preserve over-limit captures for manual handling rather than discarding them.
-- [ ] Prevent duplicate captures on double-click, request retry, refresh, and multiple tabs.
-- [ ] Add Inbox filtering for processing, needs-review, and failed captures.
-- [ ] Add unit/integration tests for state transitions and idempotency.
+- [x] Prevent duplicate captures on double-click, request retry, refresh, and multiple tabs.
+- [ ] Partial: processing, needs-review, and failed captures are each visible in the Inbox with their own recovery actions; explicit filter controls remain open.
+- [ ] Partial: unit tests cover claim, stranded-capture, and multi-item resolution rules; migration-backed integration tests for the state transitions remain open.
 - [ ] Add an end-to-end test proving the source exists before the AI job starts.
 - [ ] Add browser tests for refresh, tab close, offline recovery, and expired auth during submission.
 
@@ -257,16 +262,16 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 - [x] Show the original capture next to the current basic proposal.
 - [x] Provide basic accept, edit, change type/destination, discard, retry, and undo actions.
-- [ ] Display every proposal from a multi-intent capture, not only the first one.
+- [x] Display every proposal from a multi-intent capture, not only the first one.
 - [ ] Show destination, concise rationale, and field-level confidence without false precision.
-- [ ] Support split, merge, remove-one, add-manual-record, and manually-file-without-AI actions.
+- [ ] Partial: remove-one (`Not this one`) and manually-file-without-AI are implemented and recorded as outcomes; split, merge, and add-manual-record remain open.
 - [ ] Require review for ambiguous dates, people, projects, retainers, recurrence, and sensitive personal facts.
-- [ ] Make apply/accept atomic and idempotent; retries must not create duplicate records.
+- [ ] Partial: apply is idempotent — a unique `(proposal_id, item_index)` claim in `proposal_applications` makes a repeated or concurrent accept reconcile against the existing record instead of creating a second one. A single-transaction apply across the claim and the record insert remains open; a failed insert releases the claim.
 - [ ] Record before/after structural diffs and correction outcomes in the audit history.
-- [ ] Make undo safe after edits and define when undo is no longer available.
+- [ ] Partial: undo releases the item's recorded outcome and returns just that item to review, leaving other decisions from the same capture intact; the point at which undo expires is not defined yet.
 - [ ] Treat corrections as feedback signals without silently changing global user behavior.
 - [ ] Add opt-in auto-file only after demonstrated successful review behavior.
-- [ ] Keep failed or invalid proposals as recoverable Inbox items.
+- [x] Keep failed or invalid proposals as recoverable Inbox items.
 
 ### Evaluation and quality gates
 
@@ -474,7 +479,7 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 - [ ] Partial: enforce supported MIME types, a five-minute duration, and a 25 MB size limit in the browser and route schema; server-side content inspection remains open.
 - [ ] Do not store original audio in Supabase or retain it after sending it to the transcription provider; only a successful transcript becomes a capture source.
 - [ ] Not applicable under the transient-audio decision: no private-audio playback or signed URLs are created.
-- [ ] Partial: use a stable voice-capture idempotency key for the submission. Transcription and proposal scheduling remain synchronous rather than durable jobs.
+- [ ] Partial: use a stable voice-capture idempotency key for the submission. Transcription remains synchronous inside the upload request; interpretation now runs as a separate claimed request, like typed capture, rather than a durable job.
 - [ ] Discard failed voice audio and direct the user to text capture rather than preserving a retryable Inbox item.
 - [ ] Partial: show the saved text transcript in review; direct transcript correction/re-interpretation remains open.
 - [ ] Partial: send the submitted audio only to the server-only OpenRouter transcription endpoint using an OpenAI transcription model, then retain only the resulting text and model/latency metadata. Provider approval, cost estimation, and durable safe telemetry remain open.
@@ -512,7 +517,7 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 - [ ] Partial: expose account security and a direct JSON export in Settings; profile, preferences, integrations, notifications, plan, and deletion remain open.
 - [ ] Add capture preferences for auto-file threshold, default domain, reminders, and confirmations. Audio retention is intentionally absent because voice recordings are never stored.
-- [ ] Partial: export the current prototype’s RLS-authorized canonical/pilot records, relationships, source data, and activity as documented JSON. CSV, Markdown notes, media manifests, completeness testing, and documented format support remain open.
+- [ ] Partial: export the current prototype’s RLS-authorized canonical/pilot records, relationships, source data, review outcomes, and activity as documented JSON. CSV, Markdown notes, media manifests, completeness testing, and documented format support remain open.
 - [ ] Partial: provide an authenticated direct download with `private, no-store` headers for normal-size prototype accounts. Durable idempotent jobs and expiring private downloads remain open.
 - [ ] Partial: the current direct export is reachable for every signed-in prototype account; durable plan/entitlement verification remains open.
 - [ ] Define a basic validated CSV/JSON import for supported canonical records, including preview, relationship handling, idempotency, and a clear error report; improved provider-specific imports remain later work.
@@ -722,17 +727,22 @@ Add a dated row when a milestone or important checkbox becomes verified. Link co
 | 2026-08-02 | Transient voice-audio revision | `20260803161000_remove_voice_audio_storage.sql`, `npx supabase db push`, `npx supabase migration list`, storage-bucket count query, `src/app/api/voice-captures/route.ts`, `src/components/dashboard.tsx`, `src/lib/voice.test.ts`, `npm test`, `npm run lint`, `npm run build`, fresh-production Playwright auth interaction | Pass: the migration was applied to the linked pilot, the `capture-audio` bucket count is zero, and the one unusable voice capture without a transcript was removed. New recordings are sent directly to OpenRouter with an OpenAI transcription model, and transcription failure directs the user to keyboard capture, consistent with the updated CAP-05 and REV-07. | Codex |
 | 2026-08-02 | OpenRouter voice-transcription adapter | `src/lib/transcription.ts`, `src/lib/transcription.test.ts`, `.env.example`, `README.md`, `supabase/config.toml`, `npm test -- src/lib/transcription.test.ts`, `npm run lint`, `npm run build` | Pass: transient browser audio is submitted as multipart data to OpenRouter's transcription endpoint with the configured `openai/gpt-4o-transcribe` default. The adapter accepts only a non-empty transcript and uses `OPENROUTER_API_KEY`; the app and local Supabase configuration no longer require `OPENAI_API_KEY`. | Codex |
 | 2026-08-03 | Visual identity rebuild | `src/app/globals.css`, `src/app/layout.tsx`, `src/components/theme-toggle.tsx`, `src/components/app-shell.tsx`, `src/components/sign-in.tsx`, `src/components/build-state-page.tsx`, `src/components/ui/primitives.tsx`, `npm run lint`, `npm test`, `npm run test:e2e`, `npm run build`; desktop/mobile screenshots in both themes | Pass: 33 unit tests, lint, build, and both public-auth browser tests (desktop and mobile). The moss/warm-paper brand was replaced, at the user's explicit direction, with a cobalt-on-graphite identity: rebuilt CSS-variable token layer, first dark mode (system preference plus a persisted manual toggle), one documented three-step radius scale, Space Grotesk/Instrument Sans/JetBrains Mono, and a Phosphor icon set. Contrast was measured for twelve foreground/background token pairs in both themes; all pass WCAG AA (lowest 5.16:1). Reduced-motion and reduced-transparency fallbacks are in place. WCAG 2.2 AA remains unchecked: target size, focus appearance, and keyboard-navigation conformance were not audited. Authenticated surfaces were verified against the linked pilot in a browser; the six onboarding browser tests stayed skipped for lack of an authenticated storage-state fixture. | Claude |
+| 2026-08-03 | Inbox review card rebuild and capture discard | `src/components/dashboard.tsx`, `src/app/globals.css`, `src/components/ui/primitives.tsx`, `src/lib/dashboard.ts`, `src/app/(authenticated)/[surface]/page.tsx`, `npm run lint`, `npx tsc --noEmit`, `npm test`, `npm run build`; authenticated browser verification against the linked pilot at 1280 px and 360 px in both themes | Pass: 33 unit tests, lint, type check, and build. The Inbox now uses the shared design system instead of ad-hoc styles, and each review card reads source → proposal → decision. Fixed in the process: a wrapped confidence chip, a clipped due-time input, proposal fields that carried no visible labels, and a controlled-input bug where clearing the title silently restored the model's value. A failed interpretation is now recoverable in two directions — `Interpret again` or `Discard`, with a two-step in-card confirmation — where the only prior action was retry; the failure explanation is now taken from the stored `failure_code`. Discard still routes through the existing proposal action, so a capture without any proposal row cannot be discarded from the Inbox. | Claude |
+| 2026-08-03 | Workspace command validation fix and toast feedback | `src/lib/workspace.ts`, `src/app/api/workspace/route.ts`, `src/lib/workspace.test.ts`, `src/components/ui/toast.tsx`, `src/components/ui/primitives.tsx`, `src/components/app-shell.tsx`, `src/components/workspace.tsx`, `src/app/globals.css`, `npm run lint`, `npx tsc --noEmit`, `npm test`, `npm run build` | Pass in static verification: 36 unit tests, lint, type check, and build. Fixed a release-blocking defect: every manual creation form (domain, project, task, person, note, checklist template, person interaction) was rejected with "That workspace change was not valid" whenever an optional text field was left blank, because the forms post `null` for a cleared field while `optionalText` accepted only `undefined`. The prior tests omitted those fields entirely and so never exercised the payload the browser actually sends; a regression test now asserts the real shape. Validation failures also name the offending field instead of failing anonymously. Workspace feedback moved from a page-top inline banner to a shared toast stack mounted in the app shell, with success confirmations that did not previously exist and mobile positioning clear of the tab bar and capture button. Authenticated browser verification against the linked pilot is pending — it needs a signed-in session that was not available in this environment. | Claude |
+| 2026-08-05 | Installable app shell, offline fallback, and CI | `src/app/manifest.ts`, `public/sw.js`, `public/icons/`, `src/components/service-worker-registrar.tsx`, `src/components/install-guidance.tsx`, `src/app/offline/page.tsx`, `src/lib/pwa.ts`, `src/lib/pwa.test.ts`, `src/lib/service-worker.test.ts`, `src/proxy.ts`, `.github/workflows/ci.yml`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`; authenticated browser verification of a production build against the linked pilot at 1280 px and 360 px | Pass: 52 unit tests, lint, type check, and build. Chrome fetched the generated manifest, offered its install prompt on Settings, and activated the service worker; the precache contained exactly `/offline` and the three icons. After signing in and browsing Inbox and Settings, the cache held only content-hashed `/_next/static/` assets plus those four public files — no API response, no `/auth/*` response, and no authenticated HTML — and an offline navigation to `/today` rendered the offline shell instead of stale data. Install guidance is unit-tested for the prompt, installed, iOS, macOS Safari, Firefox, and generic branches; only the Chromium prompt branch was exercised in a real browser. CI is not yet proven on GitHub because this is the first commit containing the workflow, and it does not yet run end-to-end tests or a format check. | Claude |
+
+| 2026-08-05 | Multi-intent review and out-of-request interpretation | `20260805120000_capture_pipeline_and_multi_proposal.sql`, `src/lib/capture-pipeline.ts`, `src/lib/capture-pipeline.test.ts`, `src/lib/captures.ts`, `src/lib/captures.test.ts`, `src/app/api/captures/route.ts`, `src/app/api/captures/[captureId]/interpret/route.ts`, `src/app/api/captures/[captureId]/file/route.ts`, `src/app/api/proposals/[proposalId]/route.ts`, `src/app/api/voice-captures/route.ts`, `src/app/api/export/route.ts`, `src/components/dashboard.tsx`, `src/components/capture-dialog.tsx`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:e2e`, `npm run build`; authenticated browser verification against the linked pilot at 1280 px and 360 px | Pass: 63 unit tests, lint, type check, production build, and both public-auth browser tests. Two release-critical defects were closed. (1) A multi-intent capture silently lost intents: review read only `proposals[0]`, accepting it marked the whole capture filed, and `tasks.proposal_id`/`notes.proposal_id` were unique so a second record could not have been filed anyway. Every proposed item is now shown and resolved independently, the capture stays in review until each has an outcome, and undo releases one item without disturbing the others. Verified live: a two-intent capture filed record 1, kept record 2 reviewable at `1 of 2 to decide`, and closed only after record 2 was dismissed. (2) Interpretation ran inside the capture request, so a closed tab left an invisible capture stuck in `interpreting`. Capture now acknowledges on persist (177 ms warm, versus 2.8 s for the interpretation it no longer waits for), interpretation is a separately claimed request, and stored-but-uninterpreted captures appear in the Inbox with `Interpret it now` and `File it myself`. Idempotency was verified against the pilot: two concurrent accepts of the same item produced one task and an `alreadyApplied` response; two concurrent interpret calls produced one proposal; a resubmitted idempotency key returned the same capture. Remaining risk: interpretation is still a browser-initiated request rather than a durable job, apply spans a claim plus an insert instead of one transaction, offline draft recovery was not exercised in a browser, and manually filed records do not appear in the Inbox's `Recently filed` list because that list only reads proposal-linked records. | Claude |
 
 Canonical quality commands still needed:
 
 | Check | Command | Current state |
 | --- | --- | --- |
 | Format check | To be added to `package.json` | ⬜ Missing |
-| Lint | `npm run lint` | ✅ Passing at baseline audit |
-| Type check | To be added to `package.json` | ⬜ Missing as a dedicated check |
-| Unit/integration | `npm test` | 🟡 Unit tests only |
-| End-to-end | `npm run test:e2e` | 🟡 Fixture-gated browser coverage; not yet run against local-Supabase fixtures |
-| Production build | `npm run build` | ✅ Passing at baseline audit |
+| Lint | `npm run lint` | ✅ Passing; runs in CI |
+| Type check | `npm run typecheck` | ✅ Passing; runs in CI |
+| Unit/integration | `npm test` | 🟡 Unit tests only; runs in CI |
+| End-to-end | `npm run test:e2e` | 🟡 Fixture-gated browser coverage; not yet run against local-Supabase fixtures. Run it with port 3000 free — `reuseExistingServer` will otherwise attach to a running `npm run dev`, where clicks can land before hydration and fail spuriously. |
+| Production build | `npm run build` | ✅ Passing; runs in CI |
 
 ## Immediate next milestones
 
@@ -740,7 +750,7 @@ These are the next three deliverables in practical order:
 
 1. **Make Phase 0 trustworthy enough to validate.** Fix the OpenRouter happy path, preserve safe error categories, and manually verify capture/review/undo/retainer/Slipping at desktop and 360 px.
 2. **Close the product-validation gap while building the foundation.** Run the interview/WTP program in parallel with canonical auth, tenant tests, environments, design primitives, and audit/activity conventions.
-3. **Replace the synchronous prototype loop with the canonical source-first pipeline.** Complete durable text capture, an asynchronous idempotent proposal job, the full versioned schema, multi-proposal review, and an evaluation harness before building broad record surfaces.
+3. **Replace the synchronous prototype loop with the canonical source-first pipeline.** Multi-proposal review and idempotent apply are done, and interpretation has left the capture request. Still open before broad record surfaces: the canonical versioned capture model, a durable idempotent proposal job in place of the browser-initiated interpret request, the full versioned proposal schema, and an evaluation harness.
 
 ## Explicitly out of scope for this MVP
 
