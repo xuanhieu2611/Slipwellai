@@ -562,11 +562,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 /* Domain, project, and person are one decision — where this record lives — so they are
    grouped instead of sitting among the record's own fields. */
-.review-destination { border: 1px solid var(--line); border-radius: var(--r-md); grid-column: 1 / -1; padding: .3rem .8rem .8rem; }
-.review-destination legend { color: var(--ink-muted); font-size: .74rem; font-weight: 600; letter-spacing: .05em; padding: 0 .3rem; text-transform: uppercase; }
-.review-destination-grid { display: grid; gap: .7rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.review-destination .form-help { margin-top: .6rem; }
-.review-destination .form-help + .form-help { margin-top: .3rem; }
+.review-group { border: 1px solid var(--line); border-radius: var(--r-md); grid-column: 1 / -1; padding: .3rem .8rem .8rem; }
+.review-group legend { color: var(--ink-muted); font-size: .74rem; font-weight: 600; letter-spacing: .05em; padding: 0 .3rem; text-transform: uppercase; }
+.review-group-grid { display: grid; gap: .7rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.review-group .form-help { margin-top: .6rem; }
+.review-group .form-help + .form-help { margin-top: .3rem; }
 
 .review-actions { align-items: center; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: .5rem; padding: .75rem 1.05rem; }
 /* Discard sits apart from the two constructive actions so it is never a mis-click. */
@@ -766,7 +766,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
   .build-state { padding-top: 3rem; }
   .workspace-page { padding: 1.25rem 1rem; }
-  .workspace-columns, .form-grid, .review-fields, .review-destination-grid { grid-template-columns: 1fr; }
+  .workspace-columns, .form-grid, .review-fields, .review-group-grid { grid-template-columns: 1fr; }
   .review-actions .review-discard { margin-left: 0; }
   .record-card { flex-direction: column; }
   .record-actions { justify-content: flex-start; }

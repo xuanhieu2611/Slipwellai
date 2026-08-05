@@ -2,7 +2,9 @@ import { z } from "zod";
 
 export const recordTypeSchema = z.enum(["task", "note", "retainer_update"]);
 
-const dueTimeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use 24-hour HH:MM.");
+const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use 24-hour HH:MM.");
+
+const recurrenceRuleSchema = z.enum(["daily", "weekly", "monthly"]);
 
 const confidenceSchema = z.object({
   recordType: z.number().min(0).max(1),
@@ -23,12 +25,18 @@ export const proposedDestinationSchema = z.object({
 
 export type ProposedDestination = z.infer<typeof proposedDestinationSchema>;
 
+/* Same idea as a destination name: the model returns the words the capture used and its
+   own reading of them, and `@/lib/proposals/dates` decides which one is filed. A phrase
+   is capped short because it is a fragment of the capture, not a copy of it. */
+export const proposedRecurrenceSchema = z.object({
+  rule: recurrenceRuleSchema,
+  phrase: z.string().trim().max(120).optional(),
+});
+
 const proposalItemFields = {
   recordType: recordTypeSchema,
   title: z.string().trim().min(1).max(280),
   body: z.string().trim().max(5000).optional(),
-  dueOn: z.string().date().optional(),
-  dueTime: dueTimeSchema.optional(),
   confidence: confidenceSchema,
   needsReview: z.boolean(),
   reason: z.string().trim().min(1).max(500),
@@ -36,16 +44,35 @@ const proposalItemFields = {
 
 /* Version 1 could only name one destination and never said what kind of thing it was, so
    accepting a proposal produced a task with no domain, project, or person. Proposals
-   stored before version 2 still have to open in review, so both shapes stay parseable and
-   `toCurrentEnvelope` upgrades the older one on read. */
+   stored before the current version still have to open in review, so every shape stays
+   parseable and `toCurrentEnvelope` upgrades the older ones on read. */
 export const proposalItemV1Schema = z.object({
   ...proposalItemFields,
   destinationName: z.string().trim().max(160).optional(),
+  dueOn: z.string().date().optional(),
+  dueTime: timeSchema.optional(),
 });
 
+export const proposalItemV2Schema = z.object({
+  ...proposalItemFields,
+  destination: proposedDestinationSchema.optional(),
+  dueOn: z.string().date().optional(),
+  dueTime: timeSchema.optional(),
+});
+
+/* Version 3 stops treating the model's resolved date as the answer. `datePhrase` is the
+   capture's own words ("next Friday"), `date` is the model's reading of them, and the
+   server re-resolves the phrase deterministically before anything is filed. `dateKind`
+   separates a deadline from a start, which the record model has always distinguished and
+   the proposal could not say. */
 export const proposalItemSchema = z.object({
   ...proposalItemFields,
   destination: proposedDestinationSchema.optional(),
+  dateKind: z.enum(["due", "scheduled"]).optional(),
+  datePhrase: z.string().trim().max(120).optional(),
+  date: z.string().date().optional(),
+  time: timeSchema.optional(),
+  recurrence: proposedRecurrenceSchema.optional(),
 });
 
 export const proposalEnvelopeV1Schema = z.object({
@@ -57,30 +84,57 @@ export const proposalEnvelopeV1Schema = z.object({
 export const proposalEnvelopeV2Schema = z.object({
   schemaVersion: z.literal("2"),
   sourceCaptureId: z.string().uuid(),
+  proposals: z.array(proposalItemV2Schema).min(1).max(3),
+});
+
+export const proposalEnvelopeV3Schema = z.object({
+  schemaVersion: z.literal("3"),
+  sourceCaptureId: z.string().uuid(),
   proposals: z.array(proposalItemSchema).min(1).max(3),
 });
 
 /* What a provider is asked to return today. Older versions are read, never written. */
-export const currentProposalEnvelopeSchema = proposalEnvelopeV2Schema;
+export const currentProposalEnvelopeSchema = proposalEnvelopeV3Schema;
 
 export const proposalEnvelopeSchema = z.discriminatedUnion("schemaVersion", [
   proposalEnvelopeV1Schema,
   proposalEnvelopeV2Schema,
+  proposalEnvelopeV3Schema,
 ]);
 
-export type ProposalEnvelope = z.infer<typeof proposalEnvelopeV2Schema>;
+export type ProposalEnvelope = z.infer<typeof proposalEnvelopeV3Schema>;
 export type ProposalItem = z.infer<typeof proposalItemSchema>;
 export type AnyProposalEnvelope = z.infer<typeof proposalEnvelopeSchema>;
 
 export function toCurrentEnvelope(envelope: AnyProposalEnvelope): ProposalEnvelope {
-  if (envelope.schemaVersion === "2") return envelope;
+  if (envelope.schemaVersion === "3") return envelope;
+
+  /* An older proposal carries a date with no words behind it. It is upgraded rather than
+     discarded, and the date resolver treats a phrase-less date as a suggestion, so a
+     proposal stored before this version opens in review with its date to confirm rather
+     than filed on the strength of a reading nothing can check. */
+  const upgradeDates = (item: { dueOn?: string; dueTime?: string }) => ({
+    dateKind: item.dueOn ? ("due" as const) : undefined,
+    date: item.dueOn,
+    time: item.dueTime,
+  });
+
+  if (envelope.schemaVersion === "2") {
+    return {
+      schemaVersion: "3",
+      sourceCaptureId: envelope.sourceCaptureId,
+      proposals: envelope.proposals.map(({ dueOn, dueTime, ...item }) => ({ ...item, ...upgradeDates({ dueOn, dueTime }) })),
+    };
+  }
+
   return {
-    schemaVersion: "2",
+    schemaVersion: "3",
     sourceCaptureId: envelope.sourceCaptureId,
     /* Version 1's single destination was labelled "Person or client" in review, so that is
        the only faithful reading of it. */
-    proposals: envelope.proposals.map(({ destinationName, ...item }) => ({
+    proposals: envelope.proposals.map(({ destinationName, dueOn, dueTime, ...item }) => ({
       ...item,
+      ...upgradeDates({ dueOn, dueTime }),
       destination: destinationName ? { personName: destinationName } : undefined,
     })),
   };
@@ -119,14 +173,28 @@ export const destinationSelectionSchema = z
 
 export type DestinationSelection = z.infer<typeof destinationSelectionSchema>;
 
-export const fileManuallySchema = z.object({
-  recordType: z.enum(["task", "note"]),
-  title: z.string().trim().min(1).max(280),
-  body: z.string().trim().max(5000).optional(),
-  dueOn: z.string().date().optional(),
-  dueTime: dueTimeSchema.optional(),
-  destination: destinationSelectionSchema.optional(),
-});
+/* The date fields a filed record is created from. `recurrenceRule` needs a date because a
+   repeating task is anchored on one: `tasks.recurring_tasks_need_anchor` rejects the row
+   otherwise, and an anchor the server invented would repeat on the wrong day forever. */
+const filedDateFields = {
+  dateKind: z.enum(["due", "scheduled"]).optional(),
+  date: z.string().date().optional(),
+  time: timeSchema.optional(),
+  recurrenceRule: recurrenceRuleSchema.optional(),
+};
+
+const requiresDateForRecurrence = <T extends { date?: string; recurrenceRule?: string }>(value: T) => !value.recurrenceRule || Boolean(value.date);
+const recurrenceNeedsDate = { message: "A repeating task needs a first date.", path: ["date"] };
+
+export const fileManuallySchema = z
+  .object({
+    recordType: z.enum(["task", "note"]),
+    title: z.string().trim().min(1).max(280),
+    body: z.string().trim().max(5000).optional(),
+    destination: destinationSelectionSchema.optional(),
+    ...filedDateFields,
+  })
+  .refine(requiresDateForRecurrence, recurrenceNeedsDate);
 
 export type FileManuallyInput = z.infer<typeof fileManuallySchema>;
 
@@ -139,9 +207,25 @@ export const proposalActionSchema = z.object({
       recordType: recordTypeSchema,
       title: z.string().trim().min(1).max(280),
       body: z.string().trim().max(5000).optional(),
-      dueOn: z.string().date().optional(),
-      dueTime: dueTimeSchema.optional(),
       destination: destinationSelectionSchema.optional(),
+      ...filedDateFields,
     })
+    .refine(requiresDateForRecurrence, recurrenceNeedsDate)
     .optional(),
 });
+
+/* The date columns a record is written with, from either the review payload or the
+   deterministic resolution of an unedited proposal. A repeat is anchored on its date, so
+   a repeating task is always scheduled as well as optionally due. */
+export function filedDateColumns(input: { dateKind?: "due" | "scheduled"; date?: string | null; time?: string | null; recurrenceRule?: "daily" | "weekly" | "monthly" | null }) {
+  const date = input.date || null;
+  const recurrenceRule = date ? input.recurrenceRule || null : null;
+  const scheduled = input.dateKind === "scheduled" || Boolean(recurrenceRule);
+  return {
+    due_on: date && input.dateKind !== "scheduled" ? date : null,
+    scheduled_for: date && scheduled ? date : null,
+    due_time: input.time || null,
+    recurrence_rule: recurrenceRule,
+    recurrence_anchor: recurrenceRule ? date : null,
+  };
+}
