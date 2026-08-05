@@ -15,9 +15,9 @@ export function SelectField({ className, children, ...props }: SelectHTMLAttribu
   return <select className={join("field-base", className)} {...props}>{children}</select>;
 }
 
-const toneIcon = { neutral: Info, success: CheckCircle, error: WarningCircle } as const;
+const toneIcon = { neutral: Info, success: CheckCircle, attention: WarningCircle, error: WarningCircle } as const;
 
-export function StatusMessage({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "success" | "error" }) {
+export function StatusMessage({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "success" | "attention" | "error" }) {
   const Glyph = toneIcon[tone];
   return (
     <p className={`status-message status-message--${tone}`} role={tone === "error" ? "alert" : "status"}>
@@ -68,8 +68,4 @@ export function Dialog({ title, children, onClose }: { title: string; children: 
     return () => panel.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
   return <div aria-labelledby="dialog-title" aria-modal="true" className="dialog-backdrop" role="dialog"><section ref={panelRef} className="dialog-panel"><div className="flex items-start justify-between gap-4"><h2 id="dialog-title" className="text-xl font-semibold tracking-tight">{title}</h2><Button aria-label="Close dialog" className="button-quiet" onClick={onClose}><X aria-hidden size={16} /></Button></div><div className="mt-5">{children}</div></section></div>;
-}
-
-export function Toast({ children, onDismiss }: { children: ReactNode; onDismiss: () => void }) {
-  return <div className="toast" role="status"><span>{children}</span><Button className="button-quiet shrink-0" onClick={onDismiss}>Dismiss</Button></div>;
 }

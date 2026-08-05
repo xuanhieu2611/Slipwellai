@@ -1,7 +1,33 @@
+import { interpretationClaimFilter, type ClaimReason } from "@/lib/capture-pipeline";
 import { ProposalProviderError, proposalProvider, type ProposalFailureCode } from "@/lib/proposals/provider";
 import type { ProposalEnvelope } from "@/lib/proposals/schema";
 
 type SupabaseClient = Awaited<ReturnType<typeof import("@/lib/supabase/server").createSupabaseServerClient>>;
+
+export type ClaimedCapture = { id: string; original_text: string };
+
+/* Returns the capture only to the caller that won the claim. A second concurrent
+   request sees no row and must not start a duplicate interpretation. */
+export async function claimCaptureForInterpretation({
+  supabase,
+  captureId,
+  reason,
+  now = new Date(),
+}: {
+  supabase: SupabaseClient;
+  captureId: string;
+  reason: ClaimReason;
+  now?: Date;
+}): Promise<ClaimedCapture | null> {
+  const { data } = await supabase
+    .from("captures")
+    .update({ status: "interpreting", failure_code: null, interpretation_claimed_at: now.toISOString() })
+    .eq("id", captureId)
+    .or(interpretationClaimFilter(reason, now))
+    .select("id, original_text")
+    .maybeSingle();
+  return (data as ClaimedCapture | null) ?? null;
+}
 
 // Malformed JSON from the model is usually a one-off blip, so retry once before surfacing a failure.
 async function proposeWithRetry(provider: typeof proposalProvider, input: Parameters<typeof proposalProvider.propose>[0]): ReturnType<typeof proposalProvider.propose> {
@@ -24,7 +50,6 @@ export async function interpretCapture({
   capture: { id: string; original_text: string };
   provider?: typeof proposalProvider;
 }): Promise<{ proposal?: ProposalEnvelope; error?: string }> {
-  await supabase.from("captures").update({ status: "interpreting", failure_code: null }).eq("id", capture.id);
   const startedAt = Date.now();
   const { data: preferences } = await supabase.from("user_preferences").select("timezone").maybeSingle();
   const timezone = preferences?.timezone ?? "America/Vancouver";

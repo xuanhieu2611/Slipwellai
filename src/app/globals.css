@@ -254,6 +254,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .status-message--neutral { background: var(--surface-soft); border-color: var(--line); color: var(--ink); }
 .status-message--success { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--accent-ink); }
 .status-message--error { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 30%, transparent); color: var(--danger); }
+.status-message--attention { background: var(--attention-soft); border-color: var(--attention-line); color: var(--attention); }
 
 .skeleton {
   animation: shimmer 1.5s ease-in-out infinite;
@@ -285,25 +286,40 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   padding: 1.5rem;
   width: 100%;
 }
-.toast {
+/* Centered over the content column, not the viewport, so a toast lands where the eye already is.
+   The container ignores pointer events so it never blocks the page beneath it. */
+.toast-stack {
   align-items: center;
-  animation: panel-in .22s cubic-bezier(.16, 1, .3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  left: 15rem;
+  padding: 0 1rem;
+  pointer-events: none;
+  position: fixed;
+  right: 0;
+  top: 1rem;
+  z-index: 60;
+}
+.toast {
+  align-items: flex-start;
+  animation: drop-in .2s cubic-bezier(.16, 1, .3, 1);
   background: var(--ink);
   border-radius: var(--r-md);
-  bottom: 1rem;
   box-shadow: 0 12px 30px hsl(var(--shadow-color) / .3);
   color: var(--bg);
   display: flex;
-  gap: 1rem;
-  justify-content: space-between;
+  font-size: .875rem;
+  gap: .6rem;
+  line-height: 1.5;
   max-width: 28rem;
-  padding: .7rem .85rem;
-  position: fixed;
-  right: 1rem;
-  z-index: 60;
+  padding: .7rem .7rem .7rem .85rem;
+  pointer-events: auto;
 }
-.toast .button-quiet { color: var(--bg); }
-.toast .button-quiet:hover { background: color-mix(in srgb, var(--bg) 18%, transparent); color: var(--bg); }
+.toast--success { background: var(--accent); color: var(--accent-on); }
+.toast--error { background: var(--danger); color: var(--bg); }
+.toast-dismiss { color: inherit; flex-shrink: 0; margin: -.15rem 0 -.15rem auto; min-height: 0; padding: .25rem; }
+.toast-dismiss:hover { background: color-mix(in srgb, currentColor 18%, transparent); color: inherit; }
 
 .skip-link { background: var(--accent); border-radius: var(--r-sm); color: var(--accent-on); font-weight: 600; left: 1rem; padding: .6rem .8rem; position: fixed; top: -4rem; z-index: 100; }
 .skip-link:focus { top: 1rem; }
@@ -337,7 +353,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .brand-mark svg { color: var(--accent); flex-shrink: 0; }
 
 .app-nav { display: grid; gap: .1rem; }
-.app-nav-link, .mobile-nav-link, .more-menu summary {
+.app-nav-secondary { border-top: 1px solid var(--line); margin-top: .5rem; padding-top: .5rem; }
+.app-nav-link, .mobile-nav-link {
   align-items: center;
   border-radius: var(--r-md);
   color: var(--ink-muted);
@@ -350,26 +367,23 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   text-decoration: none;
   transition: background-color .16s ease, color .16s ease;
 }
-.app-nav-link svg, .more-menu summary svg { color: currentColor; flex-shrink: 0; }
+.app-nav-link svg { color: currentColor; flex-shrink: 0; }
 .app-nav-link:hover { background: var(--surface-soft); color: var(--ink); }
 .app-nav-link.is-current { background: var(--accent-soft); color: var(--accent-ink); font-weight: 650; }
 
-.more-menu { position: relative; }
-.more-menu summary { cursor: pointer; justify-content: flex-start; list-style: none; }
-.more-menu summary::-webkit-details-marker { display: none; }
-.more-menu summary:hover { background: var(--surface-soft); color: var(--ink); }
-.more-menu[open] > summary { background: var(--surface-soft); color: var(--ink); }
-.more-menu nav {
-  animation: panel-in .16s ease-out;
-  background: var(--surface);
-  border: 1px solid var(--line);
+.app-mobile-header-links { display: flex; gap: .15rem; }
+.app-mobile-header-link {
+  align-items: center;
   border-radius: var(--r-md);
-  box-shadow: 0 12px 28px hsl(var(--shadow-color) / .16);
-  display: grid;
-  gap: .1rem;
-  margin-top: .3rem;
-  padding: .25rem;
+  color: var(--ink-muted);
+  display: flex;
+  justify-content: center;
+  min-height: 2.2rem;
+  min-width: 2.2rem;
+  transition: background-color .16s ease, color .16s ease;
 }
+.app-mobile-header-link:hover { background: var(--surface-soft); color: var(--ink); }
+.app-mobile-header-link.is-current { background: var(--accent-soft); color: var(--accent-ink); }
 
 .theme-toggle {
   align-items: center;
@@ -500,6 +514,70 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .form-submit { align-self: end; justify-self: start; }
 .search-input { font-size: 1rem; margin-top: .2rem; }
 
+/* ---------- review inbox ---------- */
+
+/*
+  A review card is read top to bottom as source → interpretation → decision.
+  The original capture is the anchor: it keeps the accent spine and the largest
+  type in the card, and the proposal sits below it as a recessed panel so an AI
+  reading can never be mistaken for the user's own words.
+*/
+.review-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+.review-card--attention { border-color: var(--attention-line); }
+
+.review-head {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: .78rem;
+  font-weight: 600;
+  gap: .4rem .7rem;
+  justify-content: space-between;
+  padding: .65rem 1.05rem;
+}
+.review-origin { align-items: center; display: inline-flex; gap: .4rem; }
+.review-origin svg { flex-shrink: 0; }
+.review-origin time::before { content: "·"; margin-right: .4rem; }
+
+.review-source {
+  border-left: 2px solid var(--accent);
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 1.05rem 1.05rem .95rem;
+  padding-left: .85rem;
+  white-space: pre-wrap;
+}
+
+.review-panel { background: var(--surface-sunken); border-top: 1px solid var(--line); padding: .95rem 1.05rem 1.05rem; }
+.review-panel-head { align-items: flex-start; display: flex; flex-wrap: wrap; gap: .5rem; justify-content: space-between; }
+.review-panel-head h4 { font-size: .95rem; font-weight: 600; letter-spacing: -.01em; }
+.review-tags { display: flex; flex-wrap: wrap; gap: .3rem; }
+.review-reason { color: var(--ink-muted); font-size: .85rem; line-height: 1.55; margin-top: .45rem; max-width: 66ch; }
+.review-panel .status-message { margin-top: .7rem; }
+
+.review-fields { display: grid; gap: .7rem; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: .9rem; }
+.review-fields .form-span { grid-column: 1 / -1; }
+
+.review-actions { align-items: center; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: .5rem; padding: .75rem 1.05rem; }
+/* Discard sits apart from the two constructive actions so it is never a mis-click. */
+.review-actions .review-discard { margin-left: auto; }
+
+.review-confirm {
+  align-items: center;
+  background: var(--danger-soft);
+  border-top: 1px solid color-mix(in srgb, var(--danger) 28%, transparent);
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  padding: .75rem 1.05rem;
+}
+.review-confirm p { color: var(--danger); flex: 1 1 100%; font-size: .85rem; line-height: 1.5; max-width: 60ch; }
+/* The soft danger button would disappear against this bar, so the confirming action goes solid. */
+.review-confirm .button-danger { background: var(--danger); color: var(--surface); }
+.review-confirm .button-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 82%, var(--ink)); }
+
 .project-card { border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
 .project-card > .record-card { border: 0; border-radius: 0; }
 .project-milestones { background: var(--surface-sunken); border-top: 1px solid var(--line); padding: .8rem 1rem; }
@@ -590,6 +668,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes panel-in { from { opacity: 0; transform: translateY(6px) scale(.99); } to { opacity: 1; transform: none; } }
 @keyframes rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes drop-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -630,7 +709,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     z-index: 20;
   }
   .app-mobile-header .brand-mark { padding: .3rem .2rem; }
-  .app-mobile-header .more-menu nav { position: absolute; right: 0; width: 13rem; z-index: 30; }
 
   .mobile-nav {
     align-items: center;
@@ -674,9 +752,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     z-index: 31;
   }
 
+  /* No sidebar here, and the stack drops below the sticky header rather than covering it. */
+  .toast-stack { align-items: stretch; left: 0; top: 3.9rem; }
+  .toast { max-width: none; }
+
   .build-state { padding-top: 3rem; }
   .workspace-page { padding: 1.25rem 1rem; }
-  .workspace-columns, .form-grid { grid-template-columns: 1fr; }
+  .workspace-columns, .form-grid, .review-fields { grid-template-columns: 1fr; }
+  .review-actions .review-discard { margin-left: 0; }
   .record-card { flex-direction: column; }
   .record-actions { justify-content: flex-start; }
   .form-span { grid-column: auto; }

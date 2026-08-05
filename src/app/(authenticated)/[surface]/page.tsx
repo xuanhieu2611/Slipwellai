@@ -12,10 +12,7 @@ const workspaceSurfaces = new Set(["today", "tasks", "work", "search", "people-n
 
 export default async function SurfacePage({ params, searchParams }: { params: Promise<{ surface: string }>; searchParams: Promise<{ revoke?: string }> }) {
   const { surface } = await params;
-  if (surface === "inbox") {
-    const [{ user }, data] = await Promise.all([requireUser(), getDashboardData()]);
-    return <Dashboard data={data} email={user?.email ?? "Signed-in account"} />;
-  }
+  if (surface === "inbox") return <Dashboard data={await getDashboardData()} />;
   if (!buildStateSurfaces.has(surface)) notFound();
   if (surface === "settings") {
     const { user } = await requireUser();

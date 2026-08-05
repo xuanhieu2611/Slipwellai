@@ -35,8 +35,18 @@ export const createCaptureSchema = z.object({
   idempotencyKey: z.string().uuid(),
 });
 
+export const fileManuallySchema = z.object({
+  recordType: z.enum(["task", "note"]),
+  title: z.string().trim().min(1).max(280),
+  body: z.string().trim().max(5000).optional(),
+  dueOn: z.string().date().optional(),
+  dueTime: dueTimeSchema.optional(),
+});
+
+export type FileManuallyInput = z.infer<typeof fileManuallySchema>;
+
 export const proposalActionSchema = z.object({
-  action: z.enum(["accept", "discard", "retry", "undo"]),
+  action: z.enum(["accept", "discard", "retry", "undo", "dismiss_item"]),
   proposalIndex: z.number().int().min(0).max(2).default(0),
   recordId: z.string().uuid().optional(),
   edited: z

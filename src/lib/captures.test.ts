@@ -1,8 +1,51 @@
 import { describe, expect, it, vi } from "vitest";
-import { interpretCapture } from "./captures";
+import { claimCaptureForInterpretation, interpretCapture } from "./captures";
 import { ProposalProviderError, type ProposalProvider } from "./proposals/provider";
 
 const captureId = "11111111-1111-4111-8111-111111111111";
+
+describe("claimCaptureForInterpretation", () => {
+  function claimClient(claimed: { id: string; original_text: string } | null) {
+    const calls: { update?: unknown; or?: string } = {};
+    const supabase = {
+      from() {
+        return {
+          update(value: unknown) {
+            calls.update = value;
+            return {
+              eq: () => ({
+                or(filter: string) {
+                  calls.or = filter;
+                  return { select: () => ({ maybeSingle: () => ({ data: claimed }) }) };
+                },
+              }),
+            };
+          },
+        };
+      },
+    };
+    return { supabase, calls };
+  }
+
+  it("hands the capture to the request that won the claim and records when it was taken", async () => {
+    const now = new Date("2026-08-05T12:00:00.000Z");
+    const { supabase, calls } = claimClient({ id: captureId, original_text: "stored words" });
+
+    const result = await claimCaptureForInterpretation({ supabase: supabase as never, captureId, reason: "queued", now });
+
+    expect(result).toEqual({ id: captureId, original_text: "stored words" });
+    expect(calls.update).toEqual({ status: "interpreting", failure_code: null, interpretation_claimed_at: now.toISOString() });
+    expect(calls.or).toContain("status.eq.queued");
+  });
+
+  it("returns nothing when another request already holds the claim, so interpretation is not duplicated", async () => {
+    const { supabase } = claimClient(null);
+
+    const result = await claimCaptureForInterpretation({ supabase: supabase as never, captureId, reason: "queued" });
+
+    expect(result).toBeNull();
+  });
+});
 
 describe("interpretCapture", () => {
   it("keeps a failed interpretation recoverable through an addressable failed proposal", async () => {
