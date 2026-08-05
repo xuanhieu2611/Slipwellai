@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { badRequest, serverError, unauthorized } from "@/lib/http";
 import { applyDestinationSelection } from "@/lib/proposals/catalog";
-import { fileManuallySchema, parseProposalEnvelope } from "@/lib/proposals/schema";
+import { filedDateColumns, fileManuallySchema, parseProposalEnvelope } from "@/lib/proposals/schema";
 import { requireUser } from "@/lib/supabase/server";
 
 /* Filing without AI. A capture must never depend on the proposal service to become a
@@ -48,9 +48,13 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ca
   if (!claimed) return badRequest("This capture has already been filed or discarded.");
 
   const item = parsed.data;
+  /* Dates here come straight from the person filing, so there is nothing to re-resolve —
+     but they go through the same column mapping as an accepted proposal so a manually
+     filed record is indistinguishable from a proposed one afterwards. */
+  const dateColumns = filedDateColumns(item);
   const insert = item.recordType === "task"
-    ? supabase.from("tasks").insert({ source_capture_id: captureId, title: item.title, details: item.body ?? null, due_on: item.dueOn ?? null, due_time: item.dueTime ?? null, domain_id: destination.domainId, project_id: destination.projectId, person_id: destination.personId }).select("id").single()
-    : supabase.from("notes").insert({ source_capture_id: captureId, title: item.title, body: item.body ?? null, domain_id: destination.domainId, project_id: destination.projectId, person_id: destination.personId }).select("id").single();
+    ? supabase.from("tasks").insert({ source_capture_id: captureId, title: item.title, details: item.body ?? null, ...dateColumns, domain_id: destination.domainId, project_id: destination.projectId, person_id: destination.personId }).select("id").single()
+    : supabase.from("notes").insert({ source_capture_id: captureId, title: item.title, body: item.body ?? null, review_on: dateColumns.due_on ?? dateColumns.scheduled_for, domain_id: destination.domainId, project_id: destination.projectId, person_id: destination.personId }).select("id").single();
   const { data: record, error: recordError } = await insert;
   if (recordError || !record) {
     // Give the capture back so it stays actionable rather than looking filed with nothing behind it.

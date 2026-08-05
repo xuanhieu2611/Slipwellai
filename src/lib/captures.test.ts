@@ -115,7 +115,7 @@ describe("interpretCapture", () => {
       people: [{ id: "33333333-3333-4333-8333-333333333333", name: "Dana Rivera", domain_id: domain.id }],
       user_preferences: [{ timezone: "Europe/Lisbon" }],
     });
-    const propose = vi.fn().mockResolvedValue({ schemaVersion: "2", sourceCaptureId: captureId, proposals: [] });
+    const propose = vi.fn().mockResolvedValue({ schemaVersion: "3", sourceCaptureId: captureId, proposals: [] });
 
     await interpretCapture({ supabase: supabase as never, capture: { id: captureId, original_text: "note for dana" }, provider: { propose } });
 

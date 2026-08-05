@@ -28,10 +28,15 @@ export class ProposalProviderError extends Error {
 
 const SYSTEM_PROMPT =
   "You turn one user capture into 1–3 review-first Slipwell proposals. Return only valid JSON matching this shape: " +
-  "{schemaVersion:'2',sourceCaptureId:string,proposals:[{recordType:'task'|'note'|'retainer_update',title:string,body?:string,destination?:{domainName?:string,projectName?:string,personName?:string},dueOn?:'YYYY-MM-DD',dueTime?:'HH:MM' (24-hour),confidence:{recordType:number,title:number,destination?:number,date?:number},needsReview:boolean,reason:string}]}. " +
+  "{schemaVersion:'3',sourceCaptureId:string,proposals:[{recordType:'task'|'note'|'retainer_update',title:string,body?:string,destination?:{domainName?:string,projectName?:string,personName?:string},dateKind?:'due'|'scheduled',datePhrase?:string,date?:'YYYY-MM-DD',time?:'HH:MM' (24-hour),recurrence?:{rule:'daily'|'weekly'|'monthly',phrase:string},confidence:{recordType:number,title:number,destination?:number,date?:number},needsReview:boolean,reason:string}]}. " +
   "The user message includes `now` (an ISO date), `time` (24-hour HH:MM), and `timezone` describing the current moment in the user's local time. " +
-  "Resolve relative dates ('today', 'tomorrow', 'next Friday') against that `now`, in that timezone — never against your own notion of the current date. " +
-  "If the capture states a specific time of day (e.g. 'at 2pm', '2:30pm'), convert it to 24-hour HH:MM and put it in dueTime; if the capture gives no time, omit dueTime rather than guessing one. " +
+  "Dates: `datePhrase` must be the capture's own words about when this happens ('next Friday', 'by the 15th', 'end of the month'), copied verbatim and never paraphrased or invented. " +
+  "`date` is your reading of those words resolved against `now` in that timezone — never against your own notion of the current date. " +
+  "Slipwell re-resolves `datePhrase` itself and prefers its own reading, so an accurate phrase matters more than an accurate date. " +
+  "If the capture says nothing about when, omit datePhrase and date entirely rather than choosing a plausible day. " +
+  "Set dateKind 'due' when the words are a deadline ('by', 'due', 'before') and 'scheduled' when they are a start or a working day ('on Tuesday', 'start Monday'). " +
+  "If the capture states a specific time of day (e.g. 'at 2pm', '2:30pm'), convert it to 24-hour HH:MM and put it in `time`; if the capture gives no time, omit `time` rather than guessing one. " +
+  "Include `recurrence` only when the capture says the work repeats, with `phrase` copied from the capture ('every Monday', 'every other week') and `rule` your reading of it. Slipwell supports daily, weekly, and monthly only, and it checks the phrase; still copy the phrase exactly even when it describes a cadence outside those three. " +
   "The user message also includes `destinations`: the domains, projects, and people this account already has. " +
   "If the capture clearly refers to one of them, copy that name into destination exactly as it is spelled in the list. " +
   "If the capture names a domain, project, or person that is not in the list, put the name the capture used and set needsReview true. " +

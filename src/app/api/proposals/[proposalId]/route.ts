@@ -3,7 +3,8 @@ import { captureStatusAfterApplications } from "@/lib/capture-pipeline";
 import { claimCaptureForInterpretation, interpretCapture } from "@/lib/captures";
 import { badRequest, serverError, unauthorized } from "@/lib/http";
 import { applyDestinationSelection } from "@/lib/proposals/catalog";
-import { parseProposalEnvelope, proposalActionSchema } from "@/lib/proposals/schema";
+import { acceptedDate, acceptedRecurrence, DEFAULT_TIMEZONE, localToday, resolveProposalDate, resolveProposalRecurrence } from "@/lib/proposals/dates";
+import { filedDateColumns, parseProposalEnvelope, proposalActionSchema } from "@/lib/proposals/schema";
 import { requireUser } from "@/lib/supabase/server";
 
 type SupabaseClient = Awaited<ReturnType<typeof import("@/lib/supabase/server").createSupabaseServerClient>>;
@@ -113,6 +114,25 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
   if (!proposed) return badRequest("Proposal item not found.");
   const item = parsed.data.edited ?? proposed;
 
+  /* The model's own date never reaches a record on its own. An edited accept carries what
+     the user confirmed in review; an unedited one is re-resolved here against the
+     account's local today, and anything the resolver could not settle — an ambiguous
+     phrase, a date with no words behind it, a repeat Slipwell cannot express — is left off
+     the record rather than guessed at. */
+  const dateColumns = parsed.data.edited
+    ? filedDateColumns(parsed.data.edited)
+    : await (async () => {
+        const { data: preferences } = await supabase.from("user_preferences").select("timezone").maybeSingle();
+        const today = localToday(new Date(), preferences?.timezone ?? DEFAULT_TIMEZONE);
+        const resolvedDate = resolveProposalDate(proposed, today);
+        return filedDateColumns({
+          dateKind: resolvedDate.kind,
+          date: acceptedDate(resolvedDate),
+          time: proposed.time,
+          recurrenceRule: acceptedRecurrence(resolveProposalRecurrence(proposed.recurrence, resolvedDate)),
+        });
+      })();
+
   /* Destinations are resolved before the item is claimed, so a rejected identifier leaves
      the item reviewable instead of burning its one outcome. Ownership of every chosen
      domain, project, and person is proved here: the record foreign keys do not check who
@@ -146,10 +166,11 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
     proposed.destination?.projectName ?? proposed.destination?.personName ?? proposed.destination?.domainName ?? null;
 
   const insert = item.recordType === "task"
-    ? supabase.from("tasks").insert({ proposal_id: proposal.id, source_capture_id: proposal.capture_id, title: item.title, details: item.body ?? null, due_on: item.dueOn ?? null, due_time: item.dueTime ?? null, domain_id: destination.domainId, project_id: destination.projectId, person_id: destination.personId }).select("id").single()
+    ? supabase.from("tasks").insert({ proposal_id: proposal.id, source_capture_id: proposal.capture_id, title: item.title, details: item.body ?? null, ...dateColumns, domain_id: destination.domainId, project_id: destination.projectId, person_id: destination.personId }).select("id").single()
+    /* A note has no deadline; a date on one is when it comes back for review. */
     : item.recordType === "note"
-      ? supabase.from("notes").insert({ proposal_id: proposal.id, source_capture_id: proposal.capture_id, title: item.title, body: item.body ?? null, domain_id: destination.domainId, project_id: destination.projectId, person_id: destination.personId }).select("id").single()
-      : supabase.from("prototype_records").insert({ proposal_id: proposal.id, record_type: item.recordType, title: item.title, body: item.body ?? null, destination_name: prototypeDestinationName, due_on: item.dueOn ?? null, due_time: item.dueTime ?? null }).select("id").single();
+      ? supabase.from("notes").insert({ proposal_id: proposal.id, source_capture_id: proposal.capture_id, title: item.title, body: item.body ?? null, review_on: dateColumns.due_on ?? dateColumns.scheduled_for, domain_id: destination.domainId, project_id: destination.projectId, person_id: destination.personId }).select("id").single()
+      : supabase.from("prototype_records").insert({ proposal_id: proposal.id, record_type: item.recordType, title: item.title, body: item.body ?? null, destination_name: prototypeDestinationName, due_on: dateColumns.due_on ?? dateColumns.scheduled_for, due_time: dateColumns.due_time }).select("id").single();
   const { data: record, error: recordError } = await insert;
   if (recordError || !record) {
     // Release the claim so the item can be filed again rather than looking resolved.

@@ -1,5 +1,6 @@
 import { interpretationClaimFilter, type ClaimReason } from "@/lib/capture-pipeline";
 import { loadDestinationCatalog } from "@/lib/proposals/catalog";
+import { DEFAULT_TIMEZONE } from "@/lib/proposals/dates";
 import { ProposalProviderError, proposalProvider, type ProposalFailureCode } from "@/lib/proposals/provider";
 import type { ProposalEnvelope } from "@/lib/proposals/schema";
 
@@ -58,7 +59,7 @@ export async function interpretCapture({
     supabase.from("user_preferences").select("timezone").maybeSingle(),
     loadDestinationCatalog(supabase),
   ]);
-  const timezone = preferences?.timezone ?? "America/Vancouver";
+  const timezone = preferences?.timezone ?? DEFAULT_TIMEZONE;
 
   try {
     const proposal = await proposeWithRetry(provider, { captureId: capture.id, originalText: capture.original_text, now: new Date(), timezone, catalog });

@@ -3,6 +3,18 @@
 import { type FormEvent, useState, useSyncExternalStore } from "react";
 import { ArrowClockwise, Check, Keyboard, Microphone, Plus, TrashSimple, WarningCircle } from "@phosphor-icons/react";
 import { isStrandedCapture } from "@/lib/capture-pipeline";
+import {
+  acceptedDate,
+  acceptedRecurrence,
+  dateNotes,
+  formatDateLabel,
+  resolveProposalDate,
+  resolveProposalRecurrence,
+  type DateKind,
+  type RecurrenceRule,
+  type ResolvedProposalDate,
+  type ResolvedRecurrence,
+} from "@/lib/proposals/dates";
 import { resolveDestination, unmatchedNames, type DestinationCatalog, type ResolvedDestination } from "@/lib/proposals/destinations";
 import { parseProposalEnvelope, type DestinationSelection, type ProposalItem } from "@/lib/proposals/schema";
 import { nextCycleMonth } from "@/lib/retainers";
@@ -110,9 +122,9 @@ function DestinationFields({
   resolved: ResolvedDestination;
 }) {
   const unmatched = unmatchedNames(resolved);
-  return <fieldset className="review-destination">
+  return <fieldset className="review-group">
     <legend>Where it belongs</legend>
-    <div className="review-destination-grid">
+    <div className="review-group-grid">
       <label className="field-label"><span>Domain</span>
         <SelectField onChange={(event) => onChange({ ...draft, domain: event.target.value })} value={draft.domain}>
           <option value="">No domain</option>
@@ -135,6 +147,72 @@ function DestinationFields({
       </label>
     </div>
     {destinationNotes(resolved, catalog).map((note) => <p className="form-help" key={note}>{note}</p>)}
+  </fieldset>;
+}
+
+type DateDraft = {
+  recordType: "task" | "note" | "retainer_update";
+  dateKind: DateKind;
+  date: string;
+  time: string;
+  recurrenceRule: RecurrenceRule | "none";
+};
+
+/* Dates in review. A date the capture's own words produced arrives filled in and says so;
+   anything the resolver could not settle arrives empty, explains why in words, and offers
+   the readings worth one click. An empty date field is the honest state for "Slipwell does
+   not know" — filing without a date loses nothing, and filing the wrong one is invisible. */
+function DateFields({
+  draft,
+  item,
+  onChange,
+  recurrence,
+  resolved,
+  today,
+}: {
+  draft: DateDraft;
+  item: ProposalItem;
+  onChange: (next: Partial<DateDraft>) => void;
+  recurrence: ResolvedRecurrence;
+  resolved: ResolvedProposalDate;
+  today: string;
+}) {
+  const notes = dateNotes(resolved, recurrence);
+  const options = resolved.status === "unconfirmed" ? resolved.options : [];
+  const isNote = draft.recordType === "note";
+
+  return <fieldset className="review-group">
+    <legend>{isNote ? "When to look at it again" : "When it happens"}</legend>
+    <div className="review-group-grid">
+      {!isNote && <label className="field-label"><span>Date means</span>
+        <SelectField onChange={(event) => onChange({ dateKind: event.target.value as DateKind })} value={draft.dateKind}>
+          <option value="due">Due by</option>
+          <option value="scheduled">Work on</option>
+        </SelectField>
+      </label>}
+      <label className="field-label"><span>{isNote ? "Review on" : "Date"}</span>
+        {/* Clearing the date clears the repeat with it: a repeat with no anchor cannot be filed. */}
+        <TextField onChange={(event) => onChange({ date: event.target.value, ...(event.target.value ? {} : { recurrenceRule: "none" as const }) })} type="date" value={draft.date} />
+      </label>
+      {!isNote && <label className="field-label"><span>Time (optional)</span>
+        <TextField onChange={(event) => onChange({ time: event.target.value })} type="time" value={draft.time} />
+      </label>}
+      {draft.recordType === "task" && <label className="field-label"><span>Repeats</span>
+        <SelectField disabled={!draft.date} onChange={(event) => onChange({ recurrenceRule: event.target.value as DateDraft["recurrenceRule"] })} value={draft.recurrenceRule}>
+          <option value="none">Does not repeat</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </SelectField>
+      </label>}
+    </div>
+    {resolved.status === "confirmed" && resolved.phrase && <p className="form-help">Read from “{resolved.phrase}” in your capture.</p>}
+    {item.datePhrase && resolved.status === "none" && <p className="form-help">No date was filed from “{item.datePhrase}”.</p>}
+    {notes.map((note) => <p className="form-help" key={note}>{note}</p>)}
+    {!draft.date && options.length > 0 && <div className="mt-3 flex flex-wrap gap-2">
+      {options.map((option) => <Button className="button-secondary" key={option} onClick={() => onChange({ date: option })}>Use {formatDateLabel(option, today)}</Button>)}
+    </div>}
+    {!draft.date && draft.recordType === "task" && <p className="form-help">Filing without a date is fine — it stays in your task list and out of Today.</p>}
   </fieldset>;
 }
 
@@ -235,6 +313,7 @@ function ProposedItem({
   total,
   proposalId,
   catalog,
+  today,
   done,
 }: {
   item: ProposalItem;
@@ -242,15 +321,23 @@ function ProposedItem({
   total: number;
   proposalId: string;
   catalog: DestinationCatalog;
+  today: string;
   done: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [draft, setDraft] = useState({
+  /* The capture's own date words, re-read here against the account's local today. Only a
+     date this resolution settled is preselected; anything it could not is offered as a
+     choice below and filed as no date until the user makes one. */
+  const resolvedDate = resolveProposalDate(item, today);
+  const resolvedRecurrence = resolveProposalRecurrence(item.recurrence, resolvedDate);
+  const [draft, setDraft] = useState<DateDraft & { title: string }>({
     recordType: item.recordType,
     title: item.title,
-    dueOn: item.dueOn ?? "",
-    dueTime: item.dueTime ?? "",
+    dateKind: resolvedDate.kind,
+    date: acceptedDate(resolvedDate) ?? "",
+    time: item.time ?? "",
+    recurrenceRule: acceptedRecurrence(resolvedRecurrence) ?? "none",
   });
   /* Matched here rather than at interpretation time, so a domain or person created since
      the proposal was written is still offered. */
@@ -269,8 +356,11 @@ function ProposedItem({
               recordType: draft.recordType,
               title: draft.title.trim() || item.title,
               body: item.body,
-              dueOn: draft.dueOn || undefined,
-              dueTime: draft.dueTime || undefined,
+              dateKind: draft.dateKind,
+              date: draft.date || undefined,
+              time: draft.time || undefined,
+              /* A repeat is anchored on its first date, so it is only sent with one. */
+              recurrenceRule: draft.date && draft.recurrenceRule !== "none" ? draft.recurrenceRule : undefined,
               /* A retainer update has no destination columns, and its pickers are hidden.
                  Sending a selection anyway would create a domain or person that nothing
                  ends up pointing at. */
@@ -285,16 +375,23 @@ function ProposedItem({
     }
   }
 
-  const titleConfidence = Math.round(item.confidence.title * 100);
-  const destinationConfidence = item.confidence.destination === undefined ? null : Math.round(item.confidence.destination * 100);
+  const confidenceChip = (label: string, value: number | undefined) =>
+    value === undefined ? null : <span className={`tag${Math.round(value * 100) < 70 ? " tag--attention" : ""}`}>{label} {Math.round(value * 100)}% sure</span>;
 
   return <div className="review-panel">
     <div className="review-panel-head">
       <h4>{total > 1 ? `Record ${index + 1} of ${total}` : "Slipwell suggests filing this"}</h4>
       <span className="review-tags">
         <span className="tag tag--accent">{recordTypeLabels[item.recordType]}</span>
-        <span className={`tag${titleConfidence < 70 ? " tag--attention" : ""}`}>Title {titleConfidence}% sure</span>
-        {destinationConfidence !== null && item.destination && <span className={`tag${destinationConfidence < 70 ? " tag--attention" : ""}`}>Destination {destinationConfidence}% sure</span>}
+        {confidenceChip("Type", item.confidence.recordType)}
+        {confidenceChip("Title", item.confidence.title)}
+        {item.destination && confidenceChip("Destination", item.confidence.destination)}
+        {/* The model's own date confidence is only worth showing while it still stands.
+            Once the resolver has declined to settle the date, its verdict is the honest
+            one — "100% sure" beside "Date to confirm" would read as a contradiction. */}
+        {resolvedDate.status === "unconfirmed"
+          ? !draft.date && <span className="tag tag--attention">Date to confirm</span>
+          : (item.datePhrase || item.date) && confidenceChip("Date", item.confidence.date)}
       </span>
     </div>
     <p className="review-reason">{item.reason}</p>
@@ -309,12 +406,14 @@ function ProposedItem({
           <option value="retainer_update">Retainer update</option>
         </SelectField>
       </label>
-      <label className="field-label"><span>Due date (optional)</span>
-        <TextField onChange={(event) => setDraft({ ...draft, dueOn: event.target.value })} type="date" value={draft.dueOn} />
-      </label>
-      <label className="field-label"><span>Due time (optional)</span>
-        <TextField onChange={(event) => setDraft({ ...draft, dueTime: event.target.value })} type="time" value={draft.dueTime} />
-      </label>
+      <DateFields
+        draft={draft}
+        item={item}
+        onChange={(next) => setDraft({ ...draft, ...next })}
+        recurrence={resolvedRecurrence}
+        resolved={resolvedDate}
+        today={today}
+      />
       {draft.recordType === "retainer_update"
         ? <p className="form-help form-span">A retainer update is still a prototype record. It keeps the name from the capture rather than linking to a domain, project, or person.</p>
         : <DestinationFields catalog={catalog} draft={destination} onChange={setDestination} resolved={resolved} />}
@@ -327,7 +426,7 @@ function ProposedItem({
   </div>;
 }
 
-function Review({ capture, catalog, done }: { capture: DashboardData["captures"][number]; catalog: DestinationCatalog; done: () => void }) {
+function Review({ capture, catalog, today, done }: { capture: DashboardData["captures"][number]; catalog: DestinationCatalog; today: string; done: () => void }) {
   const parsed = capture.proposal ? parseProposalEnvelope(capture.proposal.proposal_json) : null;
   const items = parsed?.proposals ?? [];
   const applications = capture.proposal?.applications ?? [];
@@ -364,7 +463,7 @@ function Review({ capture, catalog, done }: { capture: DashboardData["captures"]
 
     {items.length > 0 ? items.map((item, index) => {
       const outcome = outcomeByIndex.get(index);
-      if (!outcome) return <ProposedItem catalog={catalog} done={done} index={index} item={item} key={index} proposalId={capture.proposal!.id} total={items.length} />;
+      if (!outcome) return <ProposedItem catalog={catalog} done={done} index={index} item={item} key={index} proposalId={capture.proposal!.id} today={today} total={items.length} />;
       return <div className="review-panel" key={index}>
         <div className="review-panel-head">
           <h4>{items.length > 1 ? `Record ${index + 1} of ${items.length}` : "Decided"}</h4>
@@ -516,7 +615,7 @@ export function Dashboard({ data }: { data: DashboardData }) {
           </div>
           <div className="space-y-3">
             {pending.map((capture) => <PendingCapture key={capture.id} capture={capture} catalog={data.catalog} done={refresh} />)}
-            {needsReview.map((capture) => <Review key={capture.id} capture={capture} catalog={data.catalog} done={refresh} />)}
+            {needsReview.map((capture) => <Review key={capture.id} capture={capture} catalog={data.catalog} today={data.today} done={refresh} />)}
             {needsReview.length === 0 && pending.length === 0 && <EmptyState>Your inbox is clear. Capture the next thing before it slips.</EmptyState>}
           </div>
         </section>
