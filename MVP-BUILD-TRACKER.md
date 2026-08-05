@@ -55,6 +55,7 @@ Important limitations:
 
 - 🟡 The tested AI request currently falls back to “proposal service did not return a safe result”; the happy path is not verified.
 - 🟡 Review now displays and resolves every proposal from a multi-intent capture, and a repeated apply is blocked by a database constraint. Split, merge, and add-manual-record corrections remain open.
+- 🟡 An accepted proposal now routes into the account's own domain, project, and person records through deterministic owner-scoped name matching. Retainer destinations, date/recurrence ambiguity, and a durable proposal job remain open.
 - 🟡 A capture is acknowledged as soon as its source is stored; interpretation runs as a separate claimed request, not yet as a durable background job.
 - 🟡 `prototype_records` is not the canonical task, note, project, person, or retainer data model.
 - 🟡 Retainer and Slipping logic are interactive labs, not production-grade durable workflows.
@@ -71,6 +72,7 @@ Current implementation evidence:
 - Capture API and source-first insert: `src/app/api/captures/route.ts`, `src/lib/captures.ts`
 - Capture pipeline states, interpretation claim, and multi-item outcomes: `src/lib/capture-pipeline.ts`, `src/app/api/captures/[captureId]/interpret/route.ts`, `src/app/api/captures/[captureId]/file/route.ts`, `supabase/migrations/20260805120000_capture_pipeline_and_multi_proposal.sql`
 - Proposal provider and schema: `src/lib/proposals/provider.ts`, `src/lib/proposals/schema.ts`
+- Structured destinations, deterministic matching, and owner-scoped validation: `src/lib/proposals/destinations.ts`, `src/lib/proposals/catalog.ts`, `src/app/api/proposals/[proposalId]/route.ts`
 - Prototype review, retainer, and Slipping UI: `src/components/dashboard.tsx`
 - Prototype retainer and Slipping rules: `src/lib/retainers.ts`
 - Database schema and RLS: `supabase/migrations/20260802224924_phase0_foundation.sql`
@@ -169,7 +171,7 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 - [ ] Ensure every future user-owned table has RLS before it becomes API-accessible.
 - [ ] Keep privileged mutations in authenticated server application services.
 - [ ] Create two-user RLS integration fixtures and prove cross-user read/write isolation for every user-owned table.
-- [ ] Test direct Supabase API attempts, guessed IDs, relationship reassignment, and deleted-user access.
+- [ ] Partial: filing a capture proves ownership of every submitted domain, project, and person before insert, and unit tests cover the reassignment attempt. The record foreign keys still do not constrain the owner, so this holds only where an application service enforces it; direct Supabase API attempts, guessed IDs elsewhere, and deleted-user access remain untested.
 
 ### Onboarding, navigation, and design system
 
@@ -217,7 +219,7 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 - [ ] Partial: text capture is reachable from every signed-in screen through the shell button and the mobile capture button; the `Cmd/Ctrl+J` handler exists but was not exercised in a browser this session.
 - [ ] Partial: the capture request now returns as soon as the source is stored, measured at 177 ms warm against the linked pilot; a p95 measurement against a production-like environment remains open.
 - [ ] Partial: interpretation no longer runs inside the capture request — it is a separately claimed request against the stored capture. A durable background-job system remains open in Step 11.
-- [x] Allow manual filing when AI is disabled, unavailable, or unwanted.
+- [x] Allow manual filing when AI is disabled, unavailable, or unwanted. A manually filed record now chooses the same destinations as a proposed one and appears in `Recently filed`.
 - [ ] Partial: an unsent draft and its idempotency key survive refresh and a failed submission through local storage, and the restored state is labelled; browser verification of the offline transition remains open.
 - [ ] Preserve over-limit captures for manual handling rather than discarding them.
 - [x] Prevent duplicate captures on double-click, request retry, refresh, and multiple tabs.
@@ -249,11 +251,11 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 
 ### Canonical proposal schema
 
-- [ ] Model operation, record type, field changes, destination/relationships, date semantics, rationale, and schema version.
-- [ ] Store field-level confidence for every material extracted field.
-- [ ] Support all MVP destinations: task, note, person, project, retainer, and relevant relationships.
-- [ ] Support one capture producing multiple proposed records.
-- [ ] Represent ambiguity explicitly rather than inventing identity, date, recurrence, promise, or relationship.
+- [ ] Partial: schema version 2 models record type, field changes, destination relationships, rationale, and confidence, and version 1 proposals are upgraded on read so nothing stored becomes unreviewable. Operation type and full date semantics remain open.
+- [ ] Partial: store field-level confidence for record type, title, destination, and date; body, relationship, and recurrence confidence remain open.
+- [ ] Partial: a proposal routes into task and note records with domain, project, and person relationships. Retainer destinations and note/capture relationships remain open.
+- [x] Support one capture producing multiple proposed records.
+- [ ] Partial: a destination the model names is matched only against records the user owns; an unmatched or ambiguous name is reported in review and never becomes a record on its own. Date, recurrence, and promise ambiguity remain open.
 - [ ] Keep reflective notes as notes unless task intent is explicit.
 - [ ] Implement deterministic date, timezone, and recurrence parsing/validation around model output.
 - [ ] Reject unsupported fields, unexpected operations, prompt-injection artifacts, and invalid relationships.
@@ -263,9 +265,9 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 - [x] Show the original capture next to the current basic proposal.
 - [x] Provide basic accept, edit, change type/destination, discard, retry, and undo actions.
 - [x] Display every proposal from a multi-intent capture, not only the first one.
-- [ ] Show destination, concise rationale, and field-level confidence without false precision.
+- [ ] Partial: review shows the resolved destination, the rationale, and title/destination confidence, and states in words whatever the match could not settle. Rendering confidence for date and record type remains open.
 - [ ] Partial: remove-one (`Not this one`) and manually-file-without-AI are implemented and recorded as outcomes; split, merge, and add-manual-record remain open.
-- [ ] Require review for ambiguous dates, people, projects, retainers, recurrence, and sensitive personal facts.
+- [ ] Partial: an ambiguous or unmatched person, project, or domain is left unselected and explained in review rather than filed. Ambiguous dates, retainers, recurrence, and sensitive personal facts remain open.
 - [ ] Partial: apply is idempotent — a unique `(proposal_id, item_index)` claim in `proposal_applications` makes a repeated or concurrent accept reconcile against the existing record instead of creating a second one. A single-transaction apply across the claim and the record insert remains open; a failed insert releases the claim.
 - [ ] Record before/after structural diffs and correction outcomes in the audit history.
 - [ ] Partial: undo releases the item's recorded outcome and returns just that item to review, leaving other decisions from the same capture intact; the point at which undo expires is not defined yet.
@@ -299,7 +301,7 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 - [ ] Partial: distinguish due, scheduled, defer/until, and limited recurrence semantics in storage and UI; timezone-boundary coverage remains open.
 - [ ] Partial: implement daily, weekly, and monthly task recurrence separately from routines. A recurring task requires a schedule and always advances from its scheduled date; yearly, weekdays, and custom intervals remain open.
 - [ ] Partial: use root/anchor uniqueness to prevent duplicate generated recurrence occurrences and unit-test short-month bounds; migration-backed retry, timezone, and DST coverage remain open.
-- [ ] Link tasks to domains, projects, retainers, people, notes, and source captures where relevant.
+- [ ] Partial: a task or note created from a capture links to a domain, project, person, and its source capture, whether it was filed from a proposal or filed manually. Retainer and note-to-note links remain open.
 - [ ] Add list/filter/sort views that remain usable at 360 px and by keyboard.
 
 ### Domains
@@ -733,6 +735,8 @@ Add a dated row when a milestone or important checkbox becomes verified. Link co
 
 | 2026-08-05 | Multi-intent review and out-of-request interpretation | `20260805120000_capture_pipeline_and_multi_proposal.sql`, `src/lib/capture-pipeline.ts`, `src/lib/capture-pipeline.test.ts`, `src/lib/captures.ts`, `src/lib/captures.test.ts`, `src/app/api/captures/route.ts`, `src/app/api/captures/[captureId]/interpret/route.ts`, `src/app/api/captures/[captureId]/file/route.ts`, `src/app/api/proposals/[proposalId]/route.ts`, `src/app/api/voice-captures/route.ts`, `src/app/api/export/route.ts`, `src/components/dashboard.tsx`, `src/components/capture-dialog.tsx`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:e2e`, `npm run build`; authenticated browser verification against the linked pilot at 1280 px and 360 px | Pass: 63 unit tests, lint, type check, production build, and both public-auth browser tests. Two release-critical defects were closed. (1) A multi-intent capture silently lost intents: review read only `proposals[0]`, accepting it marked the whole capture filed, and `tasks.proposal_id`/`notes.proposal_id` were unique so a second record could not have been filed anyway. Every proposed item is now shown and resolved independently, the capture stays in review until each has an outcome, and undo releases one item without disturbing the others. Verified live: a two-intent capture filed record 1, kept record 2 reviewable at `1 of 2 to decide`, and closed only after record 2 was dismissed. (2) Interpretation ran inside the capture request, so a closed tab left an invisible capture stuck in `interpreting`. Capture now acknowledges on persist (177 ms warm, versus 2.8 s for the interpretation it no longer waits for), interpretation is a separately claimed request, and stored-but-uninterpreted captures appear in the Inbox with `Interpret it now` and `File it myself`. Idempotency was verified against the pilot: two concurrent accepts of the same item produced one task and an `alreadyApplied` response; two concurrent interpret calls produced one proposal; a resubmitted idempotency key returned the same capture. Remaining risk: interpretation is still a browser-initiated request rather than a durable job, apply spans a claim plus an insert instead of one transaction, offline draft recovery was not exercised in a browser, and manually filed records do not appear in the Inbox's `Recently filed` list because that list only reads proposal-linked records. | Claude |
 
+| 2026-08-05 | Structured destination routing for proposals | `src/lib/proposals/schema.ts`, `src/lib/proposals/destinations.ts`, `src/lib/proposals/destinations.test.ts`, `src/lib/proposals/catalog.ts`, `src/lib/proposals/catalog.test.ts`, `src/lib/proposals/schema.test.ts`, `src/lib/proposals/provider.ts`, `src/lib/captures.ts`, `src/lib/captures.test.ts`, `src/lib/dashboard.ts`, `src/lib/dashboard.test.ts`, `src/app/api/proposals/[proposalId]/route.ts`, `src/app/api/captures/[captureId]/file/route.ts`, `src/components/dashboard.tsx`, `src/app/globals.css`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`; authenticated browser verification against the linked pilot at 1280 px and 360 px in both themes | Pass: 102 unit tests, lint, type check, and build. Accepting a proposal previously produced a task or note with `domain_id`, `project_id`, and `person_id` all null — the model's only destination output was a free-text name that was dropped for both record types — so every AI-filed record landed unfiled. Proposal schema version 2 replaces that name with a structured destination, and version 1 proposals are upgraded on read so nothing already stored became unreviewable (verified live: a two-day-old version 1 capture still opened in review). The model is given the account's existing domain, project, and person names and returns names only, never identifiers; matching them to records happens server-side against owner-scoped rows, and an unmatched or ambiguous name is stated in review rather than resolved. Verified live end to end: a capture naming "Meridian" showed `No person called "Meridian" yet`, filing it with the explicit create option produced one person and a task linked to it, and a later capture naming Meridian was routed by the model into that existing person and arrived in review preselected — with no duplicate person created. Security: `applyDestinationSelection` proves ownership of every submitted identifier before insert, because the `tasks` and `notes` foreign keys do not constrain the owner of the row they point at and RLS on the insert only proves the task is the caller's — without it a crafted request could attach one account's task to another account's project. Also fixed: manually filed records were absent from `Recently filed` because the list read only proposal-linked rows. Remaining risk: the ownership check is application-level only, so a future write path that skips it reopens the gap; no migration-backed cross-user integration test exists yet; matching is exact after casefolding, so a near-miss name reads as unmatched; and a retainer is still not a proposal destination. | Claude |
+
 Canonical quality commands still needed:
 
 | Check | Command | Current state |
@@ -750,7 +754,7 @@ These are the next three deliverables in practical order:
 
 1. **Make Phase 0 trustworthy enough to validate.** Fix the OpenRouter happy path, preserve safe error categories, and manually verify capture/review/undo/retainer/Slipping at desktop and 360 px.
 2. **Close the product-validation gap while building the foundation.** Run the interview/WTP program in parallel with canonical auth, tenant tests, environments, design primitives, and audit/activity conventions.
-3. **Replace the synchronous prototype loop with the canonical source-first pipeline.** Multi-proposal review and idempotent apply are done, and interpretation has left the capture request. Still open before broad record surfaces: the canonical versioned capture model, a durable idempotent proposal job in place of the browser-initiated interpret request, the full versioned proposal schema, and an evaluation harness.
+3. **Replace the synchronous prototype loop with the canonical source-first pipeline.** Multi-proposal review, idempotent apply, and structured destination routing into real domain/project/person records are done, and interpretation has left the capture request. Still open before broad record surfaces: the canonical versioned capture model, a durable idempotent proposal job in place of the browser-initiated interpret request, retainer destinations and deterministic date/recurrence semantics in the proposal schema, and an evaluation harness.
 
 ## Explicitly out of scope for this MVP
 

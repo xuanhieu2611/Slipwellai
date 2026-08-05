@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { badRequest, serverError, unauthorized } from "@/lib/http";
-import { fileManuallySchema, proposalEnvelopeSchema } from "@/lib/proposals/schema";
+import { applyDestinationSelection } from "@/lib/proposals/catalog";
+import { fileManuallySchema, parseProposalEnvelope } from "@/lib/proposals/schema";
 import { requireUser } from "@/lib/supabase/server";
 
 /* Filing without AI. A capture must never depend on the proposal service to become a
@@ -26,9 +27,15 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ca
 
   /* A live proposal may hold several intents. Filing over it would close the capture and
      take the unreviewed ones with it, so route the user back to review instead. */
-  if (proposal?.status === "ready" && proposalEnvelopeSchema.safeParse(proposal.proposal_json).success) {
+  if (proposal?.status === "ready" && parseProposalEnvelope(proposal.proposal_json)) {
     return badRequest("This capture already has a proposal. Accept, edit, or dismiss it in review instead.");
   }
+
+  /* Resolved before the capture is claimed so a rejected destination leaves the capture
+     filable rather than stuck. Ownership of each identifier is proved here. */
+  const destinationResult = await applyDestinationSelection(supabase, parsed.data.destination);
+  if (!destinationResult.ok) return badRequest(destinationResult.message);
+  const destination = destinationResult.destination;
 
   // Conditional claim: a double submission finds the capture already filed and stops.
   const { data: claimed } = await supabase
@@ -42,8 +49,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ca
 
   const item = parsed.data;
   const insert = item.recordType === "task"
-    ? supabase.from("tasks").insert({ source_capture_id: captureId, title: item.title, details: item.body ?? null, due_on: item.dueOn ?? null, due_time: item.dueTime ?? null }).select("id").single()
-    : supabase.from("notes").insert({ source_capture_id: captureId, title: item.title, body: item.body ?? null }).select("id").single();
+    ? supabase.from("tasks").insert({ source_capture_id: captureId, title: item.title, details: item.body ?? null, due_on: item.dueOn ?? null, due_time: item.dueTime ?? null, domain_id: destination.domainId, project_id: destination.projectId, person_id: destination.personId }).select("id").single()
+    : supabase.from("notes").insert({ source_capture_id: captureId, title: item.title, body: item.body ?? null, domain_id: destination.domainId, project_id: destination.projectId, person_id: destination.personId }).select("id").single();
   const { data: record, error: recordError } = await insert;
   if (recordError || !record) {
     // Give the capture back so it stays actionable rather than looking filed with nothing behind it.

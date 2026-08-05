@@ -1,3 +1,5 @@
+import { loadDestinationCatalog } from "@/lib/proposals/catalog";
+import type { DestinationCatalog } from "@/lib/proposals/destinations";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type ProposalApplication = {
@@ -25,6 +27,9 @@ export type DashboardData = {
     };
   }>;
   records: Array<{ id: string; proposal_id: string | null; record_type: string; title: string; destination_name: string | null; created_at: string }>;
+  /* The domains, projects, and people a proposal can be routed into. Review matches
+     against this rather than trusting a name the model returned. */
+  catalog: DestinationCatalog;
   retainers: Array<{ id: string; name: string; timezone: string; cycle_day: number; status: string }>;
   cycles: Array<{ id: string; retainer_id: string; cycle_start: string; cycle_end: string }>;
   cycleItems: Array<{ id: string; cycle_id: string; title: string; expected_on: string; status: string; carried_from_item_id: string | null }>;
@@ -39,15 +44,31 @@ export const newestProposalByCapture = <T extends { capture_id: string }>(propos
   return proposalByCapture;
 };
 
+type RoutedRecord = { id: string; proposal_id: string | null; title: string; created_at: string; domain_id: string | null; project_id: string | null; person_id: string | null };
+
+/* Where a filed record ended up, for the Recently filed list. Reads the record's own
+   foreign keys, so it stays honest if the record is moved later. */
+export function filedDestinationLabel(record: Pick<RoutedRecord, "domain_id" | "project_id" | "person_id">, catalog: DestinationCatalog) {
+  const names = [
+    catalog.projects.find((project) => project.id === record.project_id)?.name,
+    catalog.people.find((person) => person.id === record.person_id)?.name,
+    catalog.domains.find((domain) => domain.id === record.domain_id)?.name,
+  ].filter((name): name is string => Boolean(name));
+  return names.length > 0 ? names.join(" · ") : null;
+}
+
 export async function getDashboardData(): Promise<DashboardData> {
   const supabase = await createSupabaseServerClient();
-  const [capturesResult, proposalsResult, applicationsResult, prototypeRecordsResult, taskRecordsResult, noteRecordsResult, retainersResult, cyclesResult, cycleItemsResult, signalsResult] = await Promise.all([
+  const [capturesResult, proposalsResult, applicationsResult, prototypeRecordsResult, taskRecordsResult, noteRecordsResult, catalog, retainersResult, cyclesResult, cycleItemsResult, signalsResult] = await Promise.all([
     supabase.from("captures").select("id, original_text, source_type, status, failure_code, interpretation_claimed_at, created_at").order("created_at", { ascending: false }).limit(12),
     supabase.from("proposals").select("id, capture_id, status, proposal_json").order("created_at", { ascending: false }),
     supabase.from("proposal_applications").select("proposal_id, item_index, outcome, record_type, record_id"),
     supabase.from("prototype_records").select("id, proposal_id, record_type, title, destination_name, created_at").order("created_at", { ascending: false }).limit(8),
-    supabase.from("tasks").select("id, proposal_id, title, created_at").not("proposal_id", "is", null).order("created_at", { ascending: false }).limit(8),
-    supabase.from("notes").select("id, proposal_id, title, created_at").not("proposal_id", "is", null).order("created_at", { ascending: false }).limit(8),
+    /* Filing without AI leaves no proposal, so a proposal-only filter made manual filing
+       look like nothing had happened. Anything that came from a capture belongs here. */
+    supabase.from("tasks").select("id, proposal_id, title, created_at, domain_id, project_id, person_id").not("source_capture_id", "is", null).order("created_at", { ascending: false }).limit(8),
+    supabase.from("notes").select("id, proposal_id, title, created_at, domain_id, project_id, person_id").not("source_capture_id", "is", null).order("created_at", { ascending: false }).limit(8),
+    loadDestinationCatalog(supabase),
     supabase.from("retainers").select("id, name, timezone, cycle_day, status").order("created_at", { ascending: false }),
     supabase.from("retainer_cycles").select("id, retainer_id, cycle_start, cycle_end").order("cycle_start", { ascending: false }),
     supabase.from("retainer_cycle_items").select("id, cycle_id, title, expected_on, status, carried_from_item_id").order("expected_on", { ascending: false }),
@@ -58,6 +79,15 @@ export async function getDashboardData(): Promise<DashboardData> {
   // The query is newest first. A retry creates a new proposal, so retain the newest state for each capture.
   const proposalByCapture = newestProposalByCapture(proposals);
   const applications = (applicationsResult.data ?? []) as ProposalApplication[];
+  const routed = (rows: unknown, recordType: "task" | "note") =>
+    ((rows ?? []) as RoutedRecord[]).map((record) => ({
+      id: record.id,
+      proposal_id: record.proposal_id,
+      record_type: recordType,
+      title: record.title,
+      destination_name: filedDestinationLabel(record, catalog),
+      created_at: record.created_at,
+    }));
 
   return {
     captures: ((capturesResult.data ?? []) as DashboardData["captures"]).map((capture) => {
@@ -71,9 +101,10 @@ export async function getDashboardData(): Promise<DashboardData> {
     }),
     records: [
       ...((prototypeRecordsResult.data ?? []) as DashboardData["records"]),
-      ...((taskRecordsResult.data ?? []).map((record) => ({ ...record, record_type: "task", destination_name: null })) as DashboardData["records"]),
-      ...((noteRecordsResult.data ?? []).map((record) => ({ ...record, record_type: "note", destination_name: null })) as DashboardData["records"]),
+      ...routed(taskRecordsResult.data, "task"),
+      ...routed(noteRecordsResult.data, "note"),
     ].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 8),
+    catalog,
     retainers: (retainersResult.data ?? []) as DashboardData["retainers"],
     cycles: (cyclesResult.data ?? []) as DashboardData["cycles"],
     cycleItems: (cycleItemsResult.data ?? []) as DashboardData["cycleItems"],

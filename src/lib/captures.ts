@@ -1,4 +1,5 @@
 import { interpretationClaimFilter, type ClaimReason } from "@/lib/capture-pipeline";
+import { loadDestinationCatalog } from "@/lib/proposals/catalog";
 import { ProposalProviderError, proposalProvider, type ProposalFailureCode } from "@/lib/proposals/provider";
 import type { ProposalEnvelope } from "@/lib/proposals/schema";
 
@@ -51,11 +52,16 @@ export async function interpretCapture({
   provider?: typeof proposalProvider;
 }): Promise<{ proposal?: ProposalEnvelope; error?: string }> {
   const startedAt = Date.now();
-  const { data: preferences } = await supabase.from("user_preferences").select("timezone").maybeSingle();
+  /* The catalog is read per interpretation rather than cached: a domain or person created
+     a moment ago should be routable by the next capture. */
+  const [{ data: preferences }, catalog] = await Promise.all([
+    supabase.from("user_preferences").select("timezone").maybeSingle(),
+    loadDestinationCatalog(supabase),
+  ]);
   const timezone = preferences?.timezone ?? "America/Vancouver";
 
   try {
-    const proposal = await proposeWithRetry(provider, { captureId: capture.id, originalText: capture.original_text, now: new Date(), timezone });
+    const proposal = await proposeWithRetry(provider, { captureId: capture.id, originalText: capture.original_text, now: new Date(), timezone, catalog });
     const { error: proposalError } = await supabase.from("proposals").insert({
       capture_id: capture.id,
       schema_version: proposal.schemaVersion,

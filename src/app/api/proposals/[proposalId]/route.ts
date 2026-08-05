@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { captureStatusAfterApplications } from "@/lib/capture-pipeline";
 import { claimCaptureForInterpretation, interpretCapture } from "@/lib/captures";
 import { badRequest, serverError, unauthorized } from "@/lib/http";
-import { proposalActionSchema, proposalEnvelopeSchema } from "@/lib/proposals/schema";
+import { applyDestinationSelection } from "@/lib/proposals/catalog";
+import { parseProposalEnvelope, proposalActionSchema } from "@/lib/proposals/schema";
 import { requireUser } from "@/lib/supabase/server";
 
 type SupabaseClient = Awaited<ReturnType<typeof import("@/lib/supabase/server").createSupabaseServerClient>>;
@@ -64,11 +65,11 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
     return NextResponse.json({ ok: true, warning: result.error });
   }
 
-  const envelope = proposalEnvelopeSchema.safeParse(proposal.proposal_json);
+  const envelope = parseProposalEnvelope(proposal.proposal_json);
 
   if (parsed.data.action === "dismiss_item") {
-    if (!envelope.success) return badRequest("This proposal cannot be reviewed item by item. Retry it instead.");
-    if (!envelope.data.proposals[parsed.data.proposalIndex]) return badRequest("Proposal item not found.");
+    if (!envelope) return badRequest("This proposal cannot be reviewed item by item. Retry it instead.");
+    if (!envelope.proposals[parsed.data.proposalIndex]) return badRequest("Proposal item not found.");
     const { error: dismissError } = await supabase
       .from("proposal_applications")
       .insert({ proposal_id: proposal.id, item_index: parsed.data.proposalIndex, outcome: "dismissed" });
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
       event_type: "item_dismissed",
       metadata: { proposalIndex: parsed.data.proposalIndex },
     });
-    const status = await syncCaptureState(supabase, proposal, envelope.data.proposals.length);
+    const status = await syncCaptureState(supabase, proposal, envelope.proposals.length);
     return NextResponse.json({ ok: true, captureStatus: status });
   }
 
@@ -95,8 +96,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
     // Releasing the outcome is what makes the item reviewable again.
     await supabase.from("proposal_applications").delete().eq("proposal_id", proposal.id).eq("record_id", parsed.data.recordId);
     await supabase.from("activity_events").insert({ entity_type: "proposal", entity_id: proposal.id, event_type: "undone", metadata: { recordId: parsed.data.recordId } });
-    if (envelope.success) {
-      await syncCaptureState(supabase, proposal, envelope.data.proposals.length);
+    if (envelope) {
+      await syncCaptureState(supabase, proposal, envelope.proposals.length);
     } else {
       await Promise.all([
         supabase.from("proposals").update({ status: "ready" }).eq("id", proposal.id),
@@ -106,11 +107,19 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
     return NextResponse.json({ ok: true });
   }
 
-  if (!envelope.success) return badRequest("This proposal cannot be applied. Retry it instead.");
+  if (!envelope) return badRequest("This proposal cannot be applied. Retry it instead.");
   const itemIndex = parsed.data.proposalIndex;
-  const proposed = envelope.data.proposals[itemIndex];
+  const proposed = envelope.proposals[itemIndex];
   if (!proposed) return badRequest("Proposal item not found.");
   const item = parsed.data.edited ?? proposed;
+
+  /* Destinations are resolved before the item is claimed, so a rejected identifier leaves
+     the item reviewable instead of burning its one outcome. Ownership of every chosen
+     domain, project, and person is proved here: the record foreign keys do not check who
+     owns the row they point at. */
+  const destinationResult = await applyDestinationSelection(supabase, parsed.data.edited?.destination);
+  if (!destinationResult.ok) return badRequest(destinationResult.message);
+  const destination = destinationResult.destination;
 
   /* Claim the item before creating anything. The unique (proposal_id, item_index) index
      is what makes a duplicate apply impossible under retry, double submission, or two
@@ -131,11 +140,16 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
   }
   if (claimError || !application) return serverError();
 
+  /* A retainer update has no canonical home yet (Step 6), so it still lands in
+     `prototype_records`, which carries only a destination label. */
+  const prototypeDestinationName =
+    proposed.destination?.projectName ?? proposed.destination?.personName ?? proposed.destination?.domainName ?? null;
+
   const insert = item.recordType === "task"
-    ? supabase.from("tasks").insert({ proposal_id: proposal.id, source_capture_id: proposal.capture_id, title: item.title, details: item.body ?? null, due_on: item.dueOn ?? null, due_time: item.dueTime ?? null }).select("id").single()
+    ? supabase.from("tasks").insert({ proposal_id: proposal.id, source_capture_id: proposal.capture_id, title: item.title, details: item.body ?? null, due_on: item.dueOn ?? null, due_time: item.dueTime ?? null, domain_id: destination.domainId, project_id: destination.projectId, person_id: destination.personId }).select("id").single()
     : item.recordType === "note"
-      ? supabase.from("notes").insert({ proposal_id: proposal.id, source_capture_id: proposal.capture_id, title: item.title, body: item.body ?? null }).select("id").single()
-      : supabase.from("prototype_records").insert({ proposal_id: proposal.id, record_type: item.recordType, title: item.title, body: item.body ?? null, destination_name: item.destinationName ?? null, due_on: item.dueOn ?? null, due_time: item.dueTime ?? null }).select("id").single();
+      ? supabase.from("notes").insert({ proposal_id: proposal.id, source_capture_id: proposal.capture_id, title: item.title, body: item.body ?? null, domain_id: destination.domainId, project_id: destination.projectId, person_id: destination.personId }).select("id").single()
+      : supabase.from("prototype_records").insert({ proposal_id: proposal.id, record_type: item.recordType, title: item.title, body: item.body ?? null, destination_name: prototypeDestinationName, due_on: item.dueOn ?? null, due_time: item.dueTime ?? null }).select("id").single();
   const { data: record, error: recordError } = await insert;
   if (recordError || !record) {
     // Release the claim so the item can be filed again rather than looking resolved.
@@ -150,9 +164,18 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
       entity_type: "proposal",
       entity_id: proposal.id,
       event_type: wasEdited ? "corrected" : "accepted",
-      metadata: { recordId: record.id, proposalIndex: itemIndex },
+      /* Identifiers and shape only — never the title or body of what was filed. */
+      metadata: {
+        recordId: record.id,
+        proposalIndex: itemIndex,
+        routedTo: {
+          domain: Boolean(destination.domainId),
+          project: Boolean(destination.projectId),
+          person: Boolean(destination.personId),
+        },
+      },
     }),
   ]);
-  const status = await syncCaptureState(supabase, proposal, envelope.data.proposals.length);
+  const status = await syncCaptureState(supabase, proposal, envelope.proposals.length);
   return NextResponse.json({ ok: true, recordId: record.id, captureStatus: status });
 }

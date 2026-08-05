@@ -2,9 +2,9 @@
 
 import { type FormEvent, useState, useSyncExternalStore } from "react";
 import { ArrowClockwise, Check, Keyboard, Microphone, Plus, TrashSimple, WarningCircle } from "@phosphor-icons/react";
-import type { z } from "zod";
 import { isStrandedCapture } from "@/lib/capture-pipeline";
-import { proposalEnvelopeSchema } from "@/lib/proposals/schema";
+import { resolveDestination, unmatchedNames, type DestinationCatalog, type ResolvedDestination } from "@/lib/proposals/destinations";
+import { parseProposalEnvelope, type DestinationSelection, type ProposalItem } from "@/lib/proposals/schema";
 import { nextCycleMonth } from "@/lib/retainers";
 import type { DashboardData } from "@/lib/dashboard";
 import { Button, EmptyState, SelectField, StatusMessage, TextField } from "@/components/ui/primitives";
@@ -51,20 +51,115 @@ function CaptureOrigin({ capture }: { capture: DashboardData["captures"][number]
   </span>;
 }
 
+/* A name the account does not have is offered as an explicit choice, never preselected.
+   Defaulting to it would let a fast Accept create a person or domain the user never had —
+   the opposite of a proposal the user stays in control of. */
+const CREATE = "create";
+
+type DestinationDraft = { domain: string; project: string; person: string };
+
+function initialDestinationDraft(resolved: ResolvedDestination): DestinationDraft {
+  return {
+    domain: resolved.domain.status === "matched" ? resolved.domain.id : "",
+    project: resolved.project.status === "matched" ? resolved.project.id : "",
+    person: resolved.person.status === "matched" ? resolved.person.id : "",
+  };
+}
+
+function destinationSelection(draft: DestinationDraft, resolved: ResolvedDestination): DestinationSelection {
+  const unmatched = unmatchedNames(resolved);
+  return {
+    domainId: draft.domain && draft.domain !== CREATE ? draft.domain : null,
+    projectId: draft.project || null,
+    personId: draft.person && draft.person !== CREATE ? draft.person : null,
+    createDomainName: draft.domain === CREATE ? unmatched.domain : null,
+    createPersonName: draft.person === CREATE ? unmatched.person : null,
+  };
+}
+
+/* Everything the match could not settle, said out loud. An unmatched or ambiguous name is
+   the reason this capture is in review, so it is never left implied by an empty select. */
+function destinationNotes(resolved: ResolvedDestination, catalog: DestinationCatalog): string[] {
+  const notes: string[] = [];
+  if (resolved.domainInheritedFrom) notes.push(`Domain taken from the ${resolved.domainInheritedFrom} it belongs to.`);
+  for (const [label, match] of [["domain", resolved.domain], ["project", resolved.project], ["person", resolved.person]] as const) {
+    if (match.status === "unmatched") {
+      notes.push(
+        label === "project"
+          ? `No project called “${match.name}”. Create it in Work first, or file this without one.`
+          : `No ${label} called “${match.name}” yet. Choose “Create ${match.name}” to add it, or leave it out.`,
+      );
+    }
+    if (match.status === "ambiguous") notes.push(`${match.candidateIds.length} of your ${label}s are called “${match.name}”. Choose which one.`);
+  }
+  if (notes.length === 0 && catalog.domains.length === 0 && catalog.projects.length === 0 && catalog.people.length === 0) {
+    notes.push("You have no domains, projects, or people yet. Create some in Work or People and captures will route into them.");
+  }
+  return notes;
+}
+
+function DestinationFields({
+  catalog,
+  draft,
+  onChange,
+  resolved,
+}: {
+  catalog: DestinationCatalog;
+  draft: DestinationDraft;
+  onChange: (draft: DestinationDraft) => void;
+  resolved: ResolvedDestination;
+}) {
+  const unmatched = unmatchedNames(resolved);
+  return <fieldset className="review-destination">
+    <legend>Where it belongs</legend>
+    <div className="review-destination-grid">
+      <label className="field-label"><span>Domain</span>
+        <SelectField onChange={(event) => onChange({ ...draft, domain: event.target.value })} value={draft.domain}>
+          <option value="">No domain</option>
+          {catalog.domains.map((domain) => <option key={domain.id} value={domain.id}>{domain.name}</option>)}
+          {unmatched.domain && <option value={CREATE}>Create “{unmatched.domain}”</option>}
+        </SelectField>
+      </label>
+      <label className="field-label"><span>Project</span>
+        <SelectField onChange={(event) => onChange({ ...draft, project: event.target.value })} value={draft.project}>
+          <option value="">No project</option>
+          {catalog.projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+        </SelectField>
+      </label>
+      <label className="field-label"><span>Person</span>
+        <SelectField onChange={(event) => onChange({ ...draft, person: event.target.value })} value={draft.person}>
+          <option value="">Nobody in particular</option>
+          {catalog.people.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
+          {unmatched.person && <option value={CREATE}>Create “{unmatched.person}”</option>}
+        </SelectField>
+      </label>
+    </div>
+    {destinationNotes(resolved, catalog).map((note) => <p className="form-help" key={note}>{note}</p>)}
+  </fieldset>;
+}
+
 /* Filing without waiting for the model. Available whenever interpretation has not
    produced something reviewable, so the words are never held hostage by the provider. */
-function ManualFile({ capture, done }: { capture: DashboardData["captures"][number]; done: () => void }) {
+function ManualFile({ capture, catalog, done }: { capture: DashboardData["captures"][number]; catalog: DestinationCatalog; done: () => void }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [draft, setDraft] = useState({ recordType: "task" as "task" | "note", title: capture.original_text.slice(0, 120) });
+  /* No model ran, so nothing was proposed — the pickers offer existing records only. */
+  const resolved = resolveDestination(undefined, catalog);
+  const [destination, setDestination] = useState<DestinationDraft>(() => initialDestinationDraft(resolved));
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
     setMessage("");
     try {
-      await post(`/api/captures/${capture.id}/file`, { recordType: draft.recordType, title: draft.title.trim(), body: capture.original_text });
+      await post(`/api/captures/${capture.id}/file`, {
+        recordType: draft.recordType,
+        title: draft.title.trim(),
+        body: capture.original_text,
+        destination: destinationSelection(destination, resolved),
+      });
       done();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "That did not file.");
@@ -84,6 +179,7 @@ function ManualFile({ capture, done }: { capture: DashboardData["captures"][numb
         <option value="note">Note</option>
       </SelectField>
     </label>
+    <DestinationFields catalog={catalog} draft={destination} onChange={setDestination} resolved={resolved} />
     <div className="form-span flex flex-wrap gap-2">
       <Button className="button-primary" disabled={busy || !draft.title.trim()} type="submit">{busy ? "Filing…" : "File it"}</Button>
       <Button className="button-quiet" disabled={busy} onClick={() => setOpen(false)}>Cancel</Button>
@@ -95,7 +191,7 @@ function ManualFile({ capture, done }: { capture: DashboardData["captures"][numb
 
 /* A capture whose interpretation never finished. It stays visible and re-runnable
    instead of disappearing between the queued and needs-review states. */
-function PendingCapture({ capture, done }: { capture: DashboardData["captures"][number]; done: () => void }) {
+function PendingCapture({ capture, catalog, done }: { capture: DashboardData["captures"][number]; catalog: DestinationCatalog; done: () => void }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const stranded = useSyncExternalStore(noSubscription, () => isStrandedCapture(capture), () => false);
@@ -127,25 +223,25 @@ function PendingCapture({ capture, done }: { capture: DashboardData["captures"][
     </div>
     <div className="review-actions">
       <Button className="button-primary" disabled={busy} onClick={interpret}><ArrowClockwise aria-hidden size={16} />{busy ? "Interpreting…" : stranded ? "Interpret it now" : "Check again"}</Button>
-      <ManualFile capture={capture} done={done} />
+      <ManualFile capture={capture} catalog={catalog} done={done} />
     </div>
     {message && <div className="px-[1.05rem] pb-[1.05rem]"><StatusMessage tone="error">{message}</StatusMessage></div>}
   </article>;
 }
-
-type ProposalItem = z.infer<typeof proposalEnvelopeSchema>["proposals"][number];
 
 function ProposedItem({
   item,
   index,
   total,
   proposalId,
+  catalog,
   done,
 }: {
   item: ProposalItem;
   index: number;
   total: number;
   proposalId: string;
+  catalog: DestinationCatalog;
   done: () => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -153,10 +249,13 @@ function ProposedItem({
   const [draft, setDraft] = useState({
     recordType: item.recordType,
     title: item.title,
-    destinationName: item.destinationName ?? "",
     dueOn: item.dueOn ?? "",
     dueTime: item.dueTime ?? "",
   });
+  /* Matched here rather than at interpretation time, so a domain or person created since
+     the proposal was written is still offered. */
+  const resolved = resolveDestination(item.destination, catalog);
+  const [destination, setDestination] = useState<DestinationDraft>(() => initialDestinationDraft(resolved));
 
   async function action(choice: "accept" | "dismiss_item") {
     setBusy(true);
@@ -170,9 +269,12 @@ function ProposedItem({
               recordType: draft.recordType,
               title: draft.title.trim() || item.title,
               body: item.body,
-              destinationName: draft.destinationName.trim() || undefined,
               dueOn: draft.dueOn || undefined,
               dueTime: draft.dueTime || undefined,
+              /* A retainer update has no destination columns, and its pickers are hidden.
+                 Sending a selection anyway would create a domain or person that nothing
+                 ends up pointing at. */
+              destination: draft.recordType === "retainer_update" ? undefined : destinationSelection(destination, resolved),
             },
           }
         : { action: choice, proposalIndex: index });
@@ -184,6 +286,7 @@ function ProposedItem({
   }
 
   const titleConfidence = Math.round(item.confidence.title * 100);
+  const destinationConfidence = item.confidence.destination === undefined ? null : Math.round(item.confidence.destination * 100);
 
   return <div className="review-panel">
     <div className="review-panel-head">
@@ -191,6 +294,7 @@ function ProposedItem({
       <span className="review-tags">
         <span className="tag tag--accent">{recordTypeLabels[item.recordType]}</span>
         <span className={`tag${titleConfidence < 70 ? " tag--attention" : ""}`}>Title {titleConfidence}% sure</span>
+        {destinationConfidence !== null && item.destination && <span className={`tag${destinationConfidence < 70 ? " tag--attention" : ""}`}>Destination {destinationConfidence}% sure</span>}
       </span>
     </div>
     <p className="review-reason">{item.reason}</p>
@@ -205,15 +309,15 @@ function ProposedItem({
           <option value="retainer_update">Retainer update</option>
         </SelectField>
       </label>
-      <label className="field-label"><span>Person or client (optional)</span>
-        <TextField maxLength={160} onChange={(event) => setDraft({ ...draft, destinationName: event.target.value })} placeholder="Nobody in particular" value={draft.destinationName} />
-      </label>
       <label className="field-label"><span>Due date (optional)</span>
         <TextField onChange={(event) => setDraft({ ...draft, dueOn: event.target.value })} type="date" value={draft.dueOn} />
       </label>
       <label className="field-label"><span>Due time (optional)</span>
         <TextField onChange={(event) => setDraft({ ...draft, dueTime: event.target.value })} type="time" value={draft.dueTime} />
       </label>
+      {draft.recordType === "retainer_update"
+        ? <p className="form-help form-span">A retainer update is still a prototype record. It keeps the name from the capture rather than linking to a domain, project, or person.</p>
+        : <DestinationFields catalog={catalog} draft={destination} onChange={setDestination} resolved={resolved} />}
       <div className="form-span flex flex-wrap gap-2">
         <Button className="button-primary" disabled={busy || !draft.title.trim()} onClick={() => action("accept")}><Check aria-hidden size={16} weight="bold" />{busy ? "Filing…" : "Accept and file"}</Button>
         <Button className="button-quiet" disabled={busy} onClick={() => action("dismiss_item")}>Not this one</Button>
@@ -223,9 +327,9 @@ function ProposedItem({
   </div>;
 }
 
-function Review({ capture, done }: { capture: DashboardData["captures"][number]; done: () => void }) {
-  const parsed = capture.proposal ? proposalEnvelopeSchema.safeParse(capture.proposal.proposal_json) : null;
-  const items = parsed?.success ? parsed.data.proposals : [];
+function Review({ capture, catalog, done }: { capture: DashboardData["captures"][number]; catalog: DestinationCatalog; done: () => void }) {
+  const parsed = capture.proposal ? parseProposalEnvelope(capture.proposal.proposal_json) : null;
+  const items = parsed?.proposals ?? [];
   const applications = capture.proposal?.applications ?? [];
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -260,7 +364,7 @@ function Review({ capture, done }: { capture: DashboardData["captures"][number];
 
     {items.length > 0 ? items.map((item, index) => {
       const outcome = outcomeByIndex.get(index);
-      if (!outcome) return <ProposedItem done={done} index={index} item={item} key={index} proposalId={capture.proposal!.id} total={items.length} />;
+      if (!outcome) return <ProposedItem catalog={catalog} done={done} index={index} item={item} key={index} proposalId={capture.proposal!.id} total={items.length} />;
       return <div className="review-panel" key={index}>
         <div className="review-panel-head">
           <h4>{items.length > 1 ? `Record ${index + 1} of ${items.length}` : "Decided"}</h4>
@@ -279,7 +383,7 @@ function Review({ capture, done }: { capture: DashboardData["captures"][number];
       <Button className="button-secondary" disabled={busy} onClick={() => setConfirmingDiscard(false)}>Keep it</Button>
     </div> : <div className="review-actions">
       {capture.proposal && <Button className={items.length > 0 ? "button-secondary" : "button-primary"} disabled={busy} onClick={() => action("retry")}><ArrowClockwise aria-hidden size={16} />Interpret again</Button>}
-      {items.length === 0 && <ManualFile capture={capture} done={done} />}
+      {items.length === 0 && <ManualFile capture={capture} catalog={catalog} done={done} />}
       {capture.proposal
         ? <Button className="button-danger review-discard" disabled={busy} onClick={() => setConfirmingDiscard(true)}><TrashSimple aria-hidden size={16} />Discard</Button>
         : <p className="form-help">Slipwell has not returned a proposal for this capture yet. Reload in a moment.</p>}
@@ -411,8 +515,8 @@ export function Dashboard({ data }: { data: DashboardData }) {
             {needsReview.length > 0 && <span className="tag">{needsReview.length} to review</span>}
           </div>
           <div className="space-y-3">
-            {pending.map((capture) => <PendingCapture key={capture.id} capture={capture} done={refresh} />)}
-            {needsReview.map((capture) => <Review key={capture.id} capture={capture} done={refresh} />)}
+            {pending.map((capture) => <PendingCapture key={capture.id} capture={capture} catalog={data.catalog} done={refresh} />)}
+            {needsReview.map((capture) => <Review key={capture.id} capture={capture} catalog={data.catalog} done={refresh} />)}
             {needsReview.length === 0 && pending.length === 0 && <EmptyState>Your inbox is clear. Capture the next thing before it slips.</EmptyState>}
           </div>
         </section>
