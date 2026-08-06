@@ -11,6 +11,7 @@ export async function transcribeAudio({ audio, mimeType }: { audio: Blob; mimeTy
   const apiKey = env.openRouterApiKey();
   const form = new FormData();
   form.append("model", env.openRouterTranscriptionModel());
+  form.append("language", "en");
   form.append("response_format", "json");
   form.append("file", new File([audio], `capture.${mimeType.split("/")[1] ?? "webm"}`, { type: mimeType }));
 

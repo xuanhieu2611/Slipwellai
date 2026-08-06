@@ -27,6 +27,7 @@ describe("OpenRouter transcription adapter", () => {
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
     const body = request.body as FormData;
     expect(body.get("model")).toBe("openai/gpt-4o-transcribe");
+    expect(body.get("language")).toBe("en");
     expect(body.get("response_format")).toBe("json");
     expect(body.get("file")).toBeInstanceOf(File);
   });
