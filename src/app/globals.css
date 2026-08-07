@@ -484,13 +484,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   align-items: center;
   border-bottom: 1px solid var(--line);
   display: flex;
+  flex-wrap: wrap;
   font-size: .875rem;
-  gap: .75rem;
+  gap: .5rem .75rem;
   justify-content: space-between;
   padding: .7rem 0;
 }
 .compact-row:last-child { border-bottom: 0; }
 .compact-row > span:first-child { align-items: center; display: flex; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compact-row-actions { align-items: center; display: flex; flex-wrap: wrap; gap: .5rem; }
 .domain-dot { border-radius: 999px; display: inline-block; height: .5rem; margin-right: .5rem; width: .5rem; }
 
 .empty-state {

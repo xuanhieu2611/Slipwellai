@@ -8,7 +8,10 @@ const optionalId = id.optional().nullable();
 
 export const workspaceCommandSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("create_domain"), name: shortText(80), description: optionalText(1_000), color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default("#215944") }),
-  z.object({ action: z.literal("create_task"), title: shortText(280), details: optionalText(10_000), dueOn: z.iso.date().optional().nullable(), scheduledFor: z.iso.date().optional().nullable(), priority: z.coerce.number().int().min(1).max(3).default(2), recurrenceRule: z.enum(["none", "daily", "weekly", "monthly"]).default("none"), domainId: optionalId, projectId: optionalId, personId: optionalId }).refine((task) => task.recurrenceRule === "none" || Boolean(task.scheduledFor), { message: "Recurring tasks need a scheduled date.", path: ["scheduledFor"] }),
+  z.object({ action: z.literal("create_task"), title: shortText(280), details: optionalText(10_000), dueOn: z.iso.date().optional().nullable(), scheduledFor: z.iso.date().optional().nullable(), priority: z.coerce.number().int().min(1).max(3).default(2), recurrenceRule: z.enum(["none", "daily", "weekly", "monthly", "yearly", "weekdays", "custom"]).default("none"), recurrenceInterval: z.coerce.number().int().min(1).max(30).optional().nullable(), recurrenceUnit: z.enum(["days", "weeks"]).optional().nullable(), tags: z.array(shortText(40)).max(20).default([]), domainId: optionalId, projectId: optionalId, personId: optionalId, idempotencyKey: z.string().uuid() })
+    .refine((task) => task.recurrenceRule === "none" || Boolean(task.scheduledFor), { message: "Recurring tasks need a scheduled date.", path: ["scheduledFor"] })
+    .refine((task) => task.recurrenceRule !== "custom" || (Boolean(task.recurrenceInterval) && Boolean(task.recurrenceUnit)), { message: "A custom repeat needs an interval and a unit.", path: ["recurrenceInterval"] }),
+  z.object({ action: z.literal("update_task"), taskId: id, title: shortText(280), details: optionalText(10_000), dueOn: z.iso.date().optional().nullable(), scheduledFor: z.iso.date().optional().nullable(), priority: z.coerce.number().int().min(1).max(3).default(2), tags: z.array(shortText(40)).max(20).default([]), domainId: optionalId, projectId: optionalId, personId: optionalId }),
   z.object({ action: z.literal("create_project"), name: shortText(160), description: optionalText(10_000), domainId: optionalId, targetOn: z.iso.date().optional().nullable() }),
   z.object({ action: z.literal("create_milestone"), projectId: id, title: shortText(280) }),
   z.object({ action: z.literal("create_checklist_template"), name: shortText(160), description: optionalText(1_000) }),
@@ -21,6 +24,10 @@ export const workspaceCommandSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("complete_task"), taskId: id }),
   z.object({ action: z.literal("reopen_task"), taskId: id }),
   z.object({ action: z.literal("defer_task"), taskId: id, until: z.iso.date().optional().nullable() }),
+  z.object({ action: z.literal("cancel_task"), taskId: id }),
+  z.object({ action: z.literal("delete_task"), taskId: id }),
+  z.object({ action: z.literal("restore_task"), taskId: id }),
+  z.object({ action: z.literal("archive_domain"), domainId: id }),
   z.object({ action: z.literal("set_top_three"), taskId: id, localDate: z.iso.date() }),
   z.object({ action: z.literal("clear_top_three"), taskId: id }),
   z.object({ action: z.literal("resolve_routine"), routineId: id, localDate: z.iso.date(), outcome: z.enum(["completed", "skipped"]) }),
@@ -38,7 +45,7 @@ export type WorkspaceCommand = z.infer<typeof workspaceCommandSchema>;
 export type WorkspaceData = {
   timezone: string;
   domains: Array<{ id: string; name: string; color: string; archived_at: string | null }>;
-  tasks: Array<{ id: string; title: string; details: string | null; status: "open" | "completed" | "canceled" | "archived"; priority: number; due_on: string | null; scheduled_for: string | null; deferred_until: string | null; recurrence_rule: "daily" | "weekly" | "monthly" | null; domain_id: string | null; project_id: string | null; person_id: string | null; top_three_date: string | null; top_three_order: number | null; created_at: string }>;
+  tasks: Array<{ id: string; title: string; details: string | null; status: "open" | "completed" | "canceled" | "archived"; priority: number; due_on: string | null; scheduled_for: string | null; deferred_until: string | null; recurrence_rule: "daily" | "weekly" | "monthly" | "yearly" | "weekdays" | "custom" | null; recurrence_interval: number | null; recurrence_unit: "days" | "weeks" | null; tags: string[]; domain_id: string | null; project_id: string | null; person_id: string | null; top_three_date: string | null; top_three_order: number | null; completed_at: string | null; archived_at: string | null; created_at: string }>;
   projects: Array<{ id: string; name: string; description: string | null; status: string; domain_id: string | null; target_on: string | null; created_at: string }>;
   milestones: Array<{ id: string; project_id: string; title: string; position: number; status: "open" | "completed" }>;
   checklistTemplates: Array<{ id: string; name: string; description: string | null; version: number }>;
@@ -63,4 +70,18 @@ export function taskDateLabel(task: Pick<WorkspaceData["tasks"][number], "due_on
   if (task.due_on) return `Due ${task.due_on}`;
   if (task.scheduled_for) return `Scheduled ${task.scheduled_for}`;
   return "Unscheduled";
+}
+
+/* Mirrors taskDateLabel's own priority: a deferred date overrides due/scheduled for
+   "is this on today's list" the same way it overrides them for display. */
+export function isTaskOnDay(task: Pick<WorkspaceData["tasks"][number], "due_on" | "scheduled_for" | "deferred_until">, day: string) {
+  if (task.deferred_until) return task.deferred_until === day;
+  return task.due_on === day || task.scheduled_for === day;
+}
+
+export function recurrenceLabel(task: Pick<WorkspaceData["tasks"][number], "recurrence_rule" | "recurrence_interval" | "recurrence_unit">) {
+  if (!task.recurrence_rule) return null;
+  if (task.recurrence_rule === "custom") return `Every ${task.recurrence_interval} ${task.recurrence_unit}`;
+  if (task.recurrence_rule === "weekdays") return "Weekdays";
+  return task.recurrence_rule.charAt(0).toUpperCase() + task.recurrence_rule.slice(1);
 }

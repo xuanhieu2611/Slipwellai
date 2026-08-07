@@ -38,13 +38,56 @@ export async function POST(request: NextRequest) {
     } else if (command.action === "create_task") {
       await verifyRelations(command);
       const recurrenceRule = command.recurrenceRule === "none" ? null : command.recurrenceRule;
-      const { data: task, error } = await supabase.from("tasks").insert({ title: command.title, details: command.details, due_on: command.dueOn ?? null, scheduled_for: command.scheduledFor ?? null, priority: command.priority, recurrence_rule: recurrenceRule, recurrence_anchor: recurrenceRule ? command.scheduledFor : null, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null }).select("id").single();
+      const { data: task, error } = await supabase.from("tasks").insert({ title: command.title, details: command.details, due_on: command.dueOn ?? null, scheduled_for: command.scheduledFor ?? null, priority: command.priority, recurrence_rule: recurrenceRule, recurrence_anchor: recurrenceRule ? command.scheduledFor : null, recurrence_interval: recurrenceRule === "custom" ? command.recurrenceInterval : null, recurrence_unit: recurrenceRule === "custom" ? command.recurrenceUnit : null, tags: command.tags, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null, idempotency_key: command.idempotencyKey }).select("id").single();
+      if (error?.code === "23505") {
+        // Same key, same owner: a retried double-submit converges on the task already created instead of a second one.
+        const { data: existing } = await supabase.from("tasks").select("id").eq("idempotency_key", command.idempotencyKey).maybeSingle();
+        if (existing) return NextResponse.json({ ok: true, duplicate: true });
+      }
       if (error || !task) throw error ?? new Error("Task creation failed.");
       if (recurrenceRule) {
         const { error: rootError } = await supabase.from("tasks").update({ recurrence_root_id: task.id }).eq("id", task.id);
         if (rootError) throw rootError;
       }
       if (command.projectId) await recordActivity("project", command.projectId, "task_created", { taskId: task.id });
+    } else if (command.action === "update_task") {
+      const { data: task } = await supabase.from("tasks").select("id").eq("id", command.taskId).maybeSingle();
+      if (!task) return badRequest("Task not found.");
+      await verifyRelations(command);
+      const { error } = await supabase.from("tasks").update({ title: command.title, details: command.details, due_on: command.dueOn ?? null, scheduled_for: command.scheduledFor ?? null, priority: command.priority, tags: command.tags, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null }).eq("id", command.taskId);
+      if (error) throw error;
+    } else if (command.action === "delete_task" || command.action === "restore_task") {
+      /* Both toggle archived_at, the same soft-delete flag every other entity in this schema already
+         uses; every read query already filters on archived_at is null, so setting it is the whole
+         deletion mechanism and clearing it is the whole recovery mechanism. There is no permanent-purge
+         path yet — that is out of scope until Step 12 (export/deletion). */
+      const { data: task } = await supabase.from("tasks").select("id").eq("id", command.taskId).maybeSingle();
+      if (!task) return badRequest("Task not found.");
+      const { error } = await supabase.from("tasks").update({ archived_at: command.action === "delete_task" ? new Date().toISOString() : null }).eq("id", command.taskId);
+      if (error) throw error;
+      await recordActivity("task", command.taskId, command.action === "delete_task" ? "deleted" : "restored");
+    } else if (command.action === "archive_domain") {
+      const { data: domain } = await supabase.from("domains").select("id").eq("id", command.domainId).maybeSingle();
+      if (!domain) return badRequest("Domain not found.");
+      const [openTasks, activeProjects, people, notes] = await Promise.all([
+        supabase.from("tasks").select("id", { count: "exact", head: true }).eq("domain_id", command.domainId).eq("status", "open").is("archived_at", null),
+        supabase.from("projects").select("id", { count: "exact", head: true }).eq("domain_id", command.domainId).in("status", ["planned", "active", "paused"]).is("archived_at", null),
+        supabase.from("people").select("id", { count: "exact", head: true }).eq("domain_id", command.domainId).is("archived_at", null),
+        supabase.from("notes").select("id", { count: "exact", head: true }).eq("domain_id", command.domainId).is("archived_at", null),
+      ]);
+      if (openTasks.error || activeProjects.error || people.error || notes.error) throw openTasks.error ?? activeProjects.error ?? people.error ?? notes.error;
+      const counts = { tasks: openTasks.count ?? 0, projects: activeProjects.count ?? 0, people: people.count ?? 0, notes: notes.count ?? 0 };
+      // Require an explicit resolution rather than silently orphaning or hiding linked records: block with a clear count instead of a full reassignment UI.
+      if (counts.tasks + counts.projects + counts.people + counts.notes > 0) {
+        const parts: string[] = [];
+        if (counts.tasks) parts.push(`${counts.tasks} open task${counts.tasks === 1 ? "" : "s"}`);
+        if (counts.projects) parts.push(`${counts.projects} active project${counts.projects === 1 ? "" : "s"}`);
+        if (counts.people) parts.push(`${counts.people} linked ${counts.people === 1 ? "person" : "people"}`);
+        if (counts.notes) parts.push(`${counts.notes} linked note${counts.notes === 1 ? "" : "s"}`);
+        return badRequest(`This domain still has ${parts.join(", ")}. Reassign or resolve them before archiving.`);
+      }
+      const { error } = await supabase.from("domains").update({ archived_at: new Date().toISOString() }).eq("id", command.domainId);
+      if (error) throw error;
     } else if (command.action === "create_project") {
       await verifyRelations(command);
       const { data: project, error } = await supabase.from("projects").insert({ name: command.name, description: command.description, domain_id: command.domainId ?? null, target_on: command.targetOn ?? null }).select("id").single();
@@ -108,24 +151,25 @@ export async function POST(request: NextRequest) {
     } else if (command.action === "create_routine") {
       const { error } = await supabase.from("routines").insert({ name: command.name, period: command.period });
       if (error) throw error;
-    } else if (command.action === "complete_task" || command.action === "reopen_task" || command.action === "defer_task") {
-      const { data: task } = await supabase.from("tasks").select("id, title, details, priority, due_on, scheduled_for, recurrence_rule, recurrence_root_id, recurrence_anchor, domain_id, project_id, person_id, source_capture_id").eq("id", command.taskId).maybeSingle();
+    } else if (command.action === "complete_task" || command.action === "reopen_task" || command.action === "defer_task" || command.action === "cancel_task") {
+      const { data: task } = await supabase.from("tasks").select("id, title, details, priority, due_on, scheduled_for, recurrence_rule, recurrence_root_id, recurrence_anchor, recurrence_interval, recurrence_unit, domain_id, project_id, person_id, source_capture_id").eq("id", command.taskId).maybeSingle();
       if (!task) return badRequest("Task not found.");
       if (command.action === "complete_task" && task.recurrence_rule && task.recurrence_anchor) {
         const rule = task.recurrence_rule as RecurrenceRule;
+        const custom = task.recurrence_interval && task.recurrence_unit ? { interval: task.recurrence_interval, unit: task.recurrence_unit as "days" | "weeks" } : undefined;
         const rootId = task.recurrence_root_id ?? task.id;
-        const nextAnchor = nextRecurrenceDate(task.recurrence_anchor, rule);
+        const nextAnchor = nextRecurrenceDate(task.recurrence_anchor, rule, custom);
         const { data: existing, error: existingError } = await supabase.from("tasks").select("id").eq("recurrence_root_id", rootId).eq("recurrence_anchor", nextAnchor).maybeSingle();
         if (existingError) throw existingError;
         if (!existing) {
-          const { error: nextError } = await supabase.from("tasks").insert({ title: task.title, details: task.details, priority: task.priority, due_on: task.due_on ? nextRecurrenceDate(task.due_on, rule) : null, scheduled_for: task.scheduled_for ? nextRecurrenceDate(task.scheduled_for, rule) : null, recurrence_rule: rule, recurrence_root_id: rootId, recurrence_anchor: nextAnchor, domain_id: task.domain_id, project_id: task.project_id, person_id: task.person_id, source_capture_id: task.source_capture_id });
+          const { error: nextError } = await supabase.from("tasks").insert({ title: task.title, details: task.details, priority: task.priority, due_on: task.due_on ? nextRecurrenceDate(task.due_on, rule, custom) : null, scheduled_for: task.scheduled_for ? nextRecurrenceDate(task.scheduled_for, rule, custom) : null, recurrence_rule: rule, recurrence_root_id: rootId, recurrence_anchor: nextAnchor, recurrence_interval: task.recurrence_interval, recurrence_unit: task.recurrence_unit, domain_id: task.domain_id, project_id: task.project_id, person_id: task.person_id, source_capture_id: task.source_capture_id });
           if (nextError && nextError.code !== "23505") throw nextError;
         }
       }
-      const changes = command.action === "complete_task" ? { status: "completed", completed_at: new Date().toISOString(), deferred_until: null } : command.action === "reopen_task" ? { status: "open", completed_at: null } : { status: "open", deferred_until: command.until ?? null };
+      const changes = command.action === "complete_task" ? { status: "completed", completed_at: new Date().toISOString(), deferred_until: null } : command.action === "reopen_task" ? { status: "open", completed_at: null } : command.action === "cancel_task" ? { status: "canceled", deferred_until: null } : { status: "open", deferred_until: command.until ?? null };
       const { error } = await supabase.from("tasks").update(changes).eq("id", command.taskId);
       if (error) throw error;
-      const eventType = command.action === "complete_task" ? "completed" : command.action === "reopen_task" ? "reopened" : "deferred";
+      const eventType = command.action === "complete_task" ? "completed" : command.action === "reopen_task" ? "reopened" : command.action === "cancel_task" ? "canceled" : "deferred";
       await recordActivity("task", command.taskId, eventType);
     } else if (command.action === "set_top_three") {
       const { data: selected } = await supabase.from("tasks").select("id, top_three_date").eq("id", command.taskId).maybeSingle();
