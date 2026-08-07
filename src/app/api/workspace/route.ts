@@ -144,8 +144,15 @@ export async function POST(request: NextRequest) {
     } else if (command.action === "create_checklist_template") {
       const { error } = await supabase.from("project_checklist_templates").insert({ name: command.name, description: command.description });
       if (error) throw error;
+    } else if (command.action === "delete_checklist_template") {
+      // Soft delete, same as every other entity here: the archived_at filter already applied in
+      // getWorkspaceData drops it from the library, and on-delete-restrict FKs stay untouched.
+      const { data: template } = await supabase.from("project_checklist_templates").select("id").eq("id", command.templateId).maybeSingle();
+      if (!template) return badRequest("Checklist template not found.");
+      const { error } = await supabase.from("project_checklist_templates").update({ archived_at: new Date().toISOString() }).eq("id", command.templateId);
+      if (error) throw error;
     } else if (command.action === "add_checklist_template_item") {
-      const { data: template } = await supabase.from("project_checklist_templates").select("id, version").eq("id", command.templateId).maybeSingle();
+      const { data: template } = await supabase.from("project_checklist_templates").select("id, version").eq("id", command.templateId).is("archived_at", null).maybeSingle();
       if (!template) return badRequest("Checklist template not found.");
       const { count, error: countError } = await supabase.from("project_checklist_template_items").select("id", { count: "exact", head: true }).eq("template_id", template.id);
       if (countError) throw countError;
@@ -153,11 +160,35 @@ export async function POST(request: NextRequest) {
       if (error) throw error;
       const { error: versionError } = await supabase.from("project_checklist_templates").update({ version: template.version + 1 }).eq("id", template.id);
       if (versionError) throw versionError;
+    } else if (command.action === "update_checklist_template_item") {
+      const { data: item } = await supabase.from("project_checklist_template_items").select("id, template_id").eq("id", command.itemId).is("archived_at", null).maybeSingle();
+      if (!item) return badRequest("Checklist template item not found.");
+      const { data: template } = await supabase.from("project_checklist_templates").select("id, version").eq("id", item.template_id).maybeSingle();
+      if (!template) return badRequest("Checklist template not found.");
+      const { error } = await supabase.from("project_checklist_template_items").update({ title: command.title }).eq("id", item.id);
+      if (error) throw error;
+      // Bumping the version, exactly like adding a step, keeps this future-applications-only by
+      // default; applyToExisting is the explicit opt-in to also touch already-applied checklists.
+      const { error: versionError } = await supabase.from("project_checklist_templates").update({ version: template.version + 1 }).eq("id", template.id);
+      if (versionError) throw versionError;
+      if (command.applyToExisting) {
+        const { error: existingError } = await supabase.from("project_checklist_items").update({ title: command.title }).eq("source_template_item_id", item.id).eq("status", "open");
+        if (existingError) throw existingError;
+      }
+    } else if (command.action === "delete_checklist_template_item") {
+      const { data: item } = await supabase.from("project_checklist_template_items").select("id, template_id").eq("id", command.itemId).is("archived_at", null).maybeSingle();
+      if (!item) return badRequest("Checklist template item not found.");
+      const { data: template } = await supabase.from("project_checklist_templates").select("id, version").eq("id", item.template_id).maybeSingle();
+      if (!template) return badRequest("Checklist template not found.");
+      const { error } = await supabase.from("project_checklist_template_items").update({ archived_at: new Date().toISOString() }).eq("id", item.id);
+      if (error) throw error;
+      const { error: versionError } = await supabase.from("project_checklist_templates").update({ version: template.version + 1 }).eq("id", template.id);
+      if (versionError) throw versionError;
     } else if (command.action === "apply_checklist_template") {
       const [templateResult, projectResult, itemsResult] = await Promise.all([
-        supabase.from("project_checklist_templates").select("id, version").eq("id", command.templateId).maybeSingle(),
+        supabase.from("project_checklist_templates").select("id, version").eq("id", command.templateId).is("archived_at", null).maybeSingle(),
         supabase.from("projects").select("id").eq("id", command.projectId).maybeSingle(),
-        supabase.from("project_checklist_template_items").select("id, title, position").eq("template_id", command.templateId).order("position"),
+        supabase.from("project_checklist_template_items").select("id, title, position").eq("template_id", command.templateId).is("archived_at", null).order("position"),
       ]);
       const template = templateResult.data;
       if (!template || !projectResult.data) return badRequest("Project or checklist template not found.");
