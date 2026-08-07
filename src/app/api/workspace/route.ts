@@ -90,9 +90,44 @@ export async function POST(request: NextRequest) {
       if (error) throw error;
     } else if (command.action === "create_project") {
       await verifyRelations(command);
-      const { data: project, error } = await supabase.from("projects").insert({ name: command.name, description: command.description, domain_id: command.domainId ?? null, target_on: command.targetOn ?? null }).select("id").single();
+      const { data: project, error } = await supabase.from("projects").insert({ name: command.name, description: command.description, domain_id: command.domainId ?? null, person_id: command.personId ?? null, start_on: command.startOn ?? null, target_on: command.targetOn ?? null, idempotency_key: command.idempotencyKey }).select("id").single();
+      if (error?.code === "23505") {
+        // Same key, same owner: a retried double-submit converges on the project already created instead of a second one.
+        const { data: existing } = await supabase.from("projects").select("id").eq("idempotency_key", command.idempotencyKey).maybeSingle();
+        if (existing) return NextResponse.json({ ok: true, duplicate: true });
+      }
       if (error || !project) throw error ?? new Error("Project creation failed.");
       await recordActivity("project", project.id, "created");
+    } else if (command.action === "update_project") {
+      const { data: project } = await supabase.from("projects").select("id").eq("id", command.projectId).maybeSingle();
+      if (!project) return badRequest("Project not found.");
+      /* command.projectId here is the project being edited, not a relation to verify — passing the
+         whole command would collide with relationTables' unrelated "projectId" (a task/note's project
+         link), so only the actual FK fields go through the ownership check. */
+      await verifyRelations({ domainId: command.domainId, personId: command.personId });
+      const { error } = await supabase.from("projects").update({ name: command.name, description: command.description, domain_id: command.domainId ?? null, person_id: command.personId ?? null, start_on: command.startOn ?? null, target_on: command.targetOn ?? null }).eq("id", command.projectId);
+      if (error) throw error;
+    } else if (command.action === "resume_project") {
+      const { data: project } = await supabase.from("projects").select("id, status").eq("id", command.projectId).maybeSingle();
+      if (!project) return badRequest("Project not found.");
+      if (project.status !== "paused") return badRequest("Only a paused project can be resumed.");
+      const { error } = await supabase.from("projects").update({ status: "active" }).eq("id", command.projectId);
+      if (error) throw error;
+      await recordActivity("project", command.projectId, "resumed");
+    } else if (command.action === "cancel_project") {
+      const { data: project } = await supabase.from("projects").select("id").eq("id", command.projectId).maybeSingle();
+      if (!project) return badRequest("Project not found.");
+      const { error } = await supabase.from("projects").update({ status: "canceled" }).eq("id", command.projectId);
+      if (error) throw error;
+      await recordActivity("project", command.projectId, "canceled");
+    } else if (command.action === "delete_project" || command.action === "restore_project") {
+      /* Mirrors delete_task/restore_task: toggle the existing archived_at column, independent of
+         status, so a canceled/completed project's history is preserved rather than overwritten. */
+      const { data: project } = await supabase.from("projects").select("id").eq("id", command.projectId).maybeSingle();
+      if (!project) return badRequest("Project not found.");
+      const { error } = await supabase.from("projects").update({ archived_at: command.action === "delete_project" ? new Date().toISOString() : null }).eq("id", command.projectId);
+      if (error) throw error;
+      await recordActivity("project", command.projectId, command.action === "delete_project" ? "deleted" : "restored");
     } else if (command.action === "create_milestone") {
       const { data: project } = await supabase.from("projects").select("id").eq("id", command.projectId).maybeSingle();
       if (!project) return badRequest("Project not found.");
@@ -100,6 +135,12 @@ export async function POST(request: NextRequest) {
       const { error } = await supabase.from("project_milestones").insert({ project_id: command.projectId, title: command.title, position: (count ?? 0) + 1 });
       if (error) throw error;
       await recordActivity("project", command.projectId, "milestone_created");
+    } else if (command.action === "delete_milestone") {
+      const { data: milestone } = await supabase.from("project_milestones").select("id, project_id").eq("id", command.milestoneId).maybeSingle();
+      if (!milestone) return badRequest("Milestone not found.");
+      const { error } = await supabase.from("project_milestones").delete().eq("id", command.milestoneId);
+      if (error) throw error;
+      await recordActivity("project", milestone.project_id, "milestone_deleted");
     } else if (command.action === "create_checklist_template") {
       const { error } = await supabase.from("project_checklist_templates").insert({ name: command.name, description: command.description });
       if (error) throw error;

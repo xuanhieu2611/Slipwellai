@@ -10,7 +10,10 @@ export async function getWorkspaceData(): Promise<WorkspaceData> {
        soft-deleted task must still be readable so the workspace can render a Deleted section
        with a Restore action, per the delete/restore recovery promise. */
     supabase.from("tasks").select("id, title, details, status, priority, due_on, scheduled_for, deferred_until, recurrence_rule, recurrence_interval, recurrence_unit, tags, domain_id, project_id, person_id, top_three_date, top_three_order, completed_at, archived_at, created_at").order("created_at", { ascending: false }),
-    supabase.from("projects").select("id, name, description, status, domain_id, target_on, created_at").is("archived_at", null).order("created_at", { ascending: false }),
+    /* Unlike most other tables here, projects intentionally omits the archived_at filter: a
+       soft-deleted project must still be readable so the workspace can render a Deleted section
+       with a Restore action, matching the tasks delete/restore recovery promise. */
+    supabase.from("projects").select("id, name, description, status, domain_id, person_id, start_on, target_on, archived_at, created_at").order("created_at", { ascending: false }),
     supabase.from("project_milestones").select("id, project_id, title, position, status").order("position"),
     supabase.from("project_checklist_templates").select("id, name, description, version").is("archived_at", null).order("name"),
     supabase.from("project_checklist_template_items").select("id, template_id, title, position").order("position"),

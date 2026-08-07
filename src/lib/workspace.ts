@@ -12,8 +12,14 @@ export const workspaceCommandSchema = z.discriminatedUnion("action", [
     .refine((task) => task.recurrenceRule === "none" || Boolean(task.scheduledFor), { message: "Recurring tasks need a scheduled date.", path: ["scheduledFor"] })
     .refine((task) => task.recurrenceRule !== "custom" || (Boolean(task.recurrenceInterval) && Boolean(task.recurrenceUnit)), { message: "A custom repeat needs an interval and a unit.", path: ["recurrenceInterval"] }),
   z.object({ action: z.literal("update_task"), taskId: id, title: shortText(280), details: optionalText(10_000), dueOn: z.iso.date().optional().nullable(), scheduledFor: z.iso.date().optional().nullable(), priority: z.coerce.number().int().min(1).max(3).default(2), tags: z.array(shortText(40)).max(20).default([]), domainId: optionalId, projectId: optionalId, personId: optionalId }),
-  z.object({ action: z.literal("create_project"), name: shortText(160), description: optionalText(10_000), domainId: optionalId, targetOn: z.iso.date().optional().nullable() }),
+  z.object({ action: z.literal("create_project"), name: shortText(160), description: optionalText(10_000), domainId: optionalId, personId: optionalId, startOn: z.iso.date().optional().nullable(), targetOn: z.iso.date().optional().nullable(), idempotencyKey: z.string().uuid() }),
+  z.object({ action: z.literal("update_project"), projectId: id, name: shortText(160), description: optionalText(10_000), domainId: optionalId, personId: optionalId, startOn: z.iso.date().optional().nullable(), targetOn: z.iso.date().optional().nullable() }),
+  z.object({ action: z.literal("resume_project"), projectId: id }),
+  z.object({ action: z.literal("cancel_project"), projectId: id }),
+  z.object({ action: z.literal("delete_project"), projectId: id }),
+  z.object({ action: z.literal("restore_project"), projectId: id }),
   z.object({ action: z.literal("create_milestone"), projectId: id, title: shortText(280) }),
+  z.object({ action: z.literal("delete_milestone"), milestoneId: id }),
   z.object({ action: z.literal("create_checklist_template"), name: shortText(160), description: optionalText(1_000) }),
   z.object({ action: z.literal("add_checklist_template_item"), templateId: id, title: shortText(280) }),
   z.object({ action: z.literal("apply_checklist_template"), templateId: id, projectId: id }),
@@ -46,7 +52,7 @@ export type WorkspaceData = {
   timezone: string;
   domains: Array<{ id: string; name: string; color: string; archived_at: string | null }>;
   tasks: Array<{ id: string; title: string; details: string | null; status: "open" | "completed" | "canceled" | "archived"; priority: number; due_on: string | null; scheduled_for: string | null; deferred_until: string | null; recurrence_rule: "daily" | "weekly" | "monthly" | "yearly" | "weekdays" | "custom" | null; recurrence_interval: number | null; recurrence_unit: "days" | "weeks" | null; tags: string[]; domain_id: string | null; project_id: string | null; person_id: string | null; top_three_date: string | null; top_three_order: number | null; completed_at: string | null; archived_at: string | null; created_at: string }>;
-  projects: Array<{ id: string; name: string; description: string | null; status: string; domain_id: string | null; target_on: string | null; created_at: string }>;
+  projects: Array<{ id: string; name: string; description: string | null; status: string; domain_id: string | null; person_id: string | null; start_on: string | null; target_on: string | null; archived_at: string | null; created_at: string }>;
   milestones: Array<{ id: string; project_id: string; title: string; position: number; status: "open" | "completed" }>;
   checklistTemplates: Array<{ id: string; name: string; description: string | null; version: number }>;
   checklistTemplateItems: Array<{ id: string; template_id: string; title: string; position: number }>;
