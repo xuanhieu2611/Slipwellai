@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isTaskOnDay, taskDateLabel, workspaceCommandSchema } from "@/lib/workspace";
+import { activityEventLabel, isTaskOnDay, taskDateLabel, workspaceCommandSchema } from "@/lib/workspace";
 
 describe("working-prototype workspace commands", () => {
   it("accepts a small manual task and rejects unsafe priorities", () => {
@@ -140,5 +140,23 @@ describe("working-prototype workspace commands", () => {
   it("accepts an archive_domain command only with a valid domain id", () => {
     expect(workspaceCommandSchema.safeParse({ action: "archive_domain", domainId: "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98" }).success).toBe(true);
     expect(workspaceCommandSchema.safeParse({ action: "archive_domain", domainId: "not-an-id" }).success).toBe(false);
+  });
+
+  it("accepts checklist template item edit/delete and template delete for a valid id, defaulting applyToExisting to false", () => {
+    const itemId = "847a0e15-63ef-4a68-98f7-51fdbe09f29d";
+    const templateId = "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98";
+    const parsed = workspaceCommandSchema.parse({ action: "update_checklist_template_item", itemId, title: "Send the draft" });
+    expect(parsed).toMatchObject({ applyToExisting: false });
+    expect(workspaceCommandSchema.parse({ action: "update_checklist_template_item", itemId, title: "Send the draft", applyToExisting: true })).toMatchObject({ applyToExisting: true });
+    expect(workspaceCommandSchema.safeParse({ action: "update_checklist_template_item", itemId, title: "   " }).success).toBe(false);
+    expect(workspaceCommandSchema.safeParse({ action: "delete_checklist_template_item", itemId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "delete_checklist_template", templateId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "delete_checklist_template", templateId: "not-an-id" }).success).toBe(false);
+  });
+
+  it("labels known project activity event types and falls back to a de-slugged label for an unknown one", () => {
+    expect(activityEventLabel("milestone_completed")).toBe("Milestone completed");
+    expect(activityEventLabel("checklist_applied")).toBe("Checklist applied");
+    expect(activityEventLabel("some_future_event")).toBe("some future event");
   });
 });

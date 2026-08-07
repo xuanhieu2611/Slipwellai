@@ -237,6 +237,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .field-label > span { color: var(--ink-muted); font-size: .75rem; font-weight: 500; }
 .form-help { color: var(--ink-muted); font-size: .78rem; line-height: 1.5; }
 .form-help code { color: var(--ink); font-family: var(--font-mono-face), monospace; font-size: .95em; }
+.inline-checkbox { align-items: center; color: var(--ink-muted); display: flex; font-size: .78rem; font-weight: 500; gap: .4rem; white-space: nowrap; }
+.project-activity > summary { cursor: pointer; }
 
 /* ---------- feedback ---------- */
 
