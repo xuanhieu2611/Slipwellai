@@ -42,7 +42,7 @@ export function Skeleton({ className }: { className?: string }) {
   return <div aria-hidden="true" className={join("skeleton", className)} />;
 }
 
-export function Dialog({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
+export function Dialog({ title, children, onClose, size = "md" }: { title: string; children: ReactNode; onClose: () => void; size?: "md" | "lg" }) {
   const panelRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const panel = panelRef.current;
@@ -67,5 +67,5 @@ export function Dialog({ title, children, onClose }: { title: string; children: 
     panel.addEventListener("keydown", onKeyDown);
     return () => panel.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
-  return <div aria-labelledby="dialog-title" aria-modal="true" className="dialog-backdrop" role="dialog"><section ref={panelRef} className="dialog-panel"><div className="flex items-start justify-between gap-4"><h2 id="dialog-title" className="text-xl font-semibold tracking-tight">{title}</h2><Button aria-label="Close dialog" className="button-quiet" onClick={onClose}><X aria-hidden size={16} /></Button></div><div className="mt-5">{children}</div></section></div>;
+  return <div aria-labelledby="dialog-title" aria-modal="true" className="dialog-backdrop" role="dialog" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}><section ref={panelRef} className={join("dialog-panel", size === "lg" ? "dialog-panel--lg" : undefined)}><div className="flex items-start justify-between gap-4"><h2 id="dialog-title" className="text-xl font-semibold tracking-tight">{title}</h2><Button aria-label="Close dialog" className="button-quiet" onClick={onClose}><X aria-hidden size={16} /></Button></div><div className="mt-5">{children}</div></section></div>;
 }
