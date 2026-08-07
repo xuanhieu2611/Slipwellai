@@ -34,10 +34,7 @@ export type DashboardData = {
   /* The account's local calendar day, resolved once on the server so review reads a
      proposed date phrase against the same day the server will file it against. */
   today: string;
-  retainers: Array<{ id: string; name: string; timezone: string; cycle_day: number; status: string }>;
-  cycles: Array<{ id: string; retainer_id: string; cycle_start: string; cycle_end: string }>;
-  cycleItems: Array<{ id: string; cycle_id: string; title: string; expected_on: string; status: string; carried_from_item_id: string | null }>;
-  signals: Array<{ id: string; retainer_id: string; cycle_item_id: string | null; reason: string; severity: string; outcome: string }>;
+  signals: Array<{ id: string; retainer_id: string | null; cycle_item_id: string | null; reason: string; severity: string; outcome: string }>;
 };
 
 export const newestProposalByCapture = <T extends { capture_id: string }>(proposals: T[]) => {
@@ -63,7 +60,7 @@ export function filedDestinationLabel(record: Pick<RoutedRecord, "domain_id" | "
 
 export async function getDashboardData(): Promise<DashboardData> {
   const supabase = await createSupabaseServerClient();
-  const [capturesResult, proposalsResult, applicationsResult, prototypeRecordsResult, taskRecordsResult, noteRecordsResult, catalog, retainersResult, cyclesResult, cycleItemsResult, signalsResult, preferencesResult] = await Promise.all([
+  const [capturesResult, proposalsResult, applicationsResult, prototypeRecordsResult, taskRecordsResult, noteRecordsResult, catalog, signalsResult, preferencesResult] = await Promise.all([
     supabase.from("captures").select("id, original_text, source_type, status, failure_code, interpretation_claimed_at, created_at").order("created_at", { ascending: false }).limit(12),
     supabase.from("proposals").select("id, capture_id, status, proposal_json").order("created_at", { ascending: false }),
     supabase.from("proposal_applications").select("proposal_id, item_index, outcome, record_type, record_id"),
@@ -73,9 +70,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     supabase.from("tasks").select("id, proposal_id, title, created_at, domain_id, project_id, person_id").not("source_capture_id", "is", null).order("created_at", { ascending: false }).limit(8),
     supabase.from("notes").select("id, proposal_id, title, created_at, domain_id, project_id, person_id").not("source_capture_id", "is", null).order("created_at", { ascending: false }).limit(8),
     loadDestinationCatalog(supabase),
-    supabase.from("retainers").select("id, name, timezone, cycle_day, status").order("created_at", { ascending: false }),
-    supabase.from("retainer_cycles").select("id, retainer_id, cycle_start, cycle_end").order("cycle_start", { ascending: false }),
-    supabase.from("retainer_cycle_items").select("id, cycle_id, title, expected_on, status, carried_from_item_id").order("expected_on", { ascending: false }),
     supabase.from("slipping_signals").select("id, retainer_id, cycle_item_id, reason, severity, outcome").eq("outcome", "open").order("created_at", { ascending: false }),
     supabase.from("user_preferences").select("timezone").maybeSingle(),
   ]);
@@ -111,9 +105,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     ].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 8),
     catalog,
     today: localToday(new Date(), preferencesResult.data?.timezone ?? DEFAULT_TIMEZONE),
-    retainers: (retainersResult.data ?? []) as DashboardData["retainers"],
-    cycles: (cyclesResult.data ?? []) as DashboardData["cycles"],
-    cycleItems: (cycleItemsResult.data ?? []) as DashboardData["cycleItems"],
     signals: (signalsResult.data ?? []) as DashboardData["signals"],
   };
 }

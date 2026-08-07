@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { badRequest, serverError, unauthorized } from "@/lib/http";
 import { nextRecurrenceDate, type RecurrenceRule } from "@/lib/recurrence";
+import { cycleBounds, expectedDate } from "@/lib/retainers";
 import { requireUser } from "@/lib/supabase/server";
 import { workspaceCommandSchema } from "@/lib/workspace";
 
-const relationTables = { domainId: "domains", projectId: "projects", personId: "people" } as const;
+const relationTables = { domainId: "domains", projectId: "projects", personId: "people", retainerId: "retainers" } as const;
 
 export async function POST(request: NextRequest) {
   const parsed = workspaceCommandSchema.safeParse(await request.json());
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
     } else if (command.action === "create_task") {
       await verifyRelations(command);
       const recurrenceRule = command.recurrenceRule === "none" ? null : command.recurrenceRule;
-      const { data: task, error } = await supabase.from("tasks").insert({ title: command.title, details: command.details, due_on: command.dueOn ?? null, scheduled_for: command.scheduledFor ?? null, priority: command.priority, recurrence_rule: recurrenceRule, recurrence_anchor: recurrenceRule ? command.scheduledFor : null, recurrence_interval: recurrenceRule === "custom" ? command.recurrenceInterval : null, recurrence_unit: recurrenceRule === "custom" ? command.recurrenceUnit : null, tags: command.tags, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null, idempotency_key: command.idempotencyKey }).select("id").single();
+      const { data: task, error } = await supabase.from("tasks").insert({ title: command.title, details: command.details, due_on: command.dueOn ?? null, scheduled_for: command.scheduledFor ?? null, priority: command.priority, recurrence_rule: recurrenceRule, recurrence_anchor: recurrenceRule ? command.scheduledFor : null, recurrence_interval: recurrenceRule === "custom" ? command.recurrenceInterval : null, recurrence_unit: recurrenceRule === "custom" ? command.recurrenceUnit : null, tags: command.tags, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null, retainer_id: command.retainerId ?? null, idempotency_key: command.idempotencyKey }).select("id").single();
       if (error?.code === "23505") {
         // Same key, same owner: a retried double-submit converges on the task already created instead of a second one.
         const { data: existing } = await supabase.from("tasks").select("id").eq("idempotency_key", command.idempotencyKey).maybeSingle();
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
       const { data: task } = await supabase.from("tasks").select("id").eq("id", command.taskId).maybeSingle();
       if (!task) return badRequest("Task not found.");
       await verifyRelations(command);
-      const { error } = await supabase.from("tasks").update({ title: command.title, details: command.details, due_on: command.dueOn ?? null, scheduled_for: command.scheduledFor ?? null, priority: command.priority, tags: command.tags, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null }).eq("id", command.taskId);
+      const { error } = await supabase.from("tasks").update({ title: command.title, details: command.details, due_on: command.dueOn ?? null, scheduled_for: command.scheduledFor ?? null, priority: command.priority, tags: command.tags, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null, retainer_id: command.retainerId ?? null }).eq("id", command.taskId);
       if (error) throw error;
     } else if (command.action === "delete_task" || command.action === "restore_task") {
       /* Both toggle archived_at, the same soft-delete flag every other entity in this schema already
@@ -271,6 +272,162 @@ export async function POST(request: NextRequest) {
       const { error } = await supabase.from("project_checklist_items").update(command.action === "complete_checklist_item" ? { status: "completed", completed_at: new Date().toISOString() } : { status: "open", completed_at: null }).eq("id", item.id);
       if (error) throw error;
       await recordActivity("project", instance.project_id, command.action === "complete_checklist_item" ? "checklist_item_completed" : "checklist_item_reopened");
+    } else if (command.action === "update_retainer_template_item") {
+      const { data: item } = await supabase.from("retainer_deliverable_templates").select("id, retainer_id, version").eq("id", command.itemId).is("archived_at", null).maybeSingle();
+      if (!item) return badRequest("Retainer deliverable not found.");
+      if (command.scope === "future" || command.scope === "both") {
+        const { error } = await supabase.from("retainer_deliverable_templates").update({ title: command.title, expected_day: command.expectedDay, version: item.version + 1 }).eq("id", item.id);
+        if (error) throw error;
+      }
+      if (command.scope === "current" || command.scope === "both") {
+        const { data: latestCycle } = await supabase.from("retainer_cycles").select("id").eq("retainer_id", item.retainer_id).order("cycle_start", { ascending: false }).limit(1).maybeSingle();
+        if (latestCycle) {
+          const { error } = await supabase.from("retainer_cycle_items").update({ title: command.title }).eq("cycle_id", latestCycle.id).eq("source_template_item_id", item.id).eq("status", "open");
+          if (error) throw error;
+        }
+      }
+      await recordActivity("retainer", item.retainer_id, "template_item_updated", { scope: command.scope });
+    } else if (command.action === "delete_retainer_template_item") {
+      // Soft delete, same reasoning as delete_checklist_template_item: retainer_cycle_items.source_template_item_id
+      // references this row with on delete restrict, so a hard delete is blocked once it has produced cycle work.
+      const { data: item } = await supabase.from("retainer_deliverable_templates").select("id, retainer_id").eq("id", command.itemId).is("archived_at", null).maybeSingle();
+      if (!item) return badRequest("Retainer deliverable not found.");
+      const { error } = await supabase.from("retainer_deliverable_templates").update({ archived_at: new Date().toISOString() }).eq("id", item.id);
+      if (error) throw error;
+      await recordActivity("retainer", item.retainer_id, "template_item_deleted");
+    } else if (command.action === "close_retainer_cycle_item" || command.action === "leave_retainer_cycle_item_in_prior_cycle") {
+      const { data: item } = await supabase.from("retainer_cycle_items").select("id, cycle_id, status").eq("id", command.itemId).maybeSingle();
+      if (!item) return badRequest("Retainer cycle item not found.");
+      if (item.status !== "open") return badRequest("Only an open deliverable can be resolved this way.");
+      const { data: cycle } = await supabase.from("retainer_cycles").select("retainer_id").eq("id", item.cycle_id).maybeSingle();
+      if (!cycle) return badRequest("Retainer cycle not found.");
+      const changes = command.action === "close_retainer_cycle_item" ? { status: "closed" as const } : { excluded_from_carry_forward: true };
+      const { error } = await supabase.from("retainer_cycle_items").update(changes).eq("id", item.id);
+      if (error) throw error;
+      await recordActivity("retainer", cycle.retainer_id, command.action === "close_retainer_cycle_item" ? "cycle_item_closed" : "cycle_item_left_in_prior_cycle", { cycleItemId: item.id });
+    } else if (command.action === "pause_retainer" || command.action === "resume_retainer") {
+      const { data: retainer } = await supabase.from("retainers").select("id, status").eq("id", command.retainerId).maybeSingle();
+      if (!retainer) return badRequest("Retainer not found.");
+      const requiredStatus = command.action === "pause_retainer" ? "active" : "paused";
+      if (retainer.status !== requiredStatus) return badRequest(command.action === "pause_retainer" ? "Only an active retainer can be paused." : "Only a paused retainer can be resumed.");
+      // Resuming never generates a make-up cycle for the paused period — generation stays an
+      // explicit, separate action, so there is nothing here that could duplicate or invent a cycle.
+      const { error } = await supabase.from("retainers").update({ status: command.action === "pause_retainer" ? "paused" : "active" }).eq("id", retainer.id);
+      if (error) throw error;
+      await recordActivity("retainer", retainer.id, command.action === "pause_retainer" ? "paused" : "resumed");
+    } else if (command.action === "end_retainer") {
+      const { data: retainer } = await supabase.from("retainers").select("id, status").eq("id", command.retainerId).maybeSingle();
+      if (!retainer) return badRequest("Retainer not found.");
+      if (retainer.status === "ended") return badRequest("This retainer has already ended.");
+      if (command.openItemResolution === "close_all") {
+        const { data: cycles, error: cyclesError } = await supabase.from("retainer_cycles").select("id").eq("retainer_id", retainer.id);
+        if (cyclesError) throw cyclesError;
+        const cycleIds = (cycles ?? []).map((cycle) => cycle.id);
+        if (cycleIds.length) {
+          const { error: closeError } = await supabase.from("retainer_cycle_items").update({ status: "closed" }).in("cycle_id", cycleIds).eq("status", "open");
+          if (closeError) throw closeError;
+        }
+      }
+      const { error } = await supabase.from("retainers").update({ status: "ended" }).eq("id", retainer.id);
+      if (error) throw error;
+      await recordActivity("retainer", retainer.id, "ended", { openItemResolution: command.openItemResolution });
+    } else if (command.action === "create_retainer") {
+      await verifyRelations({ domainId: command.domainId, personId: command.clientPersonId });
+      const { data: retainer, error } = await supabase.from("retainers").insert({ name: command.name, timezone: command.timezone, cycle_day: command.cycleDay, client_person_id: command.clientPersonId ?? null, domain_id: command.domainId ?? null, idempotency_key: command.idempotencyKey }).select("id").single();
+      if (error?.code === "23505") {
+        // Same key, same owner: a retried double-submit converges on the retainer already created instead of a second one.
+        const { data: existing } = await supabase.from("retainers").select("id").eq("idempotency_key", command.idempotencyKey).maybeSingle();
+        if (existing) return NextResponse.json({ ok: true, duplicate: true });
+      }
+      if (error || !retainer) throw error ?? new Error("Retainer creation failed.");
+      await recordActivity("retainer", retainer.id, "created");
+    } else if (command.action === "update_retainer") {
+      const { data: retainer } = await supabase.from("retainers").select("id").eq("id", command.retainerId).maybeSingle();
+      if (!retainer) return badRequest("Retainer not found.");
+      await verifyRelations({ domainId: command.domainId, personId: command.clientPersonId });
+      const { error } = await supabase.from("retainers").update({ name: command.name, timezone: command.timezone, cycle_day: command.cycleDay, client_person_id: command.clientPersonId ?? null, domain_id: command.domainId ?? null }).eq("id", command.retainerId);
+      if (error) throw error;
+      await recordActivity("retainer", command.retainerId, "updated");
+    } else if (command.action === "create_retainer_template_item") {
+      const { data: retainer } = await supabase.from("retainers").select("id").eq("id", command.retainerId).maybeSingle();
+      if (!retainer) return badRequest("Retainer not found.");
+      const { count, error: countError } = await supabase.from("retainer_deliverable_templates").select("id", { count: "exact", head: true }).eq("retainer_id", retainer.id).is("archived_at", null);
+      if (countError) throw countError;
+      const { error } = await supabase.from("retainer_deliverable_templates").insert({ retainer_id: retainer.id, title: command.title, expected_day: command.expectedDay, position: (count ?? 0) + 1 });
+      if (error) throw error;
+      await recordActivity("retainer", retainer.id, "template_item_created");
+    } else if (command.action === "delete_retainer" || command.action === "restore_retainer") {
+      const { data: retainer } = await supabase.from("retainers").select("id").eq("id", command.retainerId).maybeSingle();
+      if (!retainer) return badRequest("Retainer not found.");
+      const { error } = await supabase.from("retainers").update({ archived_at: command.action === "delete_retainer" ? new Date().toISOString() : null }).eq("id", command.retainerId);
+      if (error) throw error;
+      await recordActivity("retainer", command.retainerId, command.action === "delete_retainer" ? "deleted" : "restored");
+    } else if (command.action === "complete_retainer_cycle_item" || command.action === "reopen_retainer_cycle_item") {
+      const { data: item } = await supabase.from("retainer_cycle_items").select("id, cycle_id").eq("id", command.itemId).maybeSingle();
+      if (!item) return badRequest("Retainer cycle item not found.");
+      const { data: cycle } = await supabase.from("retainer_cycles").select("retainer_id").eq("id", item.cycle_id).maybeSingle();
+      if (!cycle) return badRequest("Retainer cycle not found.");
+      const { error } = await supabase.from("retainer_cycle_items").update(command.action === "complete_retainer_cycle_item" ? { status: "completed", completed_at: new Date().toISOString() } : { status: "open", completed_at: null }).eq("id", item.id);
+      if (error) throw error;
+      await recordActivity("retainer", cycle.retainer_id, command.action === "complete_retainer_cycle_item" ? "cycle_item_completed" : "cycle_item_reopened", { cycleItemId: item.id });
+    } else if (command.action === "generate_retainer_cycle") {
+      const { data: retainer } = await supabase.from("retainers").select("id, cycle_day, status").eq("id", command.retainerId).maybeSingle();
+      if (!retainer) return badRequest("Retainer not found.");
+      if (retainer.status !== "active") return badRequest("That retainer is not active.");
+
+      const bounds = cycleBounds(command.cycleMonth, retainer.cycle_day);
+
+      const { data: templates, error: templatesError } = await supabase
+        .from("retainer_deliverable_templates")
+        .select("id, title, expected_day, version")
+        .eq("retainer_id", retainer.id)
+        .is("archived_at", null);
+      if (templatesError) throw templatesError;
+      const newItems = (templates ?? []).map((template) => ({
+        sourceTemplateItemId: template.id,
+        sourceTemplateVersion: template.version,
+        title: template.title,
+        expectedOn: expectedDate(command.cycleMonth, template.expected_day),
+      }));
+
+      const { data: priorCycle, error: priorCycleError } = await supabase
+        .from("retainer_cycles")
+        .select("id")
+        .eq("retainer_id", retainer.id)
+        .lt("cycle_start", bounds.start)
+        .order("cycle_start", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (priorCycleError) throw priorCycleError;
+      let carryForwardItems: Array<{ sourceTemplateItemId: string; sourceTemplateVersion: number; carriedFromItemId: string; title: string; expectedOn: string }> = [];
+      if (priorCycle) {
+        const { data: priorItems, error: priorItemsError } = await supabase
+          .from("retainer_cycle_items")
+          .select("id, title, source_template_item_id, source_template_version")
+          .eq("cycle_id", priorCycle.id)
+          .eq("status", "open")
+          .eq("excluded_from_carry_forward", false);
+        if (priorItemsError) throw priorItemsError;
+        carryForwardItems = (priorItems ?? []).map((item) => ({
+          sourceTemplateItemId: item.source_template_item_id,
+          sourceTemplateVersion: item.source_template_version,
+          carriedFromItemId: item.id,
+          title: `${item.title} (carried forward)`,
+          expectedOn: bounds.start,
+        }));
+      }
+
+      const { data: result, error: generateError } = await supabase.rpc("generate_retainer_cycle", {
+        p_retainer_id: retainer.id,
+        p_cycle_start: bounds.start,
+        p_cycle_end: bounds.end,
+        p_idempotency_key: command.idempotencyKey,
+        p_new_items: newItems,
+        p_carry_forward_items: carryForwardItems,
+      }).select().maybeSingle() as { data: { out_cycle_id: string } | null; error: unknown };
+      if (generateError || !result) throw generateError ?? new Error("Cycle generation failed.");
+
+      await recordActivity("retainer", retainer.id, "cycle_generated", { cycleId: result.out_cycle_id });
     } else if (command.action === "record_project_progress" || command.action === "pause_project" || command.action === "complete_project") {
       const { data: project } = await supabase.from("projects").select("id").eq("id", command.projectId).maybeSingle();
       if (!project) return badRequest("Project not found.");

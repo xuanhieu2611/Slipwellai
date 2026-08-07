@@ -3,11 +3,12 @@
 import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowCounterClockwise, CaretDown, DotsThreeVertical, Plus } from "@phosphor-icons/react";
-import { activityEventLabel, isTaskOnDay, recurrenceLabel, taskDateLabel, type WorkspaceData } from "@/lib/workspace";
+import { nextCycleMonth } from "@/lib/retainers";
+import { activityEventLabel, isTaskOnDay, recurrenceLabel, retainerActivityEventLabel, taskDateLabel, type WorkspaceData } from "@/lib/workspace";
 import { useToast } from "@/components/ui/toast";
 import { Dialog } from "@/components/ui/primitives";
 
-type Surface = "today" | "tasks" | "work" | "people-notes" | "search";
+type Surface = "today" | "tasks" | "work" | "retainers" | "people-notes" | "search";
 
 function dateInZone(timezone: string) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -240,6 +241,196 @@ function ProjectList({ projects, data, onCommand }: { projects: WorkspaceData["p
   })}{projects.length === 0 && <p className="empty-state">Projects appear here when an outcome needs more than one action.</p>}</div>;
 }
 
+function RetainerEditForm({ retainer, data, onCommand, onDone }: { retainer: WorkspaceData["retainers"][number]; data: WorkspaceData; onCommand: (command: Record<string, unknown>) => Promise<void>; onDone: () => void }) {
+  const notify = useToast();
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    try {
+      await onCommand({ action: "update_retainer", retainerId: retainer.id, name: formValue(form, "name"), timezone: formValue(form, "timezone"), cycleDay: formValue(form, "cycleDay"), clientPersonId: formValue(form, "clientPersonId"), domainId: formValue(form, "domainId") });
+      notify("Retainer updated.", "success");
+      onDone();
+    } catch (error) { notify(error instanceof Error ? error.message : "Could not update that retainer.", "error"); }
+  }
+  return <form className="form-grid" onSubmit={submit}><label className="field-label form-span"><span>Retainer</span><input className="field-base" name="name" required maxLength={160} defaultValue={retainer.name} /></label><label className="field-label"><span>Timezone</span><input className="field-base" name="timezone" required maxLength={100} defaultValue={retainer.timezone} /></label><label className="field-label"><span>Cycle day of month</span><input className="field-base" type="number" name="cycleDay" min={1} max={31} required defaultValue={retainer.cycle_day} /></label><DomainSelect domains={data.domains} defaultValue={retainer.domain_id ?? ""} /><PersonSelect people={data.people} name="clientPersonId" defaultValue={retainer.client_person_id ?? ""} /><div className="record-actions form-span"><button className="button-base button-primary" type="submit">Save changes</button><button className="button-base button-quiet" type="button" onClick={onDone}>Cancel</button></div></form>;
+}
+
+function NewRetainerForm({ data, onCommand }: { data: WorkspaceData; onCommand: (command: Record<string, unknown>) => Promise<void> }) {
+  const notify = useToast();
+  const [busy, setBusy] = useState(false);
+  const keyRef = useRef<string | null>(null);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    const form = event.currentTarget;
+    keyRef.current ??= crypto.randomUUID();
+    setBusy(true);
+    try {
+      await onCommand({ action: "create_retainer", name: formValue(form, "name"), timezone: formValue(form, "timezone") ?? Intl.DateTimeFormat().resolvedOptions().timeZone, cycleDay: formValue(form, "cycleDay"), clientPersonId: formValue(form, "clientPersonId"), domainId: formValue(form, "domainId"), idempotencyKey: keyRef.current });
+      form.reset();
+      keyRef.current = null;
+      notify("Retainer created.", "success");
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Could not save that retainer.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return <form className="form-grid" onSubmit={submit}><label className="field-label form-span"><span>Retainer</span><input className="field-base" name="name" required maxLength={160} placeholder="Rivera Studio monthly retainer" /></label><label className="field-label"><span>Timezone</span><input className="field-base" name="timezone" maxLength={100} placeholder={Intl.DateTimeFormat().resolvedOptions().timeZone} /></label><label className="field-label"><span>Cycle day of month</span><input className="field-base" type="number" name="cycleDay" min={1} max={31} required defaultValue={1} /></label><DomainSelect domains={data.domains} /><PersonSelect people={data.people} name="clientPersonId" /><button className="button-base button-primary form-submit" type="submit" disabled={busy}>{busy ? "Creating…" : "Create retainer"}</button></form>;
+}
+
+function RetainerTemplateItemRow({ item, onCommand }: { item: WorkspaceData["retainerTemplateItems"][number]; onCommand: (command: Record<string, unknown>) => Promise<void> }) {
+  const notify = useToast();
+  const [editing, setEditing] = useState(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    try {
+      await onCommand({ action: "update_retainer_template_item", itemId: item.id, title: formValue(form, "title"), expectedDay: formValue(form, "expectedDay"), scope: formValue(form, "scope") });
+      notify("Deliverable updated.", "success");
+      setEditing(false);
+    } catch (error) { notify(error instanceof Error ? error.message : "Could not update that deliverable.", "error"); }
+  }
+  async function remove() {
+    try { await onCommand({ action: "delete_retainer_template_item", itemId: item.id }); notify("Deliverable removed.", "success"); } catch (error) { notify(error instanceof Error ? error.message : "Could not remove that deliverable.", "error"); }
+  }
+  if (editing) return <form className="inline-form" onSubmit={submit}>
+    <label className="sr-only" htmlFor={`edit-retainer-item-${item.id}`}>Deliverable title</label>
+    <input className="field-base" id={`edit-retainer-item-${item.id}`} name="title" required maxLength={280} defaultValue={item.title} />
+    <label className="sr-only" htmlFor={`edit-retainer-item-day-${item.id}`}>Expected day of month</label>
+    <input className="field-base" id={`edit-retainer-item-day-${item.id}`} type="number" name="expectedDay" min={1} max={31} required defaultValue={item.expected_day} />
+    <select className="field-base" name="scope" defaultValue="future" aria-label="Apply this change to">
+      <option value="future">Future cycles only</option>
+      <option value="current">Current cycle only</option>
+      <option value="both">Current and future cycles</option>
+    </select>
+    <button className="button-base button-primary" type="submit">Save</button>
+    <button className="button-base button-quiet" type="button" onClick={() => setEditing(false)}>Cancel</button>
+  </form>;
+  return <div className="compact-row"><span>{item.title} <span className="record-meta">· day {item.expected_day} · v{item.version}</span></span><span className="compact-row-actions"><button className="button-base button-quiet" onClick={() => setEditing(true)}>Edit</button><button className="button-base button-quiet" onClick={remove}>Delete</button></span></div>;
+}
+
+function RetainerCycleItemRow({ item, sourceCycleStart, onCommand }: { item: WorkspaceData["retainerCycleItems"][number]; sourceCycleStart: string | undefined; onCommand: (command: Record<string, unknown>) => Promise<void> }) {
+  const notify = useToast();
+  async function act(action: string, success: string) {
+    try { await onCommand({ action, itemId: item.id }); notify(success, "success"); } catch (error) { notify(error instanceof Error ? error.message : "Could not update that deliverable.", "error"); }
+  }
+  return <li id={`retainer-cycle-item-${item.id}`} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+    <span>{item.title}{item.carried_from_item_id && sourceCycleStart && <a className="ml-2 text-xs font-semibold text-[var(--accent)] underline" href={`#retainer-cycle-item-${item.carried_from_item_id}`}>Carried from {sourceCycleStart}</a>}{item.excluded_from_carry_forward && item.status === "open" && <span className="tag ml-2">Left in this cycle</span>}</span>
+    <span className="flex items-center gap-2">
+      <span className={`tag${item.status === "open" ? " tag--attention" : ""}`}>{item.status}</span>
+      {item.status === "open" && <>
+        <button className="button-base button-quiet" onClick={() => act("complete_retainer_cycle_item", "Deliverable completed.")}>Complete</button>
+        <button className="button-base button-quiet" onClick={() => act("close_retainer_cycle_item", "Deliverable closed.")}>Close</button>
+        {!item.excluded_from_carry_forward && <button className="button-base button-quiet" onClick={() => act("leave_retainer_cycle_item_in_prior_cycle", "Left in its prior cycle.")}>Leave in prior cycle</button>}
+      </>}
+      {item.status === "completed" && <button className="button-base button-quiet" onClick={() => act("reopen_retainer_cycle_item", "Deliverable reopened.")}>Reopen</button>}
+    </span>
+  </li>;
+}
+
+function RetainerCycles({ retainer, data, onCommand }: { retainer: WorkspaceData["retainers"][number]; data: WorkspaceData; onCommand: (command: Record<string, unknown>) => Promise<void> }) {
+  const notify = useToast();
+  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [busy, setBusy] = useState(false);
+  const cycles = data.retainerCycles.filter((cycle) => cycle.retainer_id === retainer.id);
+  const cycleStartById = new Map(cycles.map((cycle) => [cycle.id, cycle.cycle_start]));
+  const itemCycleStartByItemId = new Map(data.retainerCycleItems.filter((item) => cycles.some((cycle) => cycle.id === item.cycle_id)).map((item) => [item.id, cycleStartById.get(item.cycle_id)]));
+  async function generate(cycleMonth: string) {
+    setBusy(true);
+    try {
+      await onCommand({ action: "generate_retainer_cycle", retainerId: retainer.id, cycleMonth, idempotencyKey: crypto.randomUUID() });
+      notify("Cycle generated.", "success");
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Could not generate that cycle.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return <div className="mt-3">
+    <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+      <label className="sr-only" htmlFor={`retainer-cycle-month-${retainer.id}`}>Cycle month</label>
+      <input className="field-base min-w-0" id={`retainer-cycle-month-${retainer.id}`} type="month" value={month} onChange={(event) => setMonth(event.target.value)} />
+      <button className="button-base button-secondary" disabled={busy || retainer.status !== "active"} onClick={() => generate(month)}>Generate selected</button>
+      <button className="button-base button-secondary" disabled={busy || retainer.status !== "active"} onClick={() => generate(nextCycleMonth(month))}>Generate next</button>
+    </div>
+    {retainer.status !== "active" && <p className="form-help mt-1">Only an active retainer can generate a new cycle.</p>}
+    {cycles.length > 0 && <div className="mt-4 space-y-3 border-t border-[var(--line)] pt-3">
+      <p className="text-sm font-semibold">Cycle history</p>
+      {cycles.map((cycle) => <section id={`retainer-cycle-${cycle.id}`} className="rounded-[var(--r-md)] bg-[var(--surface-sunken)] p-3" key={cycle.id}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-medium">{cycle.cycle_start} to {cycle.cycle_end}</p>
+          {cycle.generation_status !== "complete" && <div className="flex items-center gap-2">
+            <span className="tag tag--attention">{cycle.generation_status}</span>
+            <button className="button-base button-quiet" disabled={busy} onClick={() => generate(cycle.cycle_start.slice(0, 7))}>Retry generation</button>
+          </div>}
+        </div>
+        <ul className="mt-2 space-y-2">{data.retainerCycleItems.filter((item) => item.cycle_id === cycle.id).map((item) => (
+          <RetainerCycleItemRow item={item} sourceCycleStart={item.carried_from_item_id ? itemCycleStartByItemId.get(item.carried_from_item_id) : undefined} onCommand={onCommand} key={item.id} />
+        ))}</ul>
+      </section>)}
+    </div>}
+    {cycles.length === 0 && <p className="empty-state mt-3">No cycles generated yet.</p>}
+  </div>;
+}
+
+function RetainerActivity({ retainerId, data }: { retainerId: string; data: WorkspaceData }) {
+  const events = data.retainerActivity.filter((event) => event.entity_id === retainerId);
+  if (events.length === 0) return null;
+  return <details className="project-activity mt-3"><summary className="record-meta">Activity history ({events.length})</summary><div className="mt-2 space-y-1">{events.map((event) => <div className="compact-row" key={event.id}><span>{retainerActivityEventLabel(event.event_type)}</span><span className="tag">{new Date(event.occurred_at).toLocaleString()}</span></div>)}</div></details>;
+}
+
+function EndRetainerControl({ retainer, onCommand, onDone }: { retainer: WorkspaceData["retainers"][number]; onCommand: (command: Record<string, unknown>) => Promise<void>; onDone: () => void }) {
+  const notify = useToast();
+  async function end(openItemResolution: "leave_open" | "close_all") {
+    try { await onCommand({ action: "end_retainer", retainerId: retainer.id, openItemResolution }); notify("Retainer ended.", "success"); onDone(); } catch (error) { notify(error instanceof Error ? error.message : "Could not end that retainer.", "error"); }
+  }
+  return <span className="inline-form"><button className="button-base button-danger" onClick={() => end("leave_open")}>End, leave open work as-is</button><button className="button-base button-danger" onClick={() => end("close_all")}>End, close all open work</button><button className="button-base button-quiet" onClick={onDone}>Cancel</button></span>;
+}
+
+function RetainerList({ retainers, data, onCommand, onCheckSlipping }: { retainers: WorkspaceData["retainers"]; data: WorkspaceData; onCommand: (command: Record<string, unknown>) => Promise<void>; onCheckSlipping: (retainerId: string) => Promise<void> }) {
+  const notify = useToast();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [endingId, setEndingId] = useState<string | null>(null);
+  async function act(command: Record<string, unknown>, success: string) {
+    try { await onCommand(command); notify(success, "success"); } catch (error) { notify(error instanceof Error ? error.message : "Could not update that retainer.", "error"); }
+  }
+  async function checkSlipping(retainerId: string) {
+    try { await onCheckSlipping(retainerId); notify("Slipping checked.", "success"); } catch (error) { notify(error instanceof Error ? error.message : "Could not check Slipping.", "error"); }
+  }
+  return <div className="space-y-4">{retainers.map((retainer) => {
+    const domain = retainer.domain_id ? data.domains.find((item) => item.id === retainer.domain_id) : undefined;
+    const client = retainer.client_person_id ? data.people.find((item) => item.id === retainer.client_person_id) : undefined;
+    const items = data.retainerTemplateItems.filter((item) => item.retainer_id === retainer.id);
+    const editMenuActions: MenuAction[] = [{ label: "Edit", onClick: () => setEditingId(retainer.id) }, { label: "Delete", onClick: () => act({ action: "delete_retainer", retainerId: retainer.id }, "Retainer deleted."), tone: "danger" }];
+    return <article className="project-card" key={retainer.id}>
+      <div className={`record-card${domain ? " record-card--domain" : ""}`} style={domain ? ({ "--domain-color": domain.color } as CSSProperties) : undefined}>
+        <div><h3>{retainer.name}</h3><p className="record-meta">Monthly on day {retainer.cycle_day} · {retainer.timezone}</p>{(domain || client) && <p className="record-meta flex flex-wrap items-center gap-2">{domain && <span><i className="domain-dot" style={{ background: domain.color }} />{domain.name}</span>}{client && <span>{client.name}</span>}</p>}</div>
+        <div className="record-actions">
+          <span className="tag capitalize">{retainer.status}</span>
+          {retainer.archived_at ? <button className="button-base button-primary" onClick={() => act({ action: "restore_retainer", retainerId: retainer.id }, "Retainer restored.")}>Restore</button> : retainer.status === "active" ? <><button className="button-base button-secondary" onClick={() => checkSlipping(retainer.id)}>Check Slipping</button><button className="button-base button-quiet" onClick={() => act({ action: "pause_retainer", retainerId: retainer.id }, "Retainer paused.")}>Pause</button><button className="button-base button-secondary" onClick={() => setEndingId(endingId === retainer.id ? null : retainer.id)}>End retainer</button><ActionsMenu actions={editMenuActions} /></> : retainer.status === "paused" ? <><button className="button-base button-primary" onClick={() => act({ action: "resume_retainer", retainerId: retainer.id }, "Retainer resumed.")}>Resume</button><button className="button-base button-secondary" onClick={() => setEndingId(endingId === retainer.id ? null : retainer.id)}>End retainer</button><ActionsMenu actions={editMenuActions} /></> : <ActionsMenu actions={editMenuActions} />}
+        </div>
+      </div>
+      {endingId === retainer.id && <div className="mt-3"><EndRetainerControl retainer={retainer} onCommand={onCommand} onDone={() => setEndingId(null)} /></div>}
+      {editingId === retainer.id && <Dialog title="Edit retainer" size="lg" onClose={() => setEditingId(null)}><RetainerEditForm retainer={retainer} data={data} onCommand={onCommand} onDone={() => setEditingId(null)} /></Dialog>}
+      <div className="project-milestones">
+        <p className="text-sm font-semibold">Deliverables</p>
+        <form className="inline-form" onSubmit={(event) => { event.preventDefault(); const form = event.currentTarget; act({ action: "create_retainer_template_item", retainerId: retainer.id, title: formValue(form, "title"), expectedDay: formValue(form, "expectedDay") }, "Deliverable added.").then(() => form.reset()); }}>
+          <label className="sr-only" htmlFor={`retainer-item-title-${retainer.id}`}>New deliverable</label>
+          <input className="field-base" id={`retainer-item-title-${retainer.id}`} name="title" required maxLength={280} placeholder="Monthly analytics" />
+          <label className="sr-only" htmlFor={`retainer-item-day-${retainer.id}`}>Expected day of month</label>
+          <input className="field-base" id={`retainer-item-day-${retainer.id}`} type="number" name="expectedDay" min={1} max={31} required defaultValue={15} />
+          <button className="button-base button-secondary" type="submit">Add deliverable</button>
+        </form>
+        {items.map((item) => <RetainerTemplateItemRow item={item} onCommand={onCommand} key={item.id} />)}
+        {items.length === 0 && <p className="record-meta mt-2">Add at least one deliverable before generating a cycle.</p>}
+      </div>
+      <RetainerCycles retainer={retainer} data={data} onCommand={onCommand} />
+      <RetainerActivity retainerId={retainer.id} data={data} />
+    </article>;
+  })}{retainers.length === 0 && <p className="empty-state">Retainers appear here for ongoing monthly engagements, distinct from a finite project.</p>}</div>;
+}
+
 function PersonInteractions({ personId, data, onCommand }: { personId: string; data: WorkspaceData; onCommand: (command: Record<string, unknown>) => Promise<void> }) {
   const notify = useToast();
   const interactions = data.personInteractions.filter((interaction) => interaction.person_id === personId).slice(0, 3);
@@ -338,6 +529,27 @@ function ProjectFilters({ filters, onChange }: { filters: ProjectFilterState; on
   </div>;
 }
 
+type RetainerFilterState = { status: "current" | "ended" | "deleted" | "any" };
+
+const defaultRetainerFilters: RetainerFilterState = { status: "current" };
+
+function filterRetainers(retainers: WorkspaceData["retainers"], filters: RetainerFilterState) {
+  return retainers.filter((retainer) => {
+    if (filters.status === "current") return !retainer.archived_at && (retainer.status === "active" || retainer.status === "paused");
+    if (filters.status === "ended") return !retainer.archived_at && retainer.status === "ended";
+    if (filters.status === "deleted") return Boolean(retainer.archived_at);
+    return true;
+  });
+}
+
+function RetainerFilters({ filters, onChange }: { filters: RetainerFilterState; onChange: (next: RetainerFilterState) => void }) {
+  const isDefault = filters.status === defaultRetainerFilters.status;
+  return <div className="task-filter-bar" role="group" aria-label="Filter retainers">
+    <FilterSelect label="Status" value={filters.status} active={!isDefault} onChange={(value) => onChange({ status: value as RetainerFilterState["status"] })}><option value="current">Current (active or paused)</option><option value="ended">Ended</option><option value="deleted">Deleted</option><option value="any">Any status</option></FilterSelect>
+    {!isDefault && <button className="task-filter-reset" type="button" onClick={() => onChange(defaultRetainerFilters)}><ArrowCounterClockwise aria-hidden size={13} weight="bold" />Reset</button>}
+  </div>;
+}
+
 function NotesToReview({ notes, today }: { notes: WorkspaceData["notes"]; today: string }) {
   const reviewNotes = notes.filter((note) => note.review_on && note.review_on <= today);
   return <section className="workspace-section"><div className="section-heading"><div><h2>Notes to review</h2><p className="section-note">Keep a thought within reach</p></div><span className="tag">{reviewNotes.length} due</span></div><div className="space-y-3">{reviewNotes.map((note) => <article className="record-card" key={note.id}><div><h3>{note.title}</h3>{note.body && <p className="record-copy">{note.body}</p>}<p className="record-meta">Review date {note.review_on}</p></div></article>)}{reviewNotes.length === 0 && <p className="empty-state">No notes are due for review today.</p>}</div></section>;
@@ -372,6 +584,12 @@ export function Workspace({ surface, data }: { surface: Surface; data: Workspace
       router.refresh();
     }, "Signal resolved.");
   }
+  async function checkRetainerSlipping(retainerId: string) {
+    const response = await fetch("/api/slipping/evaluate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ retainerId }) });
+    const payload: unknown = await response.json();
+    if (!response.ok) throw new Error(typeof payload === "object" && payload && "error" in payload ? String(payload.error) : "Could not check Slipping.");
+    router.refresh();
+  }
   async function submit(event: FormEvent<HTMLFormElement>, action: string, fields: Record<string, string>, success: string) {
     event.preventDefault();
     try {
@@ -390,15 +608,19 @@ export function Workspace({ surface, data }: { surface: Surface; data: Workspace
   const [taskFilters, setTaskFilters] = useState<TaskFilterState>(defaultTaskFilters);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [projectFilters, setProjectFilters] = useState<ProjectFilterState>(defaultProjectFilters);
+  const [retainerFilters, setRetainerFilters] = useState<RetainerFilterState>(defaultRetainerFilters);
   const slippingTaskIds = new Set(data.signals.filter((signal) => signal.entity_type === "task").map((signal) => signal.entity_id));
   const filteredTasks = filterAndSortTasks(data.tasks, taskFilters, slippingTaskIds);
   const filteredProjects = filterProjects(data.projects, projectFilters);
+  const filteredRetainers = filterRetainers(data.retainers, retainerFilters);
 
   if (surface === "today") return <main className="workspace-page"><header className="page-intro"><p className="eyebrow">Today · {today}</p><h1>Choose what matters, then let the rest wait.</h1><p>Local time: {data.timezone}. Slipwell never quietly carries yesterday’s priorities into today.</p></header><section className="workspace-section"><div className="section-heading"><div><h2>Top Three</h2><p className="section-note">Your selected priorities</p></div><span className="tag">{topThree.length}/3 selected</span></div><TaskList tasks={topThree} onCommand={command} today={today} data={data} /></section><section className="workspace-section"><div className="section-heading"><div><h2>On the day</h2><p className="section-note">Due, scheduled, or intentionally deferred</p></div></div><TaskList tasks={dueToday} onCommand={command} today={today} data={data} /></section><section className="workspace-section"><div className="section-heading"><div><h2>Routines</h2><p className="section-note">Separate from tasks</p></div></div><div className="space-y-3">{data.routines.map((routine) => { const resolved = routineById.get(routine.id); return <article className="record-card" key={routine.id}><div><h3>{routine.name}</h3><p className="record-meta capitalize">{routine.period} · {resolved ? resolved.outcome : "Not yet checked"}</p></div>{!resolved && <div className="record-actions"><button className="button-base button-primary" onClick={() => safely(() => command({ action: "resolve_routine", routineId: routine.id, localDate: today, outcome: "completed" }), "Routine completed.")}>Complete</button><button className="button-base button-secondary" onClick={() => safely(() => command({ action: "resolve_routine", routineId: routine.id, localDate: today, outcome: "skipped" }), "Routine skipped.")}>Skip</button></div>}</article>; })}{data.routines.length === 0 && <p className="empty-state">Add a routine from People & Notes when a repeated behavior belongs here, not in your task list.</p>}</div></section><NotesToReview notes={data.notes} today={today} /><section className="workspace-section"><div className="section-heading"><div><h2>Slipping</h2><p className="section-note">Attention signals</p></div><button className="button-base button-secondary" onClick={refreshAttention}>Refresh attention</button></div><div className="space-y-3">{data.signals.filter((signal) => signal.entity_type !== "retainer").map((signal) => <article className="record-card" key={signal.id}><div><span className="tag tag--attention">{signal.severity}</span><p className="record-copy">{signal.reason}</p></div><div className="record-actions"><button className="button-base button-primary" onClick={() => resolveSignal(signal.id, "marked_attention")}>Mark attention</button><button className="button-base button-secondary" onClick={() => resolveSignal(signal.id, "deferred")}>Defer</button><button className="button-base button-quiet" onClick={() => resolveSignal(signal.id, "dismissed")}>Dismiss</button></div></article>)}{data.signals.filter((signal) => signal.entity_type !== "retainer").length === 0 && <p className="empty-state">No active task or project signals. Refresh attention to check meaningful activity against each cadence.</p>}</div></section><section className="workspace-section"><div className="section-heading"><div><h2>Capture recovery</h2><p className="section-note">Recent captures</p></div></div><div className="space-y-2">{data.captures.map((capture) => <article className="compact-row" key={capture.id}><span>{capture.original_text}</span><span className="tag">{capture.status.replace("_", " ")}</span></article>)}{data.captures.length === 0 && <p className="empty-state">Your captured thoughts will appear here.</p>}</div></section></main>;
 
   if (surface === "tasks") return <main className="workspace-page"><header className="page-intro page-intro--with-action"><div className="page-intro-text"><p className="eyebrow">Tasks</p><h1>Small next actions with real context.</h1><p>Create a task in a few seconds; dates and links remain optional.</p></div><button className="button-base button-primary" onClick={() => setNewTaskOpen(true)}><Plus aria-hidden size={16} weight="bold" />New task</button></header>{newTaskOpen && <Dialog title="New task" size="lg" onClose={() => setNewTaskOpen(false)}><NewTaskForm data={data} onCommand={command} /></Dialog>}<section className="workspace-section"><div className="section-heading"><div><h2>Tasks</h2><p className="section-note">Filter and sort</p></div><span className="tag">{filteredTasks.length} shown</span></div><TaskFilters data={data} filters={taskFilters} onChange={setTaskFilters} /><TaskList tasks={filteredTasks} onCommand={command} today={today} data={data} showTopThree={taskFilters.status === "open" || taskFilters.status === "any"} /></section></main>;
 
   if (surface === "work") return <main className="workspace-page"><header className="page-intro"><p className="eyebrow">Work</p><h1>Finite projects, durable domains.</h1><p>Projects have an ending. Domains provide ongoing context without demanding a complete taxonomy.</p></header><div className="workspace-columns"><section className="workspace-section"><h2>New domain</h2><form className="form-grid" onSubmit={(event) => submit(event, "create_domain", { name: "name", description: "description", color: "color" }, "Domain created.")}><label className="field-label form-span"><span>Name</span><input className="field-base" name="name" required maxLength={80} placeholder="Client work" /></label><label className="field-label form-span"><span>Description</span><input className="field-base" name="description" maxLength={1000} placeholder="Optional context" /></label><DomainColorPicker /><button className="button-base button-primary form-submit">Add domain</button></form><div className="mt-5 space-y-2">{data.domains.map((domain) => { const openTaskCount = data.tasks.filter((task) => task.domain_id === domain.id && task.status === "open" && !task.archived_at).length; const activeProjectCount = data.projects.filter((project) => project.domain_id === domain.id && ["planned", "active", "paused"].includes(project.status)).length; return <div className="compact-row" key={domain.id}><span><i className="domain-dot" style={{ background: domain.color }} />{domain.name}</span><span className="compact-row-actions"><span className="tag">{openTaskCount} open · {activeProjectCount} active</span><button className="button-base button-quiet" onClick={() => safely(() => command({ action: "archive_domain", domainId: domain.id }), "Domain archived.")}>Archive</button></span></div>; })}{data.domains.length === 0 && <p className="empty-state">A few domains are enough. You can also skip them.</p>}</div></section><section className="workspace-section"><h2>New project</h2><NewProjectForm data={data} onCommand={command} /></section></div><TemplateLibrary data={data} onCommand={command} /><section className="workspace-section"><div className="section-heading"><div><h2>Project progress</h2><p className="section-note">Inspect the plan, not a cosmetic percentage</p></div><span className="tag">{filteredProjects.length} shown</span></div><ProjectFilters filters={projectFilters} onChange={setProjectFilters} /><ProjectList projects={filteredProjects} data={data} onCommand={command} /></section></main>;
+
+  if (surface === "retainers") return <main className="workspace-page"><header className="page-intro"><p className="eyebrow">Retainers</p><h1>Ongoing engagements, not projects with a finish line.</h1><p>Each cycle is a versioned, inspectable record. Incomplete work never silently disappears at rollover.</p></header><section className="workspace-section"><h2>New retainer</h2><NewRetainerForm data={data} onCommand={command} /></section><section className="workspace-section"><div className="section-heading"><div><h2>Retainers</h2><p className="section-note">Deliverables, cycles, and history</p></div><span className="tag">{filteredRetainers.length} shown</span></div><RetainerFilters filters={retainerFilters} onChange={setRetainerFilters} /><RetainerList retainers={filteredRetainers} data={data} onCommand={command} onCheckSlipping={checkRetainerSlipping} /></section></main>;
 
   if (surface === "people-notes") return <main className="workspace-page"><header className="page-intro"><p className="eyebrow">People & Notes</p><h1>Context without turning everything into a task.</h1><p>People and reflective notes remain lightweight, private records.</p></header><div className="workspace-columns"><section className="workspace-section"><h2>New person</h2><form className="form-grid" onSubmit={(event) => submit(event, "create_person", { name: "name", context: "context", domainId: "domainId" }, "Person added.")}><label className="field-label form-span"><span>Name</span><input className="field-base" name="name" required maxLength={160} placeholder="Priya from Rivera Studio" /></label><label className="field-label form-span"><span>Context</span><input className="field-base" name="context" maxLength={1000} placeholder="Client lead, collaborator, or someone important" /></label><DomainSelect domains={data.domains} /><button className="button-base button-primary form-submit">Add person</button></form><div className="mt-5 space-y-3">{data.people.map((person) => <article className="project-card" key={person.id}><div className="record-card"><div><h3>{person.name}</h3>{person.context && <p className="record-copy">{person.context}</p>}</div></div><PersonInteractions personId={person.id} data={data} onCommand={command} /></article>)}{data.people.length === 0 && <p className="empty-state">Add people when context helps, not as a CRM setup exercise.</p>}</div></section><section className="workspace-section"><h2>New note</h2><form className="form-grid" onSubmit={(event) => submit(event, "create_note", { title: "title", body: "body", domainId: "domainId", projectId: "projectId", personId: "personId", reviewOn: "reviewOn" }, "Note saved.")}><label className="field-label form-span"><span>Title</span><input className="field-base" name="title" required maxLength={280} placeholder="Rivera Studio call notes" /></label><label className="field-label form-span"><span>Note</span><textarea className="field-base min-h-32" name="body" maxLength={20000} placeholder="Keep the reflective content intact." /></label><DomainSelect domains={data.domains} /><label className="field-label"><span>Review on</span><input className="field-base" type="date" name="reviewOn" /></label><label className="field-label"><span>Project</span><select className="field-base" name="projectId" defaultValue=""><option value="">No project</option>{data.projects.filter((project) => !project.archived_at).map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label><label className="field-label"><span>Person</span><select className="field-base" name="personId" defaultValue=""><option value="">No person</option>{data.people.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label><button className="button-base button-primary form-submit">Save note</button></form><div className="mt-5 space-y-3">{data.notes.map((note) => <article className="record-card" key={note.id}><div><h3>{note.title}</h3>{note.body && <p className="record-copy whitespace-pre-wrap">{note.body}</p>}<p className="record-meta">{note.review_on ? `Review ${note.review_on}` : "No review date"}</p></div></article>)}{data.notes.length === 0 && <p className="empty-state">Notes preserve thinking even when no action follows.</p>}</div></section></div><section className="workspace-section"><h2>New routine</h2><form className="form-grid" onSubmit={(event) => submit(event, "create_routine", { name: "name", period: "period" }, "Routine added.")}><label className="field-label"><span>Routine</span><input className="field-base" name="name" required maxLength={160} placeholder="Plan the day" /></label><label className="field-label"><span>Time of day</span><select className="field-base" name="period" defaultValue="anytime"><option value="morning">Morning</option><option value="afternoon">Afternoon</option><option value="evening">Evening</option><option value="anytime">Anytime</option></select></label><button className="button-base button-secondary form-submit">Add routine</button></form></section></main>;
 

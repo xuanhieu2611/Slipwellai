@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import {
+  ArrowsClockwise,
   Briefcase,
   Gear,
   ListChecks,
@@ -29,6 +30,7 @@ const primaryNav: ReadonlyArray<readonly [string, string, Icon]> = [
   ["/inbox", "Inbox", Tray],
   ["/tasks", "Tasks", ListChecks],
   ["/work", "Work", Briefcase],
+  ["/retainers", "Retainers", ArrowsClockwise],
   ["/search", "Search", MagnifyingGlass],
 ];
 

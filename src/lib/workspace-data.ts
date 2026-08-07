@@ -3,13 +3,13 @@ import type { WorkspaceData } from "@/lib/workspace";
 
 export async function getWorkspaceData(): Promise<WorkspaceData> {
   const supabase = await createSupabaseServerClient();
-  const [preferences, domains, tasks, projects, milestones, checklistTemplates, checklistTemplateItems, checklistInstances, checklistItems, people, personInteractions, notes, routines, routineCompletions, signals, captures, projectActivity] = await Promise.all([
+  const [preferences, domains, tasks, projects, milestones, checklistTemplates, checklistTemplateItems, checklistInstances, checklistItems, people, personInteractions, notes, routines, routineCompletions, signals, captures, projectActivity, retainers, retainerTemplateItems, retainerCycles, retainerCycleItems, retainerActivity] = await Promise.all([
     supabase.from("user_preferences").select("timezone").maybeSingle(),
     supabase.from("domains").select("id, name, color, archived_at").is("archived_at", null).order("name"),
     /* Unlike every other table here, tasks intentionally omits the archived_at filter: a
        soft-deleted task must still be readable so the workspace can render a Deleted section
        with a Restore action, per the delete/restore recovery promise. */
-    supabase.from("tasks").select("id, title, details, status, priority, due_on, scheduled_for, deferred_until, recurrence_rule, recurrence_interval, recurrence_unit, tags, domain_id, project_id, person_id, top_three_date, top_three_order, completed_at, archived_at, created_at").order("created_at", { ascending: false }),
+    supabase.from("tasks").select("id, title, details, status, priority, due_on, scheduled_for, deferred_until, recurrence_rule, recurrence_interval, recurrence_unit, tags, domain_id, project_id, person_id, retainer_id, top_three_date, top_three_order, completed_at, archived_at, created_at").order("created_at", { ascending: false }),
     /* Unlike most other tables here, projects intentionally omits the archived_at filter: a
        soft-deleted project must still be readable so the workspace can render a Deleted section
        with a Restore action, matching the tasks delete/restore recovery promise. */
@@ -27,6 +27,14 @@ export async function getWorkspaceData(): Promise<WorkspaceData> {
     supabase.from("slipping_signals").select("id, entity_type, entity_id, reason, severity, outcome").eq("outcome", "open").order("created_at", { ascending: false }).limit(12),
     supabase.from("captures").select("id, original_text, status, created_at").order("created_at", { ascending: false }).limit(8),
     supabase.from("activity_events").select("id, entity_id, event_type, metadata, occurred_at").eq("entity_type", "project").order("occurred_at", { ascending: false }).limit(300),
+    /* Unlike most other tables here, retainers intentionally omits the archived_at filter,
+       matching tasks/projects: a soft-deleted retainer must still be readable so the workspace
+       can render a Deleted section with a Restore action. */
+    supabase.from("retainers").select("id, name, timezone, cycle_day, status, client_person_id, domain_id, archived_at, created_at").order("created_at", { ascending: false }),
+    supabase.from("retainer_deliverable_templates").select("id, retainer_id, title, expected_day, version, position, archived_at").is("archived_at", null).order("position"),
+    supabase.from("retainer_cycles").select("id, retainer_id, cycle_start, cycle_end, generation_status").order("cycle_start", { ascending: false }),
+    supabase.from("retainer_cycle_items").select("id, cycle_id, source_template_item_id, carried_from_item_id, title, expected_on, status, excluded_from_carry_forward, completed_at").order("expected_on", { ascending: false }),
+    supabase.from("activity_events").select("id, entity_id, event_type, metadata, occurred_at").eq("entity_type", "retainer").order("occurred_at", { ascending: false }).limit(300),
   ]);
   return {
     timezone: preferences.data?.timezone ?? "America/Vancouver",
@@ -46,5 +54,10 @@ export async function getWorkspaceData(): Promise<WorkspaceData> {
     signals: (signals.data ?? []) as WorkspaceData["signals"],
     captures: (captures.data ?? []) as WorkspaceData["captures"],
     projectActivity: (projectActivity.data ?? []) as WorkspaceData["projectActivity"],
+    retainers: (retainers.data ?? []) as WorkspaceData["retainers"],
+    retainerTemplateItems: (retainerTemplateItems.data ?? []) as WorkspaceData["retainerTemplateItems"],
+    retainerCycles: (retainerCycles.data ?? []) as WorkspaceData["retainerCycles"],
+    retainerCycleItems: (retainerCycleItems.data ?? []) as WorkspaceData["retainerCycleItems"],
+    retainerActivity: (retainerActivity.data ?? []) as WorkspaceData["retainerActivity"],
   };
 }

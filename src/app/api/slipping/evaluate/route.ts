@@ -38,6 +38,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, created });
   }
   if (!("retainerId" in body) || typeof body.retainerId !== "string") return badRequest("Choose a retainer to evaluate.");
+  const { data: retainer } = await supabase.from("retainers").select("timezone").eq("id", body.retainerId).maybeSingle();
+  if (!retainer) return badRequest("Retainer not found.");
   const { data: cycles } = await supabase
     .from("retainer_cycles")
     .select("id")
@@ -58,7 +60,7 @@ export async function POST(request: NextRequest) {
 
   let created = 0;
   for (const item of items ?? []) {
-    const explanation = slippingExplanation({ expectedOn: item.expected_on, lastMeaningfulAttention: activity?.occurred_at });
+    const explanation = slippingExplanation({ expectedOn: item.expected_on, lastMeaningfulAttention: activity?.occurred_at, timezone: retainer.timezone });
     if (!explanation) continue;
     const { data: existing } = await supabase.from("slipping_signals").select("id").eq("cycle_item_id", item.id).eq("outcome", "open").maybeSingle();
     if (existing) continue;
