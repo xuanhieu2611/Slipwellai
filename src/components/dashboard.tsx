@@ -17,7 +17,6 @@ import {
 } from "@/lib/proposals/dates";
 import { resolveDestination, unmatchedNames, type DestinationCatalog, type ResolvedDestination } from "@/lib/proposals/destinations";
 import { parseProposalEnvelope, type DestinationSelection, type ProposalItem } from "@/lib/proposals/schema";
-import { nextCycleMonth } from "@/lib/retainers";
 import type { DashboardData } from "@/lib/dashboard";
 import { Button, EmptyState, SelectField, StatusMessage, TextField } from "@/components/ui/primitives";
 import { useCapture } from "@/components/capture-dialog";
@@ -492,96 +491,6 @@ function Review({ capture, catalog, today, done }: { capture: DashboardData["cap
   </article>;
 }
 
-function RetainerLab({ data, done }: { data: DashboardData; done: () => void }) {
-  const [name, setName] = useState("");
-  const [deliverable, setDeliverable] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
-  const [message, setMessage] = useState("");
-  const cycleById = new Map(data.cycles.map((cycle) => [cycle.id, cycle]));
-  const itemById = new Map(data.cycleItems.map((item) => [item.id, item]));
-
-  async function create(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setBusy(true);
-    setMessage("");
-    try {
-      await post("/api/retainers", { name, deliverableTitle: deliverable, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Vancouver", cycleDay: 1, expectedDay: 15 });
-      setName("");
-      setDeliverable("");
-      done();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not create the retainer.");
-      setBusy(false);
-    }
-  }
-
-  async function cycle(retainerId: string, cycleMonth: string) {
-    setBusy(true);
-    setMessage("");
-    try {
-      await post(`/api/retainers/${retainerId}/cycles`, { cycleMonth });
-      done();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not generate the cycle.");
-      setBusy(false);
-    }
-  }
-
-  async function slipping(retainerId: string) {
-    setBusy(true);
-    setMessage("");
-    try {
-      await post("/api/slipping/evaluate", { retainerId });
-      done();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not check Slipping.");
-      setBusy(false);
-    }
-  }
-
-  return <section className="workspace-section mt-0">
-    <div className="section-heading"><div><h2>Rollover with a memory</h2><p className="section-note">Retainer lab</p></div></div>
-    <p className="record-copy">Cycle generation is idempotent. Incomplete work carries into the next cycle with a visible link back.</p>
-    <form className="mt-4 grid gap-2" onSubmit={create}>
-      <label className="field-label" htmlFor="retainer-name"><span>Retainer</span><TextField id="retainer-name" required value={name} onChange={(event) => setName(event.target.value)} placeholder="Rivera Studio monthly retainer" /></label>
-      <label className="field-label" htmlFor="retainer-deliverable"><span>First deliverable</span><TextField id="retainer-deliverable" required value={deliverable} onChange={(event) => setDeliverable(event.target.value)} placeholder="Monthly analytics" /></label>
-      <Button className="button-primary justify-self-start" disabled={busy} type="submit">Create retainer</Button>
-    </form>
-    <div className="mt-5 space-y-3">{data.retainers.map((retainer) => {
-      const cycles = data.cycles.filter((cycleData) => cycleData.retainer_id === retainer.id);
-      const latestCycle = cycles[0];
-      return <article className="rounded-[var(--r-md)] border border-[var(--line)] p-4" key={retainer.id}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><p className="font-semibold">{retainer.name}</p><p className="record-meta">Monthly on day {retainer.cycle_day}</p></div>
-          <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-            <label className="sr-only" htmlFor={`cycle-month-${retainer.id}`}>Cycle month</label>
-            <TextField id={`cycle-month-${retainer.id}`} type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="min-w-0" />
-            <Button className="button-secondary" disabled={busy} onClick={() => cycle(retainer.id, month)}>Generate selected</Button>
-            <Button className="button-secondary" disabled={busy} onClick={() => cycle(retainer.id, nextCycleMonth(month))}>Generate next</Button>
-          </div>
-        </div>
-        <Button className="button-secondary mt-3" disabled={busy || !latestCycle} onClick={() => slipping(retainer.id)}>Check Slipping</Button>
-        {cycles.length > 0 && <div className="mt-4 space-y-3 border-t border-[var(--line)] pt-3">
-          <p className="text-sm font-semibold">Cycle history</p>
-          {cycles.map((cycleData) => <section id={`cycle-${cycleData.id}`} className="rounded-[var(--r-md)] bg-[var(--surface-sunken)] p-3" key={cycleData.id}>
-            <p className="text-sm font-medium">{cycleData.cycle_start} to {cycleData.cycle_end}</p>
-            <ul className="mt-2 space-y-2">{data.cycleItems.filter((item) => item.cycle_id === cycleData.id).map((item) => {
-              const sourceItem = item.carried_from_item_id ? itemById.get(item.carried_from_item_id) : undefined;
-              const sourceCycle = sourceItem ? cycleById.get(sourceItem.cycle_id) : undefined;
-              return <li id={`cycle-${cycleData.id}-item-${item.id}`} className="flex flex-wrap items-center justify-between gap-2 text-sm" key={item.id}>
-                <span>{item.title}{sourceItem && sourceCycle && <a className="ml-2 text-xs font-semibold text-[var(--accent)] underline" href={`#cycle-${sourceCycle.id}-item-${sourceItem.id}`}>Carried from {sourceCycle.cycle_start}</a>}</span>
-                <span className={`tag${item.status === "open" ? " tag--attention" : ""}`}>{item.status}</span>
-              </li>;
-            })}</ul>
-          </section>)}
-        </div>}
-      </article>;
-    })}{data.retainers.length === 0 && <p className="empty-state">Create a small test retainer to explore its lifecycle.</p>}</div>
-    {message && <StatusMessage tone="error">{message}</StatusMessage>}
-  </section>;
-}
-
 export function Dashboard({ data }: { data: DashboardData }) {
   const [refreshing, setRefreshing] = useState(false);
   const refresh = () => { setRefreshing(true); window.location.reload(); };
@@ -633,11 +542,9 @@ export function Dashboard({ data }: { data: DashboardData }) {
                 <Button className="button-quiet" onClick={() => resolveSignal(signal.id, "dismissed")}>Dismiss</Button>
               </div>
             </article>)}
-            {data.signals.length === 0 && <p className="empty-state">No active signals. Generate a cycle with an overdue open deliverable to test one.</p>}
+            {data.signals.length === 0 && <p className="empty-state">No active signals right now.</p>}
           </div>
         </section>
-
-        <RetainerLab data={data} done={refresh} />
 
         <section className="workspace-section mt-0">
           <div className="section-heading"><div><h2>Recently filed</h2><p className="section-note">Undo puts a record back in review</p></div></div>

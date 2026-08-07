@@ -369,22 +369,22 @@ Do these stages in order. A later stage may be explored, but it should not be ca
 - [x] Enforce a basic uniqueness constraint for prototype cycle generation.
 - [x] Preserve a basic source-item link during prototype carry-forward.
 - [x] Unit-test basic monthly cycle bounds.
-- [ ] Replace/extend the prototype model with canonical retainer status, client/person/domain links, cadence, timezone, and archival fields.
-- [ ] Version checklist templates and record source template/version on generated cycle items.
-- [ ] Run cycle generation as a durable, transactional, idempotent job.
-- [ ] Reconcile retries after partial failure without duplicates or missing items.
-- [ ] Generate cycle boundaries correctly for short months, leap years, timezone changes, and DST.
-- [ ] Provide current-cycle progress and inspectable prior-cycle history.
-- [ ] Support default carry-forward, explicit close, and explicit leave-in-prior-cycle outcomes.
-- [ ] Never silently delete incomplete work at rollover.
-- [ ] Prevent repeated carry-forward chains from losing the original source/history.
-- [ ] Scope mid-cycle template changes to current, future, or both.
-- [ ] Support pause/resume without deleting current work or creating missed duplicates.
-- [ ] Support ending a retainer while preserving history and requiring a decision for remaining open work.
-- [ ] Link retainer tasks, notes, people/client, source captures, and meaningful activity.
-- [ ] Add reconciliation tooling and safe operator visibility for failed generation.
-- [ ] Test partial failure, repeated retries, repeated carry-forward, template edits, pause/resume, termination, short months, and DST/timezone cases.
-- [ ] End-to-end test monthly creation → repeat generation → rollover → history inspection.
+- [x] Replace/extend the prototype model with canonical retainer status, client/person/domain links, cadence, timezone, and archival fields.
+- [x] Version checklist templates and record source template/version on generated cycle items.
+- [x] Run cycle generation as a durable, transactional, idempotent job. (Scoped to an atomic, idempotent Postgres RPC per confirmed design decision — no background job runner exists in this codebase; a cron/scheduler trigger would be a thin wrapper around the same endpoint, left for later.)
+- [x] Reconcile retries after partial failure without duplicates or missing items.
+- [x] Generate cycle boundaries correctly for short months, leap years, timezone changes, and DST.
+- [x] Provide current-cycle progress and inspectable prior-cycle history.
+- [x] Support default carry-forward, explicit close, and explicit leave-in-prior-cycle outcomes.
+- [x] Never silently delete incomplete work at rollover. (No delete command exists for cycle items at all — only status transitions and carry-forward exclusion.)
+- [x] Prevent repeated carry-forward chains from losing the original source/history.
+- [x] Scope mid-cycle template changes to current, future, or both.
+- [x] Support pause/resume without deleting current work or creating missed duplicates. (Cycle generation stays a separate, explicit, idempotent action — resume never triggers it, so there is no make-up-cycle path to duplicate.)
+- [x] Support ending a retainer while preserving history and requiring a decision for remaining open work.
+- [x] Link retainer tasks, notes, people/client, source captures, and meaningful activity.
+- [x] Add reconciliation tooling and safe operator visibility for failed generation.
+- [x] Test partial failure, repeated retries, repeated carry-forward, template edits, pause/resume, termination, short months, and DST/timezone cases.
+- [ ] End-to-end test monthly creation → repeat generation → rollover → history inspection. (Deferred per standing instruction to leave e2e/verification for later, same as Steps 4-5; every piece of this flow was instead proven individually — unit, integration against the hosted pilot DB, and a manual browser walkthrough of create → deliverable → generate → complete/close → pause/resume → end → delete/restore.)
 
 **Exit gate:** cycle generation and rollover are idempotent and reconcilable under failure; no open work or history can disappear silently.
 

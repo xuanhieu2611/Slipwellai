@@ -159,4 +159,86 @@ describe("working-prototype workspace commands", () => {
     expect(activityEventLabel("checklist_applied")).toBe("Checklist applied");
     expect(activityEventLabel("some_future_event")).toBe("some future event");
   });
+
+  it("accepts a retainer template item edit, defaulting scope to future, and rejects a bad expected day", () => {
+    const itemId = "847a0e15-63ef-4a68-98f7-51fdbe09f29d";
+    const parsed = workspaceCommandSchema.parse({ action: "update_retainer_template_item", itemId, title: "Monthly report", expectedDay: 15 });
+    expect(parsed).toMatchObject({ scope: "future" });
+    expect(workspaceCommandSchema.parse({ action: "update_retainer_template_item", itemId, title: "Monthly report", expectedDay: 15, scope: "current" })).toMatchObject({ scope: "current" });
+    expect(workspaceCommandSchema.parse({ action: "update_retainer_template_item", itemId, title: "Monthly report", expectedDay: 15, scope: "both" })).toMatchObject({ scope: "both" });
+    expect(workspaceCommandSchema.safeParse({ action: "update_retainer_template_item", itemId, title: "Monthly report", expectedDay: 32 }).success).toBe(false);
+    expect(workspaceCommandSchema.safeParse({ action: "update_retainer_template_item", itemId, title: "Monthly report", expectedDay: 15, scope: "sometimes" }).success).toBe(false);
+  });
+
+  it("accepts a retainer template item delete for a valid id and rejects a bad one", () => {
+    expect(workspaceCommandSchema.safeParse({ action: "delete_retainer_template_item", itemId: "847a0e15-63ef-4a68-98f7-51fdbe09f29d" }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "delete_retainer_template_item", itemId: "not-an-id" }).success).toBe(false);
+  });
+
+  it("accepts close and leave-in-prior-cycle commands for a valid retainer cycle item id and rejects a bad one", () => {
+    const itemId = "847a0e15-63ef-4a68-98f7-51fdbe09f29d";
+    expect(workspaceCommandSchema.safeParse({ action: "close_retainer_cycle_item", itemId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "leave_retainer_cycle_item_in_prior_cycle", itemId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "close_retainer_cycle_item", itemId: "not-an-id" }).success).toBe(false);
+  });
+
+  it("accepts pause and resume retainer commands for a valid id and rejects a bad one", () => {
+    const retainerId = "847a0e15-63ef-4a68-98f7-51fdbe09f29d";
+    expect(workspaceCommandSchema.safeParse({ action: "pause_retainer", retainerId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "resume_retainer", retainerId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "pause_retainer", retainerId: "not-an-id" }).success).toBe(false);
+  });
+
+  it("requires an explicit open-item resolution to end a retainer, rather than defaulting one silently", () => {
+    const retainerId = "847a0e15-63ef-4a68-98f7-51fdbe09f29d";
+    expect(workspaceCommandSchema.safeParse({ action: "end_retainer", retainerId, openItemResolution: "leave_open" }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "end_retainer", retainerId, openItemResolution: "close_all" }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "end_retainer", retainerId }).success).toBe(false);
+    expect(workspaceCommandSchema.safeParse({ action: "end_retainer", retainerId, openItemResolution: "silently_decide" }).success).toBe(false);
+  });
+
+  it("requires a stable idempotency key to create a retainer, and accepts its client/domain links", () => {
+    const base = { action: "create_retainer", name: "Rivera Studio monthly retainer", timezone: "America/Vancouver", cycleDay: 1, idempotencyKey: "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98" };
+    expect(workspaceCommandSchema.safeParse(base).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ ...base, idempotencyKey: undefined }).success).toBe(false);
+    const parsed = workspaceCommandSchema.parse({ ...base, clientPersonId: "847a0e15-63ef-4a68-98f7-51fdbe09f29d", domainId: "847a0e15-63ef-4a68-98f7-51fdbe09f29d" });
+    expect(parsed).toMatchObject({ clientPersonId: "847a0e15-63ef-4a68-98f7-51fdbe09f29d", domainId: "847a0e15-63ef-4a68-98f7-51fdbe09f29d" });
+    expect(workspaceCommandSchema.safeParse({ ...base, cycleDay: 32 }).success).toBe(false);
+  });
+
+  it("accepts a retainer update and a retainer template item creation for valid ids", () => {
+    const retainerId = "847a0e15-63ef-4a68-98f7-51fdbe09f29d";
+    expect(workspaceCommandSchema.safeParse({ action: "update_retainer", retainerId, name: "Rivera Studio", timezone: "America/Vancouver", cycleDay: 1 }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "create_retainer_template_item", retainerId, title: "Monthly report", expectedDay: 15 }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "create_retainer_template_item", retainerId, title: "Monthly report", expectedDay: 32 }).success).toBe(false);
+  });
+
+  it("lets a task be created or updated with a retainer link, mirroring the project relation field", () => {
+    const idempotencyKey = "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98";
+    const retainerId = "847a0e15-63ef-4a68-98f7-51fdbe09f29d";
+    expect(workspaceCommandSchema.parse({ action: "create_task", title: "Send the report", retainerId, idempotencyKey })).toMatchObject({ retainerId });
+    expect(workspaceCommandSchema.parse({ action: "update_task", taskId: retainerId, title: "Send the report", retainerId })).toMatchObject({ retainerId });
+  });
+
+  it("accepts delete and restore commands for a valid retainer id and rejects a bad one", () => {
+    const retainerId = "847a0e15-63ef-4a68-98f7-51fdbe09f29d";
+    expect(workspaceCommandSchema.safeParse({ action: "delete_retainer", retainerId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "restore_retainer", retainerId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "delete_retainer", retainerId: "not-an-id" }).success).toBe(false);
+  });
+
+  it("requires a stable idempotency key and a valid calendar month to generate a retainer cycle", () => {
+    const retainerId = "847a0e15-63ef-4a68-98f7-51fdbe09f29d";
+    const idempotencyKey = "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98";
+    expect(workspaceCommandSchema.safeParse({ action: "generate_retainer_cycle", retainerId, cycleMonth: "2026-09", idempotencyKey }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "generate_retainer_cycle", retainerId, cycleMonth: "2026-09" }).success).toBe(false);
+    expect(workspaceCommandSchema.safeParse({ action: "generate_retainer_cycle", retainerId, cycleMonth: "not-a-month", idempotencyKey }).success).toBe(false);
+  });
+
+  it("accepts complete and reopen commands for a valid retainer cycle item id and rejects a bad one", () => {
+    const itemId = "847a0e15-63ef-4a68-98f7-51fdbe09f29d";
+    expect(workspaceCommandSchema.safeParse({ action: "complete_retainer_cycle_item", itemId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "reopen_retainer_cycle_item", itemId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "complete_retainer_cycle_item", itemId: "not-an-id" }).success).toBe(false);
+  });
 });
