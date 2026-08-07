@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isTaskOnDay, taskDateLabel, workspaceCommandSchema } from "@/lib/workspace";
+import { activityEventLabel, isTaskOnDay, taskDateLabel, workspaceCommandSchema } from "@/lib/workspace";
 
 describe("working-prototype workspace commands", () => {
   it("accepts a small manual task and rejects unsafe priorities", () => {
@@ -30,7 +30,7 @@ describe("working-prototype workspace commands", () => {
   it("accepts the null-for-blank payloads the creation forms actually post", () => {
     const posted = [
       { action: "create_domain", name: "Client work", description: null, color: "#2348c8" },
-      { action: "create_project", name: "Launch the September report", description: null, domainId: null, targetOn: null },
+      { action: "create_project", name: "Launch the September report", description: null, domainId: null, personId: null, startOn: null, targetOn: null, idempotencyKey: "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98" },
       { action: "create_task", title: "Send the report", details: null, dueOn: null, scheduledFor: null, priority: "2", recurrenceRule: "none", domainId: null, projectId: null, personId: null, idempotencyKey: "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98" },
       { action: "create_person", name: "Priya", context: null, domainId: null },
       { action: "create_note", title: "Call notes", body: null, domainId: null, projectId: null, personId: null, reviewOn: null },
@@ -84,6 +84,31 @@ describe("working-prototype workspace commands", () => {
     expect(workspaceCommandSchema.safeParse({ action: "cancel_task", taskId: "not-an-id" }).success).toBe(false);
   });
 
+  it("requires a stable idempotency key to create a project, and accepts its person/start-date fields", () => {
+    const base = { action: "create_project", name: "Launch the September report", idempotencyKey: "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98" };
+    expect(workspaceCommandSchema.safeParse(base).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ ...base, idempotencyKey: undefined }).success).toBe(false);
+    const parsed = workspaceCommandSchema.parse({ ...base, personId: "847a0e15-63ef-4a68-98f7-51fdbe09f29d", startOn: "2026-08-01" });
+    expect(parsed).toMatchObject({ personId: "847a0e15-63ef-4a68-98f7-51fdbe09f29d", startOn: "2026-08-01" });
+  });
+
+  it("accepts a project update with the null-for-blank shape the edit form posts, and rejects a missing name", () => {
+    const posted = { action: "update_project", projectId: "847a0e15-63ef-4a68-98f7-51fdbe09f29d", name: "Launch the revised report", description: null, domainId: null, personId: null, startOn: null, targetOn: null };
+    expect(workspaceCommandSchema.safeParse(posted)).toMatchObject({ success: true });
+    expect(workspaceCommandSchema.safeParse({ ...posted, name: "   " }).success).toBe(false);
+    expect(workspaceCommandSchema.safeParse({ ...posted, projectId: "not-an-id" }).success).toBe(false);
+  });
+
+  it("accepts resume, cancel, delete, restore, and milestone-delete commands for a valid id and rejects a bad one", () => {
+    const projectId = "847a0e15-63ef-4a68-98f7-51fdbe09f29d";
+    expect(workspaceCommandSchema.safeParse({ action: "resume_project", projectId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "cancel_project", projectId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "delete_project", projectId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "restore_project", projectId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "delete_milestone", milestoneId: projectId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "cancel_project", projectId: "not-an-id" }).success).toBe(false);
+  });
+
   it("requires a stable idempotency key to create a task, and defaults tags to an empty array", () => {
     const base = { action: "create_task", title: "Send the report", idempotencyKey: "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98" };
     expect(workspaceCommandSchema.safeParse(base).success).toBe(true);
@@ -115,5 +140,23 @@ describe("working-prototype workspace commands", () => {
   it("accepts an archive_domain command only with a valid domain id", () => {
     expect(workspaceCommandSchema.safeParse({ action: "archive_domain", domainId: "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98" }).success).toBe(true);
     expect(workspaceCommandSchema.safeParse({ action: "archive_domain", domainId: "not-an-id" }).success).toBe(false);
+  });
+
+  it("accepts checklist template item edit/delete and template delete for a valid id, defaulting applyToExisting to false", () => {
+    const itemId = "847a0e15-63ef-4a68-98f7-51fdbe09f29d";
+    const templateId = "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98";
+    const parsed = workspaceCommandSchema.parse({ action: "update_checklist_template_item", itemId, title: "Send the draft" });
+    expect(parsed).toMatchObject({ applyToExisting: false });
+    expect(workspaceCommandSchema.parse({ action: "update_checklist_template_item", itemId, title: "Send the draft", applyToExisting: true })).toMatchObject({ applyToExisting: true });
+    expect(workspaceCommandSchema.safeParse({ action: "update_checklist_template_item", itemId, title: "   " }).success).toBe(false);
+    expect(workspaceCommandSchema.safeParse({ action: "delete_checklist_template_item", itemId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "delete_checklist_template", templateId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "delete_checklist_template", templateId: "not-an-id" }).success).toBe(false);
+  });
+
+  it("labels known project activity event types and falls back to a de-slugged label for an unknown one", () => {
+    expect(activityEventLabel("milestone_completed")).toBe("Milestone completed");
+    expect(activityEventLabel("checklist_applied")).toBe("Checklist applied");
+    expect(activityEventLabel("some_future_event")).toBe("some future event");
   });
 });

@@ -237,6 +237,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .field-label > span { color: var(--ink-muted); font-size: .75rem; font-weight: 500; }
 .form-help { color: var(--ink-muted); font-size: .78rem; line-height: 1.5; }
 .form-help code { color: var(--ink); font-family: var(--font-mono-face), monospace; font-size: .95em; }
+.inline-checkbox { align-items: center; color: var(--ink-muted); display: flex; font-size: .78rem; font-weight: 500; gap: .4rem; white-space: nowrap; }
+.project-activity > summary { cursor: pointer; }
 
 /* ---------- feedback ---------- */
 
@@ -482,11 +484,39 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   transition: border-color .16s ease, box-shadow .16s ease;
 }
 .record-card:hover { border-color: var(--line-strong); }
+.record-card--domain {
+  background: color-mix(in srgb, var(--domain-color) 20%, var(--surface));
+  border-left: 4px solid var(--domain-color);
+  padding-left: calc(1rem - 3px);
+}
+.record-card--domain:hover { border-color: var(--line-strong); border-left-color: var(--domain-color); }
 .record-card h3 { font-size: .95rem; font-weight: 600; line-height: 1.4; }
 .record-copy { color: var(--ink-muted); font-size: .875rem; line-height: 1.55; margin-top: .25rem; max-width: 72ch; }
 .record-meta { color: var(--ink-muted); font-size: .75rem; margin-top: .45rem; }
 .record-actions { align-items: center; display: flex; flex-wrap: wrap; gap: .3rem; justify-content: flex-end; }
 .record-actions .button-base { min-height: 2.1rem; padding: .35rem .6rem; font-size: .8rem; }
+
+.task-menu { position: relative; }
+.task-menu-trigger { min-height: 2.1rem; padding: .35rem .5rem; }
+.task-menu-panel {
+  animation: fade-in .12s ease-out;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: 0 12px 24px -12px hsl(var(--shadow-color) / .35);
+  display: flex;
+  flex-direction: column;
+  min-width: 10rem;
+  padding: .35rem;
+  position: absolute;
+  right: 0;
+  top: calc(100% + .3rem);
+  z-index: 20;
+}
+.task-menu-item { border-radius: var(--r-sm); color: var(--ink); font-size: .85rem; font-weight: 500; padding: .5rem .6rem; text-align: left; }
+.task-menu-item:hover { background: var(--surface-soft); }
+.task-menu-item--danger { color: var(--danger); }
+.task-menu-item--danger:hover { background: var(--danger-soft); }
 
 .compact-row {
   align-items: center;
@@ -502,6 +532,20 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .compact-row > span:first-child { align-items: center; display: flex; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .compact-row-actions { align-items: center; display: flex; flex-wrap: wrap; gap: .5rem; }
 .domain-dot { border-radius: 999px; display: inline-block; height: .5rem; margin-right: .5rem; width: .5rem; }
+
+.color-swatch-grid { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .35rem; }
+.color-swatch {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  height: 1.85rem;
+  width: 1.85rem;
+  transition: border-color .14s ease, transform .14s ease;
+}
+.color-swatch:hover { transform: scale(1.08); }
+.color-swatch:has(input:checked) { border-color: var(--ink); transform: scale(1.1); }
+.color-swatch input { height: 1px; opacity: 0; pointer-events: none; position: absolute; width: 1px; }
 
 .empty-state {
   align-items: center;
@@ -527,6 +571,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* Filters read as a row of compact chips instead of a stacked form, so browsing
    a list does not cost as much vertical space as adding to it. */
 .task-filter-bar { align-items: center; display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .9rem; }
+.task-filter-bar + .space-y-3 { margin-top: 1.1rem; }
 .filter-select {
   align-items: center;
   background: var(--surface-sunken);
@@ -634,6 +679,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .project-card { border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
 .project-card > .record-card { border: 0; border-radius: 0; }
+/* .project-card > .record-card's border reset above would otherwise erase record-card--domain's
+   left accent too, since both rules share the same specificity and this one is later in source order. */
+.project-card > .record-card--domain { border-left: 4px solid var(--domain-color); padding-left: calc(1rem - 3px); }
 .project-milestones { background: var(--surface-sunken); border-top: 1px solid var(--line); padding: .8rem 1rem; }
 .inline-form { align-items: end; display: flex; gap: .5rem; }
 .inline-form .field-base { min-width: 0; }

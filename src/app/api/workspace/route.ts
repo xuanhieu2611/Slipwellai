@@ -90,9 +90,44 @@ export async function POST(request: NextRequest) {
       if (error) throw error;
     } else if (command.action === "create_project") {
       await verifyRelations(command);
-      const { data: project, error } = await supabase.from("projects").insert({ name: command.name, description: command.description, domain_id: command.domainId ?? null, target_on: command.targetOn ?? null }).select("id").single();
+      const { data: project, error } = await supabase.from("projects").insert({ name: command.name, description: command.description, domain_id: command.domainId ?? null, person_id: command.personId ?? null, start_on: command.startOn ?? null, target_on: command.targetOn ?? null, idempotency_key: command.idempotencyKey }).select("id").single();
+      if (error?.code === "23505") {
+        // Same key, same owner: a retried double-submit converges on the project already created instead of a second one.
+        const { data: existing } = await supabase.from("projects").select("id").eq("idempotency_key", command.idempotencyKey).maybeSingle();
+        if (existing) return NextResponse.json({ ok: true, duplicate: true });
+      }
       if (error || !project) throw error ?? new Error("Project creation failed.");
       await recordActivity("project", project.id, "created");
+    } else if (command.action === "update_project") {
+      const { data: project } = await supabase.from("projects").select("id").eq("id", command.projectId).maybeSingle();
+      if (!project) return badRequest("Project not found.");
+      /* command.projectId here is the project being edited, not a relation to verify — passing the
+         whole command would collide with relationTables' unrelated "projectId" (a task/note's project
+         link), so only the actual FK fields go through the ownership check. */
+      await verifyRelations({ domainId: command.domainId, personId: command.personId });
+      const { error } = await supabase.from("projects").update({ name: command.name, description: command.description, domain_id: command.domainId ?? null, person_id: command.personId ?? null, start_on: command.startOn ?? null, target_on: command.targetOn ?? null }).eq("id", command.projectId);
+      if (error) throw error;
+    } else if (command.action === "resume_project") {
+      const { data: project } = await supabase.from("projects").select("id, status").eq("id", command.projectId).maybeSingle();
+      if (!project) return badRequest("Project not found.");
+      if (project.status !== "paused") return badRequest("Only a paused project can be resumed.");
+      const { error } = await supabase.from("projects").update({ status: "active" }).eq("id", command.projectId);
+      if (error) throw error;
+      await recordActivity("project", command.projectId, "resumed");
+    } else if (command.action === "cancel_project") {
+      const { data: project } = await supabase.from("projects").select("id").eq("id", command.projectId).maybeSingle();
+      if (!project) return badRequest("Project not found.");
+      const { error } = await supabase.from("projects").update({ status: "canceled" }).eq("id", command.projectId);
+      if (error) throw error;
+      await recordActivity("project", command.projectId, "canceled");
+    } else if (command.action === "delete_project" || command.action === "restore_project") {
+      /* Mirrors delete_task/restore_task: toggle the existing archived_at column, independent of
+         status, so a canceled/completed project's history is preserved rather than overwritten. */
+      const { data: project } = await supabase.from("projects").select("id").eq("id", command.projectId).maybeSingle();
+      if (!project) return badRequest("Project not found.");
+      const { error } = await supabase.from("projects").update({ archived_at: command.action === "delete_project" ? new Date().toISOString() : null }).eq("id", command.projectId);
+      if (error) throw error;
+      await recordActivity("project", command.projectId, command.action === "delete_project" ? "deleted" : "restored");
     } else if (command.action === "create_milestone") {
       const { data: project } = await supabase.from("projects").select("id").eq("id", command.projectId).maybeSingle();
       if (!project) return badRequest("Project not found.");
@@ -100,11 +135,24 @@ export async function POST(request: NextRequest) {
       const { error } = await supabase.from("project_milestones").insert({ project_id: command.projectId, title: command.title, position: (count ?? 0) + 1 });
       if (error) throw error;
       await recordActivity("project", command.projectId, "milestone_created");
+    } else if (command.action === "delete_milestone") {
+      const { data: milestone } = await supabase.from("project_milestones").select("id, project_id").eq("id", command.milestoneId).maybeSingle();
+      if (!milestone) return badRequest("Milestone not found.");
+      const { error } = await supabase.from("project_milestones").delete().eq("id", command.milestoneId);
+      if (error) throw error;
+      await recordActivity("project", milestone.project_id, "milestone_deleted");
     } else if (command.action === "create_checklist_template") {
       const { error } = await supabase.from("project_checklist_templates").insert({ name: command.name, description: command.description });
       if (error) throw error;
+    } else if (command.action === "delete_checklist_template") {
+      // Soft delete, same as every other entity here: the archived_at filter already applied in
+      // getWorkspaceData drops it from the library, and on-delete-restrict FKs stay untouched.
+      const { data: template } = await supabase.from("project_checklist_templates").select("id").eq("id", command.templateId).maybeSingle();
+      if (!template) return badRequest("Checklist template not found.");
+      const { error } = await supabase.from("project_checklist_templates").update({ archived_at: new Date().toISOString() }).eq("id", command.templateId);
+      if (error) throw error;
     } else if (command.action === "add_checklist_template_item") {
-      const { data: template } = await supabase.from("project_checklist_templates").select("id, version").eq("id", command.templateId).maybeSingle();
+      const { data: template } = await supabase.from("project_checklist_templates").select("id, version").eq("id", command.templateId).is("archived_at", null).maybeSingle();
       if (!template) return badRequest("Checklist template not found.");
       const { count, error: countError } = await supabase.from("project_checklist_template_items").select("id", { count: "exact", head: true }).eq("template_id", template.id);
       if (countError) throw countError;
@@ -112,11 +160,35 @@ export async function POST(request: NextRequest) {
       if (error) throw error;
       const { error: versionError } = await supabase.from("project_checklist_templates").update({ version: template.version + 1 }).eq("id", template.id);
       if (versionError) throw versionError;
+    } else if (command.action === "update_checklist_template_item") {
+      const { data: item } = await supabase.from("project_checklist_template_items").select("id, template_id").eq("id", command.itemId).is("archived_at", null).maybeSingle();
+      if (!item) return badRequest("Checklist template item not found.");
+      const { data: template } = await supabase.from("project_checklist_templates").select("id, version").eq("id", item.template_id).maybeSingle();
+      if (!template) return badRequest("Checklist template not found.");
+      const { error } = await supabase.from("project_checklist_template_items").update({ title: command.title }).eq("id", item.id);
+      if (error) throw error;
+      // Bumping the version, exactly like adding a step, keeps this future-applications-only by
+      // default; applyToExisting is the explicit opt-in to also touch already-applied checklists.
+      const { error: versionError } = await supabase.from("project_checklist_templates").update({ version: template.version + 1 }).eq("id", template.id);
+      if (versionError) throw versionError;
+      if (command.applyToExisting) {
+        const { error: existingError } = await supabase.from("project_checklist_items").update({ title: command.title }).eq("source_template_item_id", item.id).eq("status", "open");
+        if (existingError) throw existingError;
+      }
+    } else if (command.action === "delete_checklist_template_item") {
+      const { data: item } = await supabase.from("project_checklist_template_items").select("id, template_id").eq("id", command.itemId).is("archived_at", null).maybeSingle();
+      if (!item) return badRequest("Checklist template item not found.");
+      const { data: template } = await supabase.from("project_checklist_templates").select("id, version").eq("id", item.template_id).maybeSingle();
+      if (!template) return badRequest("Checklist template not found.");
+      const { error } = await supabase.from("project_checklist_template_items").update({ archived_at: new Date().toISOString() }).eq("id", item.id);
+      if (error) throw error;
+      const { error: versionError } = await supabase.from("project_checklist_templates").update({ version: template.version + 1 }).eq("id", template.id);
+      if (versionError) throw versionError;
     } else if (command.action === "apply_checklist_template") {
       const [templateResult, projectResult, itemsResult] = await Promise.all([
-        supabase.from("project_checklist_templates").select("id, version").eq("id", command.templateId).maybeSingle(),
+        supabase.from("project_checklist_templates").select("id, version").eq("id", command.templateId).is("archived_at", null).maybeSingle(),
         supabase.from("projects").select("id").eq("id", command.projectId).maybeSingle(),
-        supabase.from("project_checklist_template_items").select("id, title, position").eq("template_id", command.templateId).order("position"),
+        supabase.from("project_checklist_template_items").select("id, title, position").eq("template_id", command.templateId).is("archived_at", null).order("position"),
       ]);
       const template = templateResult.data;
       if (!template || !projectResult.data) return badRequest("Project or checklist template not found.");
