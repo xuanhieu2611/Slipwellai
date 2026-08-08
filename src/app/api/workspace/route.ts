@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     } else if (command.action === "create_task") {
       await verifyRelations(command);
       const recurrenceRule = command.recurrenceRule === "none" ? null : command.recurrenceRule;
-      const { data: task, error } = await supabase.from("tasks").insert({ title: command.title, details: command.details, due_on: command.dueOn ?? null, scheduled_for: command.scheduledFor ?? null, priority: command.priority, recurrence_rule: recurrenceRule, recurrence_anchor: recurrenceRule ? command.scheduledFor : null, recurrence_interval: recurrenceRule === "custom" ? command.recurrenceInterval : null, recurrence_unit: recurrenceRule === "custom" ? command.recurrenceUnit : null, tags: command.tags, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null, retainer_id: command.retainerId ?? null, idempotency_key: command.idempotencyKey }).select("id").single();
+      const { data: task, error } = await supabase.from("tasks").insert({ title: command.title, details: command.details, due_on: command.dueOn ?? null, scheduled_for: command.scheduledFor ?? null, priority: command.priority, recurrence_rule: recurrenceRule, recurrence_anchor: recurrenceRule ? command.scheduledFor : null, recurrence_interval: recurrenceRule === "custom" ? command.recurrenceInterval : null, recurrence_unit: recurrenceRule === "custom" ? command.recurrenceUnit : null, tags: command.tags, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null, retainer_id: command.retainerId ?? null, slipping_cadence_days: command.slippingCadenceDays ?? null, idempotency_key: command.idempotencyKey }).select("id").single();
       if (error?.code === "23505") {
         // Same key, same owner: a retried double-submit converges on the task already created instead of a second one.
         const { data: existing } = await supabase.from("tasks").select("id").eq("idempotency_key", command.idempotencyKey).maybeSingle();
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       const { data: task } = await supabase.from("tasks").select("id").eq("id", command.taskId).maybeSingle();
       if (!task) return badRequest("Task not found.");
       await verifyRelations(command);
-      const { error } = await supabase.from("tasks").update({ title: command.title, details: command.details, due_on: command.dueOn ?? null, scheduled_for: command.scheduledFor ?? null, priority: command.priority, tags: command.tags, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null, retainer_id: command.retainerId ?? null }).eq("id", command.taskId);
+      const { error } = await supabase.from("tasks").update({ title: command.title, details: command.details, due_on: command.dueOn ?? null, scheduled_for: command.scheduledFor ?? null, priority: command.priority, tags: command.tags, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null, retainer_id: command.retainerId ?? null, slipping_cadence_days: command.slippingCadenceDays ?? null }).eq("id", command.taskId);
       if (error) throw error;
     } else if (command.action === "delete_task" || command.action === "restore_task") {
       /* Both toggle archived_at, the same soft-delete flag every other entity in this schema already
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       if (error) throw error;
     } else if (command.action === "create_project") {
       await verifyRelations(command);
-      const { data: project, error } = await supabase.from("projects").insert({ name: command.name, description: command.description, domain_id: command.domainId ?? null, person_id: command.personId ?? null, start_on: command.startOn ?? null, target_on: command.targetOn ?? null, idempotency_key: command.idempotencyKey }).select("id").single();
+      const { data: project, error } = await supabase.from("projects").insert({ name: command.name, description: command.description, domain_id: command.domainId ?? null, person_id: command.personId ?? null, start_on: command.startOn ?? null, target_on: command.targetOn ?? null, slipping_cadence_days: command.slippingCadenceDays ?? null, idempotency_key: command.idempotencyKey }).select("id").single();
       if (error?.code === "23505") {
         // Same key, same owner: a retried double-submit converges on the project already created instead of a second one.
         const { data: existing } = await supabase.from("projects").select("id").eq("idempotency_key", command.idempotencyKey).maybeSingle();
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
          whole command would collide with relationTables' unrelated "projectId" (a task/note's project
          link), so only the actual FK fields go through the ownership check. */
       await verifyRelations({ domainId: command.domainId, personId: command.personId });
-      const { error } = await supabase.from("projects").update({ name: command.name, description: command.description, domain_id: command.domainId ?? null, person_id: command.personId ?? null, start_on: command.startOn ?? null, target_on: command.targetOn ?? null }).eq("id", command.projectId);
+      const { error } = await supabase.from("projects").update({ name: command.name, description: command.description, domain_id: command.domainId ?? null, person_id: command.personId ?? null, start_on: command.startOn ?? null, target_on: command.targetOn ?? null, slipping_cadence_days: command.slippingCadenceDays ?? null }).eq("id", command.projectId);
       if (error) throw error;
     } else if (command.action === "resume_project") {
       const { data: project } = await supabase.from("projects").select("id, status").eq("id", command.projectId).maybeSingle();

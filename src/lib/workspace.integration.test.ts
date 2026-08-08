@@ -35,6 +35,7 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_KEY)("workspace integration (hosted p
   const createdProjectIds: string[] = [];
   const createdTemplateIds: string[] = [];
   const createdRetainerIds: string[] = [];
+  const createdSignalIds: string[] = [];
 
   beforeAll(async () => {
     userA = await signedInClient(USER_A);
@@ -46,6 +47,7 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_KEY)("workspace integration (hosted p
   });
 
   afterAll(async () => {
+    if (createdSignalIds.length) await userA.from("slipping_signals").delete().in("id", createdSignalIds);
     if (createdTaskIds.length) await userA.from("tasks").delete().in("id", createdTaskIds);
     /* Deleting the project first cascades away its checklist instances and items (both
        on-delete-cascade), which clears the on-delete-restrict references those rows hold on the
@@ -90,6 +92,46 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_KEY)("workspace integration (hosted p
 
     const retry = await userA.from("tasks").insert({ title: "[integration-test] recurrence occurrence retry", recurrence_rule: "daily", recurrence_root_id: root.data!.id, recurrence_anchor: "2026-09-02" }).select("id").single();
     expect(retry.error?.code).toBe("23505");
+  });
+
+  it("blocks a duplicate open Slipping signal at the (owner_id, entity_type, entity_id) partial unique index", async () => {
+    const task = await userA.from("tasks").insert({ title: "[integration-test] slipping dedup target" }).select("id").single();
+    expect(task.error).toBeNull();
+    createdTaskIds.push(task.data!.id);
+
+    const first = await userA.from("slipping_signals").insert({ entity_type: "task", entity_id: task.data!.id, reason: "[integration-test] no meaningful attention", severity: "attention" }).select("id").single();
+    expect(first.error).toBeNull();
+    createdSignalIds.push(first.data!.id);
+
+    const second = await userA.from("slipping_signals").insert({ entity_type: "task", entity_id: task.data!.id, reason: "[integration-test] no meaningful attention", severity: "attention" });
+    expect(second.error?.code).toBe("23505");
+  });
+
+  it("accepts the cadence_changed outcome on a slipping_signals row (proves the enum value is live, not just Zod-valid)", async () => {
+    const task = await userA.from("tasks").insert({ title: "[integration-test] cadence_changed enum target" }).select("id").single();
+    expect(task.error).toBeNull();
+    createdTaskIds.push(task.data!.id);
+
+    const signal = await userA.from("slipping_signals").insert({ entity_type: "task", entity_id: task.data!.id, reason: "[integration-test] cadence_changed enum check", severity: "attention" }).select("id").single();
+    expect(signal.error).toBeNull();
+    createdSignalIds.push(signal.data!.id);
+
+    const updated = await userA.from("slipping_signals").update({ outcome: "cadence_changed" }).eq("id", signal.data!.id).select("outcome").single();
+    expect(updated.error).toBeNull();
+    expect(updated.data?.outcome).toBe("cadence_changed");
+  });
+
+  it("does not create an activity_events row for a cosmetic task edit that bypasses update_task", async () => {
+    const task = await userA.from("tasks").insert({ title: "[integration-test] cosmetic edit target" }).select("id").single();
+    expect(task.error).toBeNull();
+    const taskId = task.data!.id;
+    createdTaskIds.push(taskId);
+
+    const update = await userA.from("tasks").update({ title: "[integration-test] cosmetic edit target renamed" }).eq("id", taskId);
+    expect(update.error).toBeNull();
+
+    const { data: events } = await userA.from("activity_events").select("id").eq("entity_type", "task").eq("entity_id", taskId);
+    expect(events).toEqual([]);
   });
 
   it("keeps a second account from reading, updating, or deleting another user's task", async () => {
