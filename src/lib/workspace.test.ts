@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activityEventLabel, calendarMonthGrid, isTaskOnDay, routineCurrentStreak, routineHeatmapWeeks, shiftCalendarMonth, taskDateLabel, taskPlanningDate, workspaceCommandSchema } from "@/lib/workspace";
+import { activityEventLabel, calendarMonthGrid, centeredWeekDays, isTaskOnDay, routineCurrentStreak, routineHeatmapWeeks, shiftCalendarMonth, taskDateLabel, taskPlanningDate, workspaceCommandSchema } from "@/lib/workspace";
 
 describe("working-prototype workspace commands", () => {
   it("accepts a small manual task and rejects unsafe priorities", () => {
@@ -90,6 +90,19 @@ describe("working-prototype workspace commands", () => {
     expect(august[41]).toBe("2026-09-06");
     expect(shiftCalendarMonth("2026-12-18", 1)).toBe("2027-01-01");
     expect(shiftCalendarMonth("2026-01-18", -1)).toBe("2025-12-01");
+  });
+
+  it("centers a seven-day strip on the given day so upcoming work stays visible", () => {
+    // Saturday Aug 8 should show Wed–Tue, with today at index 3.
+    expect(centeredWeekDays("2026-08-08")).toEqual([
+      "2026-08-05",
+      "2026-08-06",
+      "2026-08-07",
+      "2026-08-08",
+      "2026-08-09",
+      "2026-08-10",
+      "2026-08-11",
+    ]);
   });
 
   it("accepts cancel, delete, and restore commands for a valid task id and rejects a bad one", () => {

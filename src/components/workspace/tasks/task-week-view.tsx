@@ -2,7 +2,7 @@
 
 import { type CSSProperties, useState } from "react";
 import { ArrowCounterClockwise, CaretLeft, CaretRight, Check } from "@phosphor-icons/react";
-import { calendarWeekDays, calendarWeekStart, shiftCalendarWeek, taskPlanningDate, type WorkspaceData } from "@/lib/workspace";
+import { centeredWeekDays, shiftCalendarWeek, taskPlanningDate, type WorkspaceData } from "@/lib/workspace";
 import { useToast } from "@/components/ui/toast";
 import { Dialog } from "@/components/ui/primitives";
 import type { WorkspaceCommandFn } from "@/components/workspace/shared/use-workspace-command";
@@ -53,11 +53,11 @@ export function TaskWeekRow({ task, data, onCommand, onEdit }: { task: Workspace
   );
 }
 
-/** A seven-day agenda so a full week's dated work is visible at a glance, instead of one day at a time. */
+/** A seven-day agenda centered on today so upcoming work stays in view, not a Mon–Sun calendar week. */
 export function TaskWeekView({ tasks, onCommand, today, data }: { tasks: WorkspaceData["tasks"]; onCommand: WorkspaceCommandFn; today: string; data: WorkspaceData }) {
   const [anchor, setAnchor] = useState(today);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const days = calendarWeekDays(anchor);
+  const days = centeredWeekDays(anchor);
   const datedTasks = tasks.filter((task) => taskPlanningDate(task));
   const rangeLabel = `${calendarLabel(days[0], { month: "short", day: "numeric" })} – ${calendarLabel(days[6], { month: "short", day: "numeric", year: "numeric" })}`;
   const editingTask = editingId ? tasks.find((task) => task.id === editingId) : undefined;
@@ -68,24 +68,50 @@ export function TaskWeekView({ tasks, onCommand, today, data }: { tasks: Workspa
 
   return <section className="task-week" aria-label="Task week view">
     <div className="task-week-head">
-      <div><h2>Week of {rangeLabel}</h2><p>All dated work across the seven days.</p></div>
+      <div>
+        <h2>{rangeLabel}</h2>
+        <p>Today in the middle so you can see what is coming.</p>
+      </div>
       <div className="task-calendar-actions">
-        {calendarWeekStart(anchor) !== calendarWeekStart(today) && <button className="button-base button-quiet" type="button" onClick={() => setAnchor(today)}>Today</button>}
-        <button className="button-base button-quiet task-calendar-arrow" type="button" aria-label="Previous week" onClick={() => moveWeek(-1)}><CaretLeft aria-hidden size={16} weight="bold" /></button>
-        <button className="button-base button-quiet task-calendar-arrow" type="button" aria-label="Next week" onClick={() => moveWeek(1)}><CaretRight aria-hidden size={16} weight="bold" /></button>
+        {anchor !== today && (
+          <button className="button-base button-quiet" type="button" onClick={() => setAnchor(today)}>
+            Today
+          </button>
+        )}
+        <button className="button-base button-quiet task-calendar-arrow" type="button" aria-label="Previous week" onClick={() => moveWeek(-1)}>
+          <CaretLeft aria-hidden size={16} weight="bold" />
+        </button>
+        <button className="button-base button-quiet task-calendar-arrow" type="button" aria-label="Next week" onClick={() => moveWeek(1)}>
+          <CaretRight aria-hidden size={16} weight="bold" />
+        </button>
       </div>
     </div>
-    <div className="task-week-grid">{days.map((day) => {
-      const dayTasks = datedTasks.filter((task) => taskPlanningDate(task) === day);
-      const dayLabel = calendarLabel(day, { weekday: "short", month: "short", day: "numeric" });
-      return <div className={`task-week-day${day === today ? " is-today" : ""}`} key={day}>
-        <div className="task-week-day-head"><span>{dayLabel}</span><span className="task-count">{dayTasks.length}</span></div>
-        <div className="task-week-day-list">
-          {dayTasks.map((task) => <TaskWeekRow task={task} data={data} onCommand={onCommand} onEdit={() => setEditingId(task.id)} key={task.id} />)}
-          {dayTasks.length === 0 && <p className="task-week-day-empty">Nothing dated</p>}
-        </div>
-      </div>;
-    })}</div>
+    <div className="task-week-grid">
+      {days.map((day) => {
+        const dayTasks = datedTasks.filter((task) => taskPlanningDate(task) === day);
+        const weekday = calendarLabel(day, { weekday: "short" });
+        const dayNumber = Number(day.slice(-2));
+        const isToday = day === today;
+        const isPast = day < today;
+        return (
+          <div className={`task-week-day${isToday ? " is-today" : ""}${isPast ? " is-past" : ""}`} key={day}>
+            <div className="task-week-day-head">
+              <div className="task-week-day-label">
+                <span className="task-week-weekday">{weekday}</span>
+                <span className="task-week-day-number">{dayNumber}</span>
+              </div>
+              <span className="task-count">{dayTasks.length}</span>
+            </div>
+            <div className="task-week-day-list">
+              {dayTasks.map((task) => (
+                <TaskWeekRow task={task} data={data} onCommand={onCommand} onEdit={() => setEditingId(task.id)} key={task.id} />
+              ))}
+              {dayTasks.length === 0 ? <p className="task-week-day-empty">Clear</p> : null}
+            </div>
+          </div>
+        );
+      })}
+    </div>
     {editingTask ? (
       <Dialog open title="Edit task" size="lg" onClose={() => setEditingId(null)}>
         <TaskEditForm task={editingTask} data={data} onCommand={onCommand} onDone={() => setEditingId(null)} />

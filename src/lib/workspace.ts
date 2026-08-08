@@ -169,6 +169,11 @@ export function calendarWeekDays(day: string) {
   return Array.from({ length: 7 }, (_, index) => addDays(start, index));
 }
 
+/** Returns seven days with `day` in the center (3 before, day, 3 after). */
+export function centeredWeekDays(day: string) {
+  return Array.from({ length: 7 }, (_, index) => addDays(day, index - 3));
+}
+
 export function shiftCalendarWeek(day: string, amount: number) {
   return addDays(day, amount * 7);
 }

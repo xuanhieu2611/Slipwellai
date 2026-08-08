@@ -41,7 +41,7 @@ export function TaskPlanner({ tasks, onCommand, today, data, showTopThree }: { t
   return <div className="task-planner">
     <section className="task-calendar" aria-label="Task calendar">
       <div className="task-calendar-head">
-        <div><h2>{monthName}</h2><p>Choose a day to inspect its work.</p></div>
+        <div><h2>{monthName}</h2><p>Pick a day to see what belongs there.</p></div>
         <div className="task-calendar-actions">
           {month.slice(0, 7) !== today.slice(0, 7) && <button className="button-base button-quiet" type="button" onClick={returnToToday}>Today</button>}
           <button className="button-base button-quiet task-calendar-arrow" type="button" aria-label="Previous month" onClick={() => moveMonth(-1)}><CaretLeft aria-hidden size={16} weight="bold" /></button>
