@@ -133,8 +133,8 @@ export function RoutinesPage({ data }: { data: RoutinesPageData }) {
           New routine
         </button>
       </header>
-      {createOpen && (
-        <Dialog title="New routine" onClose={() => setCreateOpen(false)}>
+      <Dialog open={createOpen} title="New routine" onClose={() => setCreateOpen(false)}>
+        {createOpen ? (
           <form className="form-grid" onSubmit={submitRoutine}>
             <label className="field-label">
               <span>Routine</span>
@@ -151,8 +151,8 @@ export function RoutinesPage({ data }: { data: RoutinesPageData }) {
             </label>
             <button className="button-base button-primary form-submit">Add routine</button>
           </form>
-        </Dialog>
-      )}
+        ) : null}
+      </Dialog>
       <div className="space-y-4">
         {data.routines.map((routine) => (
           <RoutineCard

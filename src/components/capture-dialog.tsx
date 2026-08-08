@@ -221,10 +221,14 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
     if (id) startInterpretation(id, () => router.refresh());
   }, [notify, router]);
 
-  return <CaptureContext.Provider value={{ open, close }}>
-    {children}
-    {isOpen && <Dialog title="What needs a place?" onClose={close}><CaptureForm onCaptured={onCaptured} /></Dialog>}
-  </CaptureContext.Provider>;
+  return (
+    <CaptureContext.Provider value={{ open, close }}>
+      {children}
+      <Dialog open={isOpen} title="What needs a place?" onClose={close}>
+        {isOpen ? <CaptureForm onCaptured={onCaptured} /> : null}
+      </Dialog>
+    </CaptureContext.Provider>
+  );
 }
 
 export function useCapture() {

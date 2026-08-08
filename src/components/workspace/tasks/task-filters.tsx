@@ -53,15 +53,95 @@ export function TaskFilters({ data, filters, onChange }: { data: WorkspaceData; 
     onChange({ ...filters, [key]: value });
   }
   const isDefault = JSON.stringify(filters) === JSON.stringify(defaultTaskFilters);
-  return <div className="task-filter-bar" role="group" aria-label="Filter and sort tasks">
-    <FilterSelect label="Status" value={filters.status} active={filters.status !== defaultTaskFilters.status} onChange={(value) => set("status", value as TaskFilterState["status"])}><option value="open">Open</option><option value="completed">Completed</option><option value="canceled">Canceled</option><option value="deleted">Deleted</option><option value="any">Any status</option></FilterSelect>
-    <FilterSelect label="Date" value={filters.hasDate} active={filters.hasDate !== defaultTaskFilters.hasDate} onChange={(value) => set("hasDate", value as TaskFilterState["hasDate"])}><option value="any">Any date</option><option value="has">Has a date</option><option value="none">No date</option></FilterSelect>
-    <FilterSelect label="Priority" value={filters.priority} active={filters.priority !== defaultTaskFilters.priority} onChange={(value) => set("priority", value as TaskFilterState["priority"])}><option value="any">Any priority</option><option value="1">Low</option><option value="2">Normal</option><option value="3">High</option></FilterSelect>
-    <FilterSelect label="Domain" value={filters.domainId} active={filters.domainId !== ""} onChange={(value) => set("domainId", value)}><option value="">Any domain</option>{data.domains.map((domain) => <option key={domain.id} value={domain.id}>{domain.name}</option>)}</FilterSelect>
-    <FilterSelect label="Project" value={filters.projectId} active={filters.projectId !== ""} onChange={(value) => set("projectId", value)}><option value="">Any project</option>{data.projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</FilterSelect>
-    <FilterSelect label="Person" value={filters.personId} active={filters.personId !== ""} onChange={(value) => set("personId", value)}><option value="">Any person</option>{data.people.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</FilterSelect>
-    <FilterSelect label="Slipping" value={filters.slipping} active={filters.slipping !== defaultTaskFilters.slipping} onChange={(value) => set("slipping", value as TaskFilterState["slipping"])}><option value="any">Any</option><option value="only">Slipping only</option></FilterSelect>
-    <span className="task-filter-sort-group"><span className="task-filter-divider" aria-hidden="true" /><FilterSelect label="Sort by" value={filters.sort} active={filters.sort !== defaultTaskFilters.sort} onChange={(value) => set("sort", value as TaskFilterState["sort"])}><option value="created">Newest first</option><option value="date">Due or scheduled date</option><option value="priority">Priority</option></FilterSelect></span>
-    {!isDefault && <button className="task-filter-reset" type="button" onClick={() => onChange(defaultTaskFilters)}><ArrowCounterClockwise aria-hidden size={13} weight="bold" />Reset</button>}
-  </div>;
+  return (
+    <div className="task-filter-bar" role="group" aria-label="Filter and sort tasks">
+      <FilterSelect
+        label="Status"
+        value={filters.status}
+        active={filters.status !== defaultTaskFilters.status}
+        onChange={(value) => set("status", value as TaskFilterState["status"])}
+        options={[
+          { value: "open", label: "Open" },
+          { value: "completed", label: "Completed" },
+          { value: "canceled", label: "Canceled" },
+          { value: "deleted", label: "Deleted" },
+          { value: "any", label: "Any status" },
+        ]}
+      />
+      <FilterSelect
+        label="Date"
+        value={filters.hasDate}
+        active={filters.hasDate !== defaultTaskFilters.hasDate}
+        onChange={(value) => set("hasDate", value as TaskFilterState["hasDate"])}
+        options={[
+          { value: "any", label: "Any date" },
+          { value: "has", label: "Has a date" },
+          { value: "none", label: "No date" },
+        ]}
+      />
+      <FilterSelect
+        label="Priority"
+        value={filters.priority}
+        active={filters.priority !== defaultTaskFilters.priority}
+        onChange={(value) => set("priority", value as TaskFilterState["priority"])}
+        options={[
+          { value: "any", label: "Any priority" },
+          { value: "1", label: "Low" },
+          { value: "2", label: "Normal" },
+          { value: "3", label: "High" },
+        ]}
+      />
+      <FilterSelect
+        label="Domain"
+        value={filters.domainId}
+        active={filters.domainId !== ""}
+        onChange={(value) => set("domainId", value)}
+        options={[{ value: "", label: "Any domain" }, ...data.domains.map((domain) => ({ value: domain.id, label: domain.name }))]}
+      />
+      <FilterSelect
+        label="Project"
+        value={filters.projectId}
+        active={filters.projectId !== ""}
+        onChange={(value) => set("projectId", value)}
+        options={[{ value: "", label: "Any project" }, ...data.projects.map((project) => ({ value: project.id, label: project.name }))]}
+      />
+      <FilterSelect
+        label="Person"
+        value={filters.personId}
+        active={filters.personId !== ""}
+        onChange={(value) => set("personId", value)}
+        options={[{ value: "", label: "Any person" }, ...data.people.map((person) => ({ value: person.id, label: person.name }))]}
+      />
+      <FilterSelect
+        label="Slipping"
+        value={filters.slipping}
+        active={filters.slipping !== defaultTaskFilters.slipping}
+        onChange={(value) => set("slipping", value as TaskFilterState["slipping"])}
+        options={[
+          { value: "any", label: "Any" },
+          { value: "only", label: "Slipping only" },
+        ]}
+      />
+      <span className="task-filter-sort-group">
+        <span className="task-filter-divider" aria-hidden="true" />
+        <FilterSelect
+          label="Sort by"
+          value={filters.sort}
+          active={filters.sort !== defaultTaskFilters.sort}
+          onChange={(value) => set("sort", value as TaskFilterState["sort"])}
+          options={[
+            { value: "created", label: "Newest first" },
+            { value: "date", label: "Due or scheduled date" },
+            { value: "priority", label: "Priority" },
+          ]}
+        />
+      </span>
+      {!isDefault && (
+        <button className="task-filter-reset" type="button" onClick={() => onChange(defaultTaskFilters)}>
+          <ArrowCounterClockwise aria-hidden size={13} weight="bold" />
+          Reset
+        </button>
+      )}
+    </div>
+  );
 }

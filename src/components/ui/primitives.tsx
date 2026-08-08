@@ -1,18 +1,20 @@
-import { useEffect, useId, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
-import { CheckCircle, Info, Tray, WarningCircle, X } from "@phosphor-icons/react";
+"use client";
 
-const join = (...classes: Array<string | undefined>) => classes.filter(Boolean).join(" ");
+import { type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import { Dialog as BaseDialog } from "@base-ui/react/dialog";
+import { CheckCircle, Info, Tray, WarningCircle, X } from "@phosphor-icons/react";
+import clsx from "clsx";
 
 export function Button({ className, type = "button", ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button className={join("button-base", className)} type={type} {...props} />;
+  return <button className={clsx("button-base", className)} type={type} {...props} />;
 }
 
 export function TextField({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={join("field-base", className)} {...props} />;
+  return <input className={clsx("field-base", className)} {...props} />;
 }
 
 export function SelectField({ className, children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select className={join("field-base", className)} {...props}>{children}</select>;
+  return <select className={clsx("field-base", className)} {...props}>{children}</select>;
 }
 
 const toneIcon = { neutral: Info, success: CheckCircle, attention: WarningCircle, error: WarningCircle } as const;
@@ -20,7 +22,7 @@ const toneIcon = { neutral: Info, success: CheckCircle, attention: WarningCircle
 export function StatusMessage({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "success" | "attention" | "error" }) {
   const Glyph = toneIcon[tone];
   return (
-    <p className={`status-message status-message--${tone}`} role={tone === "error" ? "alert" : "status"}>
+    <p className={clsx("status-message", `status-message--${tone}`)} role={tone === "error" ? "alert" : "status"}>
       <Glyph aria-hidden className="mt-px shrink-0" size={16} weight="fill" />
       <span>{children}</span>
     </p>
@@ -39,42 +41,41 @@ export function EmptyState({ children, action }: { children: ReactNode; action?:
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div aria-hidden="true" className={join("skeleton", className)} />;
+  return <div aria-hidden="true" className={clsx("skeleton", className)} />;
 }
 
-export function Dialog({ title, children, onClose, size = "md" }: { title: string; children: ReactNode; onClose: () => void; size?: "md" | "lg" }) {
-  const panelRef = useRef<HTMLElement>(null);
-  const titleId = useId();
-  useEffect(() => {
-    const panel = panelRef.current;
-    if (!panel) return;
-    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const focusable = () => Array.from(panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])'));
-    const firstField = panel.querySelector<HTMLElement>('input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])');
-    (firstField ?? focusable()[0])?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-      if (event.key !== "Tab") return;
-      const elements = focusable();
-      if (elements.length === 0) return;
-      const first = elements[0];
-      const last = elements[elements.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    panel.addEventListener("keydown", onKeyDown);
-    return () => {
-      panel.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
-      previouslyFocused?.focus();
-    };
-  }, [onClose]);
-  return <div aria-labelledby={titleId} aria-modal="true" className="dialog-backdrop" role="dialog" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}><section ref={panelRef} className={join("dialog-panel", size === "lg" ? "dialog-panel--lg" : undefined)}><div className="dialog-heading"><h2 id={titleId}>{title}</h2><Button aria-label="Close dialog" className="button-quiet dialog-close" onClick={onClose}><X aria-hidden size={18} /></Button></div><div className="dialog-content">{children}</div></section></div>;
+export function Dialog({
+  open = true,
+  title,
+  children,
+  onClose,
+  size = "md",
+}: {
+  open?: boolean;
+  title: string;
+  children: ReactNode;
+  onClose: () => void;
+  size?: "md" | "lg";
+}) {
+  return (
+    <BaseDialog.Root
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+    >
+      <BaseDialog.Portal>
+        <BaseDialog.Backdrop className="dialog-backdrop" />
+        <BaseDialog.Popup className={clsx("dialog-panel", size === "lg" && "dialog-panel--lg")}>
+          <div className="dialog-heading">
+            <BaseDialog.Title className="dialog-title">{title}</BaseDialog.Title>
+            <BaseDialog.Close aria-label="Close dialog" className="button-base button-quiet dialog-close">
+              <X aria-hidden size={18} />
+            </BaseDialog.Close>
+          </div>
+          <div className="dialog-content">{children}</div>
+        </BaseDialog.Popup>
+      </BaseDialog.Portal>
+    </BaseDialog.Root>
+  );
 }

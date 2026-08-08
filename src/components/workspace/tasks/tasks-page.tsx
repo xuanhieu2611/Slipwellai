@@ -32,11 +32,9 @@ export function TasksPage({ data }: { data: TasksPageData }) {
         <h1>Tasks</h1>
         <p>See every commitment across time, then narrow the view when the list gets busy.</p>
       </header>
-      {newTaskOpen && (
-        <Dialog title="New task" size="lg" onClose={() => setNewTaskOpen(false)}>
-          <NewTaskForm data={fullData} onCommand={command} onDone={() => setNewTaskOpen(false)} />
-        </Dialog>
-      )}
+      <Dialog open={newTaskOpen} title="New task" size="lg" onClose={() => setNewTaskOpen(false)}>
+        {newTaskOpen ? <NewTaskForm data={fullData} onCommand={command} onDone={() => setNewTaskOpen(false)} /> : null}
+      </Dialog>
       <section className="workspace-section tasks-workspace">
         <div className="tasks-toolbar">
           <div className="task-view-switch" role="group" aria-label="Task view">

@@ -20,8 +20,27 @@ export function filterProjects(projects: WorkspaceData["projects"], filters: Pro
 
 export function ProjectFilters({ filters, onChange }: { filters: ProjectFilterState; onChange: (next: ProjectFilterState) => void }) {
   const isDefault = filters.status === defaultProjectFilters.status;
-  return <div className="task-filter-bar" role="group" aria-label="Filter projects">
-    <FilterSelect label="Status" value={filters.status} active={!isDefault} onChange={(value) => onChange({ status: value as ProjectFilterState["status"] })}><option value="current">Current work</option><option value="completed">Completed</option><option value="canceled">Canceled</option><option value="deleted">Deleted</option><option value="any">Any status</option></FilterSelect>
-    {!isDefault && <button className="task-filter-reset" type="button" onClick={() => onChange(defaultProjectFilters)}><ArrowCounterClockwise aria-hidden size={13} weight="bold" />Reset</button>}
-  </div>;
+  return (
+    <div className="task-filter-bar" role="group" aria-label="Filter projects">
+      <FilterSelect
+        label="Status"
+        value={filters.status}
+        active={!isDefault}
+        onChange={(value) => onChange({ status: value as ProjectFilterState["status"] })}
+        options={[
+          { value: "current", label: "Current work" },
+          { value: "completed", label: "Completed" },
+          { value: "canceled", label: "Canceled" },
+          { value: "deleted", label: "Deleted" },
+          { value: "any", label: "Any status" },
+        ]}
+      />
+      {!isDefault && (
+        <button className="task-filter-reset" type="button" onClick={() => onChange(defaultProjectFilters)}>
+          <ArrowCounterClockwise aria-hidden size={13} weight="bold" />
+          Reset
+        </button>
+      )}
+    </div>
+  );
 }

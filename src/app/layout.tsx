@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Instrument_Sans, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { ServiceWorkerRegistrar } from "@/components/service-worker-registrar";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const displayFont = Space_Grotesk({
@@ -41,9 +42,6 @@ export const viewport: Viewport = {
   ],
 };
 
-// Applies the stored theme before first paint so the page never flashes the wrong mode.
-const themeBootstrap = `try{var t=localStorage.getItem("slipwell-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -55,12 +53,11 @@ export default function RootLayout({
       className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
-      </head>
       <body className="flex min-h-full flex-col">
-        {children}
-        <ServiceWorkerRegistrar />
+        <ThemeProvider>
+          {children}
+          <ServiceWorkerRegistrar />
+        </ThemeProvider>
       </body>
     </html>
   );

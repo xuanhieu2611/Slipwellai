@@ -40,8 +40,8 @@ export function WorkPage({ data }: { data: WorkPageData }) {
           </button>
         </div>
       </header>
-      {createDialog === "domain" && (
-        <Dialog title="New domain" onClose={() => setCreateDialog(null)}>
+      <Dialog open={createDialog === "domain"} title="New domain" onClose={() => setCreateDialog(null)}>
+        {createDialog === "domain" ? (
           <form className="form-grid" onSubmit={(event) => submit(event, "create_domain", { name: "name", description: "description", color: "color" }, "Domain created.", () => setCreateDialog(null))}>
             <label className="field-label form-span">
               <span>Name</span>
@@ -54,13 +54,11 @@ export function WorkPage({ data }: { data: WorkPageData }) {
             <DomainColorPicker />
             <button className="button-base button-primary form-submit">Add domain</button>
           </form>
-        </Dialog>
-      )}
-      {createDialog === "project" && (
-        <Dialog title="New project" size="lg" onClose={() => setCreateDialog(null)}>
-          <NewProjectForm data={fullData} onCommand={command} onDone={() => setCreateDialog(null)} />
-        </Dialog>
-      )}
+        ) : null}
+      </Dialog>
+      <Dialog open={createDialog === "project"} title="New project" size="lg" onClose={() => setCreateDialog(null)}>
+        {createDialog === "project" ? <NewProjectForm data={fullData} onCommand={command} onDone={() => setCreateDialog(null)} /> : null}
+      </Dialog>
       <section className="workspace-section">
         <div className="section-heading">
           <div>

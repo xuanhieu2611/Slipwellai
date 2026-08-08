@@ -144,7 +144,11 @@ export function RetainerList({ retainers, data, onCommand, onCheckSlipping }: { 
         </div>
       </div>
       {endingId === retainer.id && <div className="mt-3"><EndRetainerControl retainer={retainer} onCommand={onCommand} onDone={() => setEndingId(null)} /></div>}
-      {editingId === retainer.id && <Dialog title="Edit retainer" size="lg" onClose={() => setEditingId(null)}><RetainerEditForm retainer={retainer} data={data} onCommand={onCommand} onDone={() => setEditingId(null)} /></Dialog>}
+      {editingId === retainer.id ? (
+        <Dialog open title="Edit retainer" size="lg" onClose={() => setEditingId(null)}>
+          <RetainerEditForm retainer={retainer} data={data} onCommand={onCommand} onDone={() => setEditingId(null)} />
+        </Dialog>
+      ) : null}
       <div className="project-milestones">
         <p className="text-sm font-semibold">Deliverables</p>
         <form className="inline-form" onSubmit={(event) => { event.preventDefault(); const form = event.currentTarget; act({ action: "create_retainer_template_item", retainerId: retainer.id, title: formValue(form, "title"), expectedDay: formValue(form, "expectedDay") }, "Deliverable added.").then(() => form.reset()); }}>
