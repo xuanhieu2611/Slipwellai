@@ -10,7 +10,16 @@ export const createRetainerSchema = z.object({
 });
 
 export const generateCycleSchema = z.object({ cycleMonth: z.string().regex(/^\d{4}-\d{2}$/), idempotencyKey: z.string().uuid() });
-export const signalActionSchema = z.object({ outcome: z.enum(["marked_attention", "deferred", "dismissed"]), note: z.string().trim().max(500).optional() });
+export const signalActionSchema = z
+  .object({
+    outcome: z.enum(["marked_attention", "deferred", "dismissed", "cadence_changed"]),
+    note: z.string().trim().max(500).optional(),
+    cadenceDays: z.coerce.number().int().min(1).max(365).optional(),
+  })
+  .refine((value) => value.outcome !== "cadence_changed" || value.cadenceDays !== undefined, {
+    message: "Choose a cadence between 1 and 365 days.",
+    path: ["cadenceDays"],
+  });
 
 /* Pure calendar-string arithmetic (year/month/day numbers in, calendar date string out), so it is
    already timezone-neutral: the "month" a caller passes in is meant to already be the retainer's

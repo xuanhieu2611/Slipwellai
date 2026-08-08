@@ -34,7 +34,7 @@ export type DashboardData = {
   /* The account's local calendar day, resolved once on the server so review reads a
      proposed date phrase against the same day the server will file it against. */
   today: string;
-  signals: Array<{ id: string; retainer_id: string | null; cycle_item_id: string | null; reason: string; severity: string; outcome: string }>;
+  signals: Array<{ id: string; entity_type: string; entity_id: string; retainer_id: string | null; cycle_item_id: string | null; reason: string; severity: string; outcome: string }>;
 };
 
 export const newestProposalByCapture = <T extends { capture_id: string }>(proposals: T[]) => {
@@ -70,7 +70,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     supabase.from("tasks").select("id, proposal_id, title, created_at, domain_id, project_id, person_id").not("source_capture_id", "is", null).order("created_at", { ascending: false }).limit(8),
     supabase.from("notes").select("id, proposal_id, title, created_at, domain_id, project_id, person_id").not("source_capture_id", "is", null).order("created_at", { ascending: false }).limit(8),
     loadDestinationCatalog(supabase),
-    supabase.from("slipping_signals").select("id, retainer_id, cycle_item_id, reason, severity, outcome").eq("outcome", "open").order("created_at", { ascending: false }),
+    supabase.from("slipping_signals").select("id, entity_type, entity_id, retainer_id, cycle_item_id, reason, severity, outcome").eq("outcome", "open").order("created_at", { ascending: false }),
     supabase.from("user_preferences").select("timezone").maybeSingle(),
   ]);
 
