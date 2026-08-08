@@ -147,6 +147,27 @@ export function shiftCalendarMonth(day: string, amount: number) {
   return calendarDate(year, month + amount, 1);
 }
 
+function addDays(day: string, amount: number) {
+  const [year, month, date] = day.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, date + amount)).toISOString().slice(0, 10);
+}
+
+/** Returns the Monday that starts the week containing `day`. */
+export function calendarWeekStart(day: string) {
+  const weekday = new Date(`${day}T00:00:00Z`).getUTCDay();
+  return addDays(day, -((weekday + 6) % 7));
+}
+
+/** Returns the seven Monday-first ISO dates of the week containing `day`. */
+export function calendarWeekDays(day: string) {
+  const start = calendarWeekStart(day);
+  return Array.from({ length: 7 }, (_, index) => addDays(start, index));
+}
+
+export function shiftCalendarWeek(day: string, amount: number) {
+  return addDays(day, amount * 7);
+}
+
 export function recurrenceLabel(task: Pick<WorkspaceData["tasks"][number], "recurrence_rule" | "recurrence_interval" | "recurrence_unit">) {
   if (!task.recurrence_rule) return null;
   if (task.recurrence_rule === "custom") return `Every ${task.recurrence_interval} ${task.recurrence_unit}`;

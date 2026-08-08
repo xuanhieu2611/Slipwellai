@@ -724,6 +724,28 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .task-unscheduled[open] summary { margin-bottom: .2rem; }
 .task-list-view { margin-top: 1.1rem; }
 
+.task-week { border-top: 1px solid var(--line); margin-top: 1.1rem; padding-top: 1.15rem; }
+.task-week-head { align-items: flex-start; display: flex; flex-wrap: wrap; gap: .75rem; justify-content: space-between; margin-bottom: 1rem; }
+.task-week-head h2 { font-size: 1rem; font-weight: 650; }
+.task-week-head p { color: var(--ink-muted); font-size: .75rem; line-height: 1.45; margin-top: .15rem; }
+.task-week-grid { display: grid; gap: .75rem; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.task-week-day { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); display: flex; flex-direction: column; min-width: 0; padding: .7rem; }
+.task-week-day.is-today { box-shadow: inset 0 0 0 1px var(--accent); }
+.task-week-day-head { align-items: center; display: flex; justify-content: space-between; margin-bottom: .55rem; }
+.task-week-day-head span:first-child { color: var(--ink-muted); font-size: .68rem; font-weight: 650; letter-spacing: .03em; text-transform: uppercase; }
+.task-week-day.is-today .task-week-day-head span:first-child { color: var(--accent-ink); }
+.task-week-day-list { display: flex; flex-direction: column; gap: .35rem; }
+.task-week-day-empty { color: var(--ink-muted); font-size: .72rem; padding: .3rem 0; }
+.task-week-task { align-items: flex-start; background: var(--surface-sunken); border-radius: var(--r-sm); display: flex; gap: .4rem; padding: .35rem .5rem; }
+.task-week-task--domain { border-left: 3px solid var(--domain-color); }
+.task-week-task.is-high { background: var(--attention-soft); }
+.task-week-task.is-high .task-week-task-dot { border-color: var(--attention); }
+.task-week-task.is-done .task-week-task-title { color: var(--ink-muted); text-decoration: line-through; }
+.task-week-task-toggle { align-items: center; border-radius: 999px; color: var(--ink-muted); display: inline-flex; flex-shrink: 0; height: 1.1rem; justify-content: center; margin-top: .12rem; width: 1.1rem; }
+.task-week-task-dot { background: none; border: 1.5px solid var(--line-strong); border-radius: 999px; display: block; height: .7rem; width: .7rem; }
+.task-week-task-toggle:hover .task-week-task-dot { border-color: var(--accent); }
+.task-week-task-title { color: var(--ink); flex: 1; font-size: .78rem; font-weight: 550; line-height: 1.35; min-width: 0; overflow-wrap: break-word; text-align: left; }
+
 /* Filters read as a row of compact chips instead of a stacked form, so browsing
    a list does not cost as much vertical space as adding to it. */
 .task-filter-bar { align-items: center; display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .9rem; }
@@ -1065,6 +1087,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .task-calendar { border-bottom: 1px solid var(--line); border-right: 0; padding: 1rem 0; }
   .task-calendar-day { min-height: 3.1rem; }
   .task-agenda { padding: 1rem 0 0; }
+  .task-week-grid { grid-template-columns: 1fr; }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .task-week-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 @media (max-width: 420px) {
