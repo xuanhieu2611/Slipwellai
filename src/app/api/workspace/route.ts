@@ -35,6 +35,16 @@ export async function POST(request: NextRequest) {
   try {
     if (command.action === "create_domain") {
       const { error } = await supabase.from("domains").insert({ name: command.name, description: command.description, color: command.color });
+      if (error?.code === "23505") return badRequest("A domain with that name already exists.");
+      if (error) throw error;
+    } else if (command.action === "update_domain") {
+      const { data: domain } = await supabase.from("domains").select("id").eq("id", command.domainId).is("archived_at", null).maybeSingle();
+      if (!domain) return badRequest("Domain not found.");
+      const { error } = await supabase
+        .from("domains")
+        .update({ name: command.name, description: command.description, color: command.color, updated_at: new Date().toISOString() })
+        .eq("id", command.domainId);
+      if (error?.code === "23505") return badRequest("A domain with that name already exists.");
       if (error) throw error;
     } else if (command.action === "create_task") {
       await verifyRelations(command);

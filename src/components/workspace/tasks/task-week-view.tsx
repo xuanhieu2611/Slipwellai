@@ -26,11 +26,12 @@ export function TaskWeekRow({ task, data, onCommand, onEdit }: { task: Workspace
     }
   }
   const isHighPriority = task.priority === 3 && isOpen;
+  const hint = [isHighPriority ? "High priority" : null, domain?.name].filter(Boolean).join(" · ") || undefined;
   return (
     <div
       className={`task-week-task${domain ? " task-week-task--domain" : ""}${!isOpen || confirming ? " is-done" : ""}${isHighPriority ? " is-high" : ""}${confirming ? " is-confirming" : ""}`}
       style={domain ? ({ "--domain-color": domain.color } as CSSProperties) : undefined}
-      title={isHighPriority ? "High priority" : undefined}
+      title={hint}
     >
       <button
         className={`task-week-task-toggle${confirming ? " is-confirming" : ""}`}
@@ -88,25 +89,29 @@ export function TaskWeekView({ tasks, onCommand, today, data }: { tasks: Workspa
     </div>
     <div className="task-week-grid">
       {days.map((day) => {
-        const dayTasks = datedTasks.filter((task) => taskPlanningDate(task) === day);
+        const dayTasks = datedTasks
+          .filter((task) => taskPlanningDate(task) === day)
+          .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0) || a.title.localeCompare(b.title));
         const weekday = calendarLabel(day, { weekday: "short" });
         const dayNumber = Number(day.slice(-2));
         const isToday = day === today;
         const isPast = day < today;
+        const isEmpty = dayTasks.length === 0;
         return (
-          <div className={`task-week-day${isToday ? " is-today" : ""}${isPast ? " is-past" : ""}`} key={day}>
+          <div className={`task-week-day${isToday ? " is-today" : ""}${isPast ? " is-past" : ""}${isEmpty ? " is-empty" : ""}`} key={day}>
             <div className="task-week-day-head">
               <div className="task-week-day-label">
                 <span className="task-week-weekday">{weekday}</span>
                 <span className="task-week-day-number">{dayNumber}</span>
+                {isToday ? <span className="task-week-today-mark">Today</span> : null}
               </div>
-              <span className="task-count">{dayTasks.length}</span>
+              {isEmpty ? null : <span className="task-count">{dayTasks.length}</span>}
             </div>
             <div className="task-week-day-list">
               {dayTasks.map((task) => (
                 <TaskWeekRow task={task} data={data} onCommand={onCommand} onEdit={() => setEditingId(task.id)} key={task.id} />
               ))}
-              {dayTasks.length === 0 ? <p className="task-week-day-empty">Clear</p> : null}
+              {isEmpty ? <p className="task-week-day-empty"><span className="sr-only">No tasks</span></p> : null}
             </div>
           </div>
         );

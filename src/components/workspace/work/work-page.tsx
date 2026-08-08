@@ -17,9 +17,11 @@ type CreateDialog = "domain" | "project" | null;
 export function WorkPage({ data }: { data: WorkPageData }) {
   const { command, safely, submit } = useWorkspaceCommand();
   const [createDialog, setCreateDialog] = useState<CreateDialog>(null);
+  const [editingDomainId, setEditingDomainId] = useState<string | null>(null);
   const [projectFilters, setProjectFilters] = useState<ProjectFilterState>(defaultProjectFilters);
   const filteredProjects = filterProjects(data.projects, projectFilters);
   const fullData = data as WorkspaceData;
+  const editingDomain = editingDomainId ? data.domains.find((domain) => domain.id === editingDomainId) : undefined;
 
   return (
     <main className="workspace-page">
@@ -56,6 +58,34 @@ export function WorkPage({ data }: { data: WorkPageData }) {
           </form>
         ) : null}
       </Dialog>
+      <Dialog open={Boolean(editingDomain)} title="Edit domain" onClose={() => setEditingDomainId(null)}>
+        {editingDomain ? (
+          <form
+            className="form-grid"
+            onSubmit={(event) =>
+              submit(
+                event,
+                "update_domain",
+                { domainId: "domainId", name: "name", description: "description", color: "color" },
+                "Domain updated.",
+                () => setEditingDomainId(null),
+              )
+            }
+          >
+            <input type="hidden" name="domainId" value={editingDomain.id} />
+            <label className="field-label form-span">
+              <span>Name</span>
+              <input className="field-base" name="name" required maxLength={80} defaultValue={editingDomain.name} />
+            </label>
+            <label className="field-label form-span">
+              <span>Description</span>
+              <input className="field-base" name="description" maxLength={1000} defaultValue={editingDomain.description ?? ""} placeholder="Optional context" />
+            </label>
+            <DomainColorPicker defaultValue={editingDomain.color} />
+            <button className="button-base button-primary form-submit">Save changes</button>
+          </form>
+        ) : null}
+      </Dialog>
       <Dialog open={createDialog === "project"} title="New project" size="lg" onClose={() => setCreateDialog(null)}>
         {createDialog === "project" ? <NewProjectForm data={fullData} onCommand={command} onDone={() => setCreateDialog(null)} /> : null}
       </Dialog>
@@ -81,7 +111,10 @@ export function WorkPage({ data }: { data: WorkPageData }) {
                   <span className="tag">
                     {openTaskCount} open, {activeProjectCount} active
                   </span>
-                  <button className="button-base button-quiet" onClick={() => safely(() => command({ action: "archive_domain", domainId: domain.id }), "Domain archived.")}>
+                  <button className="button-base button-quiet" type="button" onClick={() => setEditingDomainId(domain.id)}>
+                    Edit
+                  </button>
+                  <button className="button-base button-quiet" type="button" onClick={() => safely(() => command({ action: "archive_domain", domainId: domain.id }), "Domain archived.")}>
                     Archive
                   </button>
                 </span>

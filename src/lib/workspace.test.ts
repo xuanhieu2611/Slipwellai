@@ -171,6 +171,21 @@ describe("working-prototype workspace commands", () => {
     expect(workspaceCommandSchema.safeParse({ action: "archive_domain", domainId: "not-an-id" }).success).toBe(false);
   });
 
+  it("accepts an update_domain command with the null-for-blank shape the edit form posts", () => {
+    const posted = {
+      action: "update_domain",
+      domainId: "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98",
+      name: "Client work",
+      description: null,
+      color: "#C47B5B",
+    };
+    expect(workspaceCommandSchema.safeParse(posted).success).toBe(true);
+    expect(workspaceCommandSchema.parse({ ...posted, description: "  Ads retainer  " })).toMatchObject({ description: "Ads retainer" });
+    expect(workspaceCommandSchema.safeParse({ ...posted, name: "   " }).success).toBe(false);
+    expect(workspaceCommandSchema.safeParse({ ...posted, color: "blue" }).success).toBe(false);
+    expect(workspaceCommandSchema.safeParse({ ...posted, domainId: "not-an-id" }).success).toBe(false);
+  });
+
   it("accepts checklist template item edit/delete and template delete for a valid id, defaulting applyToExisting to false", () => {
     const itemId = "847a0e15-63ef-4a68-98f7-51fdbe09f29d";
     const templateId = "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98";
