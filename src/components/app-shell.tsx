@@ -39,6 +39,13 @@ const secondaryNav: ReadonlyArray<readonly [string, string, Icon]> = [
   ["/settings", "Settings", Gear],
 ];
 
+const mobileHeaderNav: ReadonlyArray<readonly [string, string, Icon]> = [
+  ["/retainers", "Retainers", ArrowsClockwise],
+  ...secondaryNav,
+];
+
+const mobilePrimaryNav = primaryNav.filter(([href]) => href !== "/retainers");
+
 function isCurrent(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -126,7 +133,7 @@ function AppShellFrame({ children, email }: { children: React.ReactNode; email: 
             Slipwell
           </Link>
           <nav aria-label="Secondary navigation" className="app-mobile-header-links">
-            {secondaryNav.map(([href, label, IconGlyph]) => (
+            {mobileHeaderNav.map(([href, label, IconGlyph]) => (
               <Link
                 aria-current={isCurrent(pathname, href) ? "page" : undefined}
                 aria-label={label}
@@ -137,13 +144,14 @@ function AppShellFrame({ children, email }: { children: React.ReactNode; email: 
                 <IconGlyph aria-hidden size={19} weight={isCurrent(pathname, href) ? "fill" : ICON_WEIGHT} />
               </Link>
             ))}
+            <ThemeToggle compact />
           </nav>
         </header>
 
         <main className="app-content" id="main-content">{children}</main>
 
         <nav aria-label="Mobile primary navigation" className="mobile-nav">
-          {primaryNav.map(([href, label, IconGlyph]) => (
+          {mobilePrimaryNav.map(([href, label, IconGlyph]) => (
             <Link
               aria-current={isCurrent(pathname, href) ? "page" : undefined}
               className={`mobile-nav-link ${isCurrent(pathname, href) ? "is-current" : ""}`}

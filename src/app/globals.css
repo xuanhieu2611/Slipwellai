@@ -48,6 +48,7 @@
   --r-sm: 0.5rem;
   --r-md: 0.75rem;
   --r-lg: 1.25rem;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -195,11 +196,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   font-weight: 600;
   gap: .45rem;
   justify-content: center;
-  min-height: 2.6rem;
+  min-height: 2.75rem;
   padding: .6rem .95rem;
-  transition: background-color .18s ease, border-color .18s ease, color .18s ease, transform .12s ease, box-shadow .18s ease;
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease, transform .14s var(--ease-out), box-shadow .18s ease;
 }
-.button-base:active { transform: scale(.98); }
+.button-base:active { transform: scale(.97); }
 .button-base:disabled { cursor: not-allowed; opacity: .5; }
 .button-primary { background: var(--accent); color: var(--accent-on); }
 .button-primary:hover:not(:disabled) { background: var(--accent-hover); }
@@ -268,7 +269,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .dialog-backdrop {
   align-items: center;
-  animation: fade-in .18s ease-out;
+  animation: fade-in .16s var(--ease-out);
   backdrop-filter: blur(3px);
   background: hsl(var(--shadow-color) / .45);
   display: flex;
@@ -279,7 +280,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   z-index: 50;
 }
 .dialog-panel {
-  animation: panel-in .22s cubic-bezier(.16, 1, .3, 1);
+  animation: panel-in .22s var(--ease-out);
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
@@ -287,10 +288,26 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   max-height: calc(100dvh - 2rem);
   max-width: 32rem;
   overflow-y: auto;
-  padding: 1.5rem;
+  overscroll-behavior: contain;
   width: 100%;
 }
 .dialog-panel--lg { max-width: 38rem; }
+.dialog-heading {
+  align-items: center;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1.1rem 1.25rem;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.dialog-heading h2 { font-size: 1.15rem; font-weight: 650; letter-spacing: -.025em; }
+.dialog-close { flex-shrink: 0; min-height: 2.5rem; min-width: 2.5rem; padding: .45rem; }
+.dialog-content { padding: 0 1.25rem 1.25rem; }
+.dialog-content > .form-grid { margin-top: 1.15rem; }
 /* Centered over the content column, not the viewport, so a toast lands where the eye already is.
    The container ignores pointer events so it never blocks the page beneath it. */
 .toast-stack {
@@ -406,6 +423,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   width: 100%;
 }
 .theme-toggle:hover { background: var(--surface-soft); border-color: var(--line-strong); color: var(--ink); }
+.theme-toggle--compact {
+  border-color: transparent;
+  justify-content: center;
+  min-height: 2.2rem;
+  min-width: 2.2rem;
+  padding: .35rem;
+  width: auto;
+}
 
 .sidebar-account { align-items: center; color: var(--ink-muted); display: flex; font-size: .75rem; gap: .45rem; padding: 0 .2rem; }
 .sidebar-account span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -427,8 +452,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .build-state > p:not(.eyebrow) { color: var(--ink-muted); font-size: 1.05rem; line-height: 1.65; margin-top: 1.25rem; max-width: 42ch; }
 .build-state-rule { background: var(--accent); border-radius: 999px; height: 3px; margin: 2rem 0 1.15rem; width: 2.5rem; }
 
-.workspace-page { margin: 0 auto; max-width: 76rem; padding: clamp(1.5rem, 3.5vw, 2.75rem); }
-.page-intro { margin-bottom: 1.75rem; max-width: 48rem; }
+.workspace-page { margin: 0 auto; max-width: 78rem; padding: clamp(1.5rem, 3.5vw, 3rem); }
+.page-intro { margin-bottom: 2rem; max-width: 48rem; }
 .page-intro h1 {
   font-size: clamp(1.75rem, 3.5vw, 2.75rem);
   font-weight: 600;
@@ -439,16 +464,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .page-intro > p:not(.eyebrow) { color: var(--ink-muted); font-size: 1rem; line-height: 1.6; margin-top: .8rem; max-width: 62ch; }
 
 /* Header row that pairs the page intro with a single primary action, e.g. "New task". */
-.page-intro.page-intro--with-action { align-items: flex-start; display: flex; gap: 1.25rem; justify-content: space-between; max-width: none; }
+.page-intro.page-intro--with-action { align-items: flex-end; display: flex; gap: 1.5rem; justify-content: space-between; max-width: none; }
 .page-intro--with-action .page-intro-text { max-width: 48rem; }
 .page-intro--with-action .button-base { flex-shrink: 0; }
+.page-actions { align-items: center; display: flex; flex-shrink: 0; gap: .55rem; }
 
 .workspace-section {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
-  margin-top: 1rem;
-  padding: clamp(1rem, 2.5vw, 1.4rem);
+  box-shadow: 0 1px 2px hsl(var(--shadow-color) / .035);
+  margin-top: 1.1rem;
+  padding: clamp(1rem, 2.5vw, 1.5rem);
 }
 .workspace-section h2 { font-size: 1.1rem; font-weight: 600; letter-spacing: -.02em; }
 .workspace-columns { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -481,9 +508,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   gap: 1rem;
   justify-content: space-between;
   padding: .9rem 1rem;
-  transition: border-color .16s ease, box-shadow .16s ease;
+  box-shadow: 0 1px 1px hsl(var(--shadow-color) / .025);
+  transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
 }
-.record-card:hover { border-color: var(--line-strong); }
+.record-card:hover { border-color: var(--line-strong); box-shadow: 0 5px 16px -12px hsl(var(--shadow-color) / .25); }
 .record-card--domain {
   background: color-mix(in srgb, var(--domain-color) 20%, var(--surface));
   border-left: 4px solid var(--domain-color);
@@ -494,7 +522,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .record-copy { color: var(--ink-muted); font-size: .875rem; line-height: 1.55; margin-top: .25rem; max-width: 72ch; }
 .record-meta { color: var(--ink-muted); font-size: .75rem; margin-top: .45rem; }
 .record-actions { align-items: center; display: flex; flex-wrap: wrap; gap: .3rem; justify-content: flex-end; }
-.record-actions .button-base { min-height: 2.1rem; padding: .35rem .6rem; font-size: .8rem; }
+.record-actions .button-base { min-height: 2.35rem; padding: .4rem .65rem; font-size: .8rem; }
 
 .task-menu { position: relative; }
 .task-menu-trigger { min-height: 2.1rem; padding: .35rem .5rem; }
@@ -815,6 +843,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .project-milestones { background: var(--surface-sunken); border-top: 1px solid var(--line); padding: .8rem 1rem; }
 .inline-form { align-items: end; display: flex; gap: .5rem; }
 .inline-form .field-base { min-width: 0; }
+.inline-form .button-base { flex-shrink: 0; white-space: nowrap; }
 
 /* ---------- auth and onboarding ---------- */
 
@@ -1000,10 +1029,22 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .tasks-page-intro { padding-inline: .5rem; }
   .page-intro.page-intro--with-action { flex-direction: column; }
   .page-intro--with-action .button-base { justify-content: center; width: 100%; }
+  .page-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .dialog-backdrop { align-items: flex-end; padding: 0; }
+  .dialog-panel, .dialog-panel--lg {
+    animation: sheet-in .22s var(--ease-out);
+    border-bottom: 0;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    max-height: 92dvh;
+    max-width: none;
+  }
+  .dialog-heading { padding: 1rem; }
+  .dialog-content { padding: 0 1rem calc(1rem + env(safe-area-inset-bottom)); }
   .workspace-columns, .form-grid, .review-fields, .review-group-grid { grid-template-columns: 1fr; }
   .review-actions .review-discard { margin-left: 0; }
   .record-card { flex-direction: column; }
   .record-actions { justify-content: flex-start; }
+  .record-actions .button-base { min-height: 2.75rem; }
   .form-span { grid-column: auto; }
   .inline-form { align-items: stretch; flex-direction: column; }
   .auth-main { padding: 1.5rem 1.25rem; }
@@ -1034,3 +1075,5 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .task-calendar-actions .button-base { font-size: .75rem; padding-inline: .45rem; }
   .task-calendar-day { min-height: 2.9rem; }
 }
+
+@keyframes sheet-in { from { opacity: 0; transform: translateY(2rem); } to { opacity: 1; transform: none; } }

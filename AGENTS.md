@@ -12,6 +12,31 @@ The core promise is:
 
 The initial product is a responsive Next.js website/PWA. Native iOS and Android apps built with Expo are a later phase.
 
+## Founder dogfooding scenario
+
+The founder is Slipwell's first dogfooding user and represents a concrete example of the existing primary customer profile, not a replacement for or expansion of the PRD's beachhead audience.
+
+The founder is a software engineer with a full-time role who also:
+
+- Manages an advertising client with recurring weekly updates, monthly analytics, and ongoing campaign work.
+- Maintains a client website where new work arrives unpredictably as ad hoc requests.
+- Is developing an independent AI consultancy, personal brand, and AI-agent services business.
+- Balances these professional contexts with personal commitments without a team operations function.
+
+Use this scenario when evaluating product behavior, onboarding, demos, and founder-led marketing. It should exercise the full core loop: quickly capture an unstructured commitment, review the proposed structure, connect it to the correct domain, finite project, retainer, person, or note, surface it through Today or search, and use Slipping to protect important work that lacks external urgency.
+
+Preserve these modeling distinctions:
+
+- The full-time job is a domain. Slipwell is the founder's personal execution layer and does not replace the employer's team systems.
+- The advertising engagement is a retainer with recurring cycles, expected reports, one-off work, carry-forward, and history.
+- Website work is a finite project when it has a defined outcome, or an ongoing retainer when it is a continuing maintenance relationship. Do not force every client request into the same model.
+- The AI consultancy is a durable domain containing finite projects such as validating an offer, launching a site, creating a case study, or acquiring the first clients.
+- Routines remain separate from tasks, and calendar data remains read-only context in the MVP.
+
+The central founder problem is context fragmentation: urgent employment and client work can crowd out important business-building work, while recurring and ad hoc commitments arrive across conversations and tools. The intended outcome is not automatic execution or an all-in-one workspace. It is a trusted capture and attention system that reduces mental load, preserves commitments, and shows what needs deliberate attention before it becomes a problem.
+
+Do not generalize the primary audience to all employed professionals, developers, side-project builders, or consumers based on this scenario alone. Founder dogfooding is product evidence, but it does not satisfy the external interview, willingness-to-pay, alpha, retention, or conversion gates in `MVP-BUILD-TRACKER.md`.
+
 ## Read before changing the product
 
 For product or implementation work, read the relevant parts of these files first:

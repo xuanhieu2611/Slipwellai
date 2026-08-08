@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import { useEffect, useId, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 import { CheckCircle, Info, Tray, WarningCircle, X } from "@phosphor-icons/react";
 
 const join = (...classes: Array<string | undefined>) => classes.filter(Boolean).join(" ");
@@ -44,11 +44,16 @@ export function Skeleton({ className }: { className?: string }) {
 
 export function Dialog({ title, children, onClose, size = "md" }: { title: string; children: ReactNode; onClose: () => void; size?: "md" | "lg" }) {
   const panelRef = useRef<HTMLElement>(null);
+  const titleId = useId();
   useEffect(() => {
     const panel = panelRef.current;
     if (!panel) return;
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const focusable = () => Array.from(panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])'));
-    focusable()[0]?.focus();
+    const firstField = panel.querySelector<HTMLElement>('input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])');
+    (firstField ?? focusable()[0])?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
       if (event.key !== "Tab") return;
@@ -65,7 +70,11 @@ export function Dialog({ title, children, onClose, size = "md" }: { title: strin
       }
     };
     panel.addEventListener("keydown", onKeyDown);
-    return () => panel.removeEventListener("keydown", onKeyDown);
+    return () => {
+      panel.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus();
+    };
   }, [onClose]);
-  return <div aria-labelledby="dialog-title" aria-modal="true" className="dialog-backdrop" role="dialog" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}><section ref={panelRef} className={join("dialog-panel", size === "lg" ? "dialog-panel--lg" : undefined)}><div className="flex items-start justify-between gap-4"><h2 id="dialog-title" className="text-xl font-semibold tracking-tight">{title}</h2><Button aria-label="Close dialog" className="button-quiet" onClick={onClose}><X aria-hidden size={16} /></Button></div><div className="mt-5">{children}</div></section></div>;
+  return <div aria-labelledby={titleId} aria-modal="true" className="dialog-backdrop" role="dialog" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}><section ref={panelRef} className={join("dialog-panel", size === "lg" ? "dialog-panel--lg" : undefined)}><div className="dialog-heading"><h2 id={titleId}>{title}</h2><Button aria-label="Close dialog" className="button-quiet dialog-close" onClick={onClose}><X aria-hidden size={18} /></Button></div><div className="dialog-content">{children}</div></section></div>;
 }

@@ -106,12 +106,12 @@ describe("describeDestination", () => {
   });
 
   it("says a name matched nothing instead of implying it was filed", () => {
-    expect(describeDestination(resolveDestination({ personName: "Nobody" }, catalog), catalog)).toBe("Nobody — no match in your records");
+    expect(describeDestination(resolveDestination({ personName: "Nobody" }, catalog), catalog)).toBe("Nobody: no match in your records");
   });
 
   it("explains an empty account differently from a miss", () => {
     const empty: DestinationCatalog = { domains: [], projects: [], people: [] };
-    expect(describeDestination(resolveDestination({ personName: "Dana" }, empty), empty)).toBe("Dana — nothing to file into yet");
+    expect(describeDestination(resolveDestination({ personName: "Dana" }, empty), empty)).toBe("Dana: nothing to file into yet");
   });
 
   it("calls an unrouted record unfiled", () => {

@@ -129,7 +129,7 @@ export function describeDestination(resolved: ResolvedDestination, catalog: Dest
   const unmatched = unmatchedNames(resolved);
   const named = unmatched.project ?? unmatched.person ?? unmatched.domain;
   if (named) return catalog.domains.length + catalog.projects.length + catalog.people.length === 0
-    ? `${named} — nothing to file into yet`
-    : `${named} — no match in your records`;
+    ? `${named}: nothing to file into yet`
+    : `${named}: no match in your records`;
   return "Unfiled";
 }
