@@ -49,6 +49,7 @@
   --r-md: 0.75rem;
   --r-lg: 1.25rem;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -279,8 +280,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   position: fixed;
   z-index: 50;
 }
+/* Modals stay center-origin; popovers elsewhere use trigger-aware origins. */
 .dialog-panel {
-  animation: panel-in .22s var(--ease-out);
+  animation: panel-in .2s var(--ease-out);
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
@@ -289,6 +291,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   max-width: 32rem;
   overflow-y: auto;
   overscroll-behavior: contain;
+  transform-origin: center;
   width: 100%;
 }
 .dialog-panel--lg { max-width: 38rem; }
@@ -639,7 +642,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .task-menu { position: relative; }
 .task-menu-trigger { min-height: 2.1rem; padding: .35rem .5rem; }
 .task-menu-panel {
-  animation: fade-in .12s ease-out;
+  animation: menu-in .15s var(--ease-out);
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
@@ -651,12 +654,24 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   position: absolute;
   right: 0;
   top: calc(100% + .3rem);
+  transform-origin: top right;
   z-index: 20;
 }
-.task-menu-item { border-radius: var(--r-sm); color: var(--ink); font-size: .85rem; font-weight: 500; padding: .5rem .6rem; text-align: left; }
-.task-menu-item:hover { background: var(--surface-soft); }
+.task-menu-item {
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  font-size: .85rem;
+  font-weight: 500;
+  padding: .5rem .6rem;
+  text-align: left;
+  transition: background-color .14s ease, transform .12s var(--ease-out);
+}
+.task-menu-item:active { transform: scale(.97); }
 .task-menu-item--danger { color: var(--danger); }
-.task-menu-item--danger:hover { background: var(--danger-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .task-menu-item:hover { background: var(--surface-soft); }
+  .task-menu-item--danger:hover { background: var(--danger-soft); }
+}
 
 .compact-row {
   align-items: center;
@@ -1061,9 +1076,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 @keyframes shimmer { to { background-position: -200% 0; } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes panel-in { from { opacity: 0; transform: translateY(6px) scale(.99); } to { opacity: 1; transform: none; } }
+/* Start from a visible scale, never scale(0) - nothing in the real world appears from nothing. */
+@keyframes panel-in { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes menu-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
 @keyframes rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes drop-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+@keyframes sheet-in { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -1221,5 +1239,3 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .task-calendar-actions .button-base { font-size: .75rem; padding-inline: .45rem; }
   .task-calendar-day { min-height: 2.9rem; }
 }
-
-@keyframes sheet-in { from { opacity: 0; transform: translateY(2rem); } to { opacity: 1; transform: none; } }
