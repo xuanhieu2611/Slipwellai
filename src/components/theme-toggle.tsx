@@ -35,7 +35,7 @@ function getSnapshot(): Theme {
 // The server cannot know the viewer's preference; light matches the CSS default.
 const getServerSnapshot = (): Theme => "light";
 
-export function ThemeToggle() {
+export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const next: Theme = theme === "dark" ? "light" : "dark";
 
@@ -52,12 +52,12 @@ export function ThemeToggle() {
   return (
     <button
       aria-label={`Switch to ${next} mode`}
-      className="theme-toggle"
+      className={compact ? "theme-toggle theme-toggle--compact" : "theme-toggle"}
       onClick={toggle}
       type="button"
     >
       {theme === "dark" ? <Sun aria-hidden size={16} /> : <Moon aria-hidden size={16} />}
-      <span>{next === "dark" ? "Dark mode" : "Light mode"}</span>
+      <span className={compact ? "sr-only" : undefined}>{next === "dark" ? "Dark mode" : "Light mode"}</span>
     </button>
   );
 }

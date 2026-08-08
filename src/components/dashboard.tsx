@@ -49,7 +49,7 @@ function CaptureAge({ iso }: { iso: string }) {
 const failureCopy: Record<string, string> = {
   proposal_timeout: "Interpreting this capture took too long. Try again, or discard it if you no longer need it.",
   proposal_invalid_output: "Slipwell could not read a usable record out of these words. Try again, or discard this and capture it with a little more context.",
-  proposal_provider_error: "The interpretation service did not respond. Your words are saved — try again in a moment.",
+  proposal_provider_error: "The interpretation service did not respond. Your words are saved. Try again in a moment.",
 };
 
 const recordTypeLabels = { task: "Task", note: "Note", retainer_update: "Retainer update" } as const;
@@ -211,7 +211,7 @@ function DateFields({
     {!draft.date && options.length > 0 && <div className="mt-3 flex flex-wrap gap-2">
       {options.map((option) => <Button className="button-secondary" key={option} onClick={() => onChange({ date: option })}>Use {formatDateLabel(option, today)}</Button>)}
     </div>}
-    {!draft.date && draft.recordType === "task" && <p className="form-help">Filing without a date is fine — it stays in your task list and out of Today.</p>}
+    {!draft.date && draft.recordType === "task" && <p className="form-help">Filing without a date is fine. It stays in your task list and out of Today.</p>}
   </fieldset>;
 }
 
@@ -294,7 +294,7 @@ function PendingCapture({ capture, catalog, done }: { capture: DashboardData["ca
     <div className="review-panel">
       <p className="review-reason">
         {stranded
-          ? "Your words are stored. Interpretation did not finish — most likely the tab closed or the connection dropped. Nothing was lost."
+          ? "Your words are stored. Interpretation did not finish, most likely because the tab closed or the connection dropped. Nothing was lost."
           : "Stored. Slipwell is reading it now; refresh in a moment to review it."}
       </p>
     </div>
@@ -506,7 +506,7 @@ export function Dashboard({ data }: { data: DashboardData }) {
     <header className="page-intro">
       <p className="eyebrow">Inbox</p>
       <h1>Capture it now, decide in one pass.</h1>
-      <p>Slipwell keeps your original words and proposes where each one belongs. Accept it, edit it, or discard it — nothing files itself.</p>
+      <p>Slipwell keeps your original words and proposes where each one belongs. Accept it, edit it, or discard it. Nothing files itself.</p>
     </header>
 
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">

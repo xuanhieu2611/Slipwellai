@@ -345,7 +345,7 @@ export function resolveProposalDate(item: ProposedDateInput, today: string): Res
       status: "unconfirmed",
       kind,
       options: [proposed],
-      note: `Slipwell could not check “${phrase}” on its own. ${formatDateLabel(proposed, today)} is a suggestion — confirm it before filing.`,
+      note: `Slipwell could not check “${phrase}” on its own. ${formatDateLabel(proposed, today)} is a suggestion. Confirm it before filing.`,
     };
   }
 
