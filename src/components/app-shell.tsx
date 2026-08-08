@@ -80,7 +80,7 @@ function AppShellFrame({ children, email }: { children: React.ReactNode; email: 
         <a className="skip-link" href="#main-content">Skip to content</a>
 
         <aside className="app-sidebar">
-          <Link className="brand-mark" href="/inbox">
+          <Link className="brand-mark" href="/today">
             <Waves aria-hidden size={22} weight="bold" />
             Slipwell
           </Link>
@@ -128,7 +128,7 @@ function AppShellFrame({ children, email }: { children: React.ReactNode; email: 
         </aside>
 
         <header className="app-mobile-header">
-          <Link className="brand-mark" href="/inbox">
+          <Link className="brand-mark" href="/today">
             <Waves aria-hidden size={20} weight="bold" />
             Slipwell
           </Link>

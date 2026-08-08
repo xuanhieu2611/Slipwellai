@@ -8,6 +8,6 @@ export default async function OnboardingPage() {
   const { supabase, user } = await requireUser();
   if (!user) redirect("/");
   const state = await getOnboardingState(createSupabaseOnboardingRepository(supabase), user.id);
-  if (state.completed) redirect("/inbox");
+  if (state.completed) redirect("/today");
   return <Onboarding initialState={state} />;
 }

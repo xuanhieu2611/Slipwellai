@@ -23,8 +23,8 @@ export function BuildStatePage({ surface }: { surface: string }) {
       <p>{content.description}</p>
       <div className="build-state-rule" />
       <p className="text-sm text-[var(--ink-muted)]">Your current pilot capture and review workspace remains available in Inbox.</p>
-      <Link className="button-base button-primary mt-6 inline-flex" href="/inbox">
-        Go to Inbox
+      <Link className="button-base button-primary mt-6 inline-flex" href="/today">
+        Go to Today
         <ArrowRight aria-hidden size={16} weight="bold" />
       </Link>
     </section>

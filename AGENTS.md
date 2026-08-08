@@ -381,7 +381,24 @@ Run the smallest relevant checks during iteration and the complete required suit
 
 `npm run dev` points at a real hosted Supabase project (see `.env.local`), not a local instance. Email/password sign-up requires confirming a magic link, which blocks non-interactive testing; email confirmation has been turned off for this project so password sign-up works immediately.
 
-A standing test account exists for manual QA and Playwright/E2E-style checks: `test@test.com` / `testtest`. Use it to sign in at `http://localhost:3000` rather than creating new throwaway accounts.
+**Always use the standing test account: `test@test.com` / `testtest`.** It already exists, has already completed onboarding, and lands on `/today`. Sign in with it at `http://localhost:3000` for every manual or agent-driven check. Do not create a new throwaway account and do not run the sign-up/onboarding flow just to reach a testable state — that wastes an entire flow's worth of steps for no reason when a logged-in account is one form submission away. This account and its password are intentionally committed for testing convenience; it will be deleted (and this note removed) before public launch.
+
+When a task needs verifying in a real browser (any UI change, any change to routing, auth, or a user-facing flow), drive it yourself rather than describing what should happen:
+
+1. Start the dev server in the background and poll for it, never `sleep`-and-hope:
+   ```bash
+   npm run dev &
+   until curl -sf http://localhost:3000 >/dev/null; do sleep 1; done
+   ```
+2. **Tool choice, in this order of preference:**
+   - **`chromium-cli`** (a headless-Chromium REPL), if it is available in the current environment (`which chromium-cli`). Pipe a script to it: `nav` → `wait-for` → act (`click`/`fill`/`press`) → `screenshot` → `console --errors`.
+   - Otherwise, **write a plain Node script using the `playwright` package** (already a project dependency, browsers are pre-cached) and run it with `node script.mjs` from the repo root, via Bash. Sign in with the standing test account first, then drive the flow, taking screenshots at meaningful steps and logging `page.on("console")`/`page.on("pageerror")` output.
+   - **Do not use a Playwright MCP server for this.** It round-trips a full page/accessibility-tree snapshot back into the model's context on every single action (click, fill, nav), which burns tokens fast for no benefit over a script. A hand-written script has the same runtime cost but you only pay in tokens for what you explicitly log or screenshot.
+3. Check `console`/`pageerror` output before declaring anything fixed — a page can render its shell while an underlying request silently fails.
+4. For a change that matters (auth redirects, a real user-visible flow), verify against a **production build** (`npm run build && npm run start`) at least once, not only `npm run dev`. Next.js dev mode runs React Strict Mode's double-render behavior, which can produce console warnings (e.g., hydration mismatches from libraries with module-level ID counters) that never occur in the actual shipped build. Don't chase a warning as a real bug without first checking whether it survives a production build.
+5. Kill the dev/prod server (`lsof -ti:3000 -sTCP:LISTEN | xargs -r kill`) and delete any scratch driver scripts you wrote before finishing — they are not part of the deliverable.
+
+If a check needs setting up more than once (a recurring driver script, a multi-step flow), save it as a project skill instead of rewriting it from scratch next time.
 
 ## Analytics rules
 
