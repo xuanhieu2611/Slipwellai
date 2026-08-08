@@ -126,6 +126,27 @@ export function isTaskOnDay(task: Pick<WorkspaceData["tasks"][number], "due_on" 
   return task.due_on === day || task.scheduled_for === day;
 }
 
+export function taskPlanningDate(task: Pick<WorkspaceData["tasks"][number], "due_on" | "scheduled_for" | "deferred_until">) {
+  return task.deferred_until ?? task.due_on ?? task.scheduled_for;
+}
+
+function calendarDate(year: number, month: number, day: number) {
+  return new Date(Date.UTC(year, month - 1, day)).toISOString().slice(0, 10);
+}
+
+/** Returns a stable six-week, Monday-first calendar grid for the month containing `day`. */
+export function calendarMonthGrid(day: string) {
+  const [year, month] = day.split("-").map(Number);
+  const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+  const daysBeforeMonth = (firstWeekday + 6) % 7;
+  return Array.from({ length: 42 }, (_, index) => calendarDate(year, month, index - daysBeforeMonth + 1));
+}
+
+export function shiftCalendarMonth(day: string, amount: number) {
+  const [year, month] = day.split("-").map(Number);
+  return calendarDate(year, month + amount, 1);
+}
+
 export function recurrenceLabel(task: Pick<WorkspaceData["tasks"][number], "recurrence_rule" | "recurrence_interval" | "recurrence_unit">) {
   if (!task.recurrence_rule) return null;
   if (task.recurrence_rule === "custom") return `Every ${task.recurrence_interval} ${task.recurrence_unit}`;

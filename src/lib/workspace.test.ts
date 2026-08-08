@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activityEventLabel, isTaskOnDay, taskDateLabel, workspaceCommandSchema } from "@/lib/workspace";
+import { activityEventLabel, calendarMonthGrid, isTaskOnDay, shiftCalendarMonth, taskDateLabel, taskPlanningDate, workspaceCommandSchema } from "@/lib/workspace";
 
 describe("working-prototype workspace commands", () => {
   it("accepts a small manual task and rejects unsafe priorities", () => {
@@ -74,6 +74,22 @@ describe("working-prototype workspace commands", () => {
     expect(isTaskOnDay({ due_on: "2026-08-06", scheduled_for: null, deferred_until: "2026-08-10" }, "2026-08-10")).toBe(true);
     expect(isTaskOnDay({ due_on: "2026-08-06", scheduled_for: null, deferred_until: null }, "2026-08-06")).toBe(true);
     expect(isTaskOnDay({ due_on: null, scheduled_for: null, deferred_until: null }, "2026-08-06")).toBe(false);
+  });
+
+  it("uses the same planning-date priority for calendar placement and labels", () => {
+    expect(taskPlanningDate({ due_on: "2026-08-06", scheduled_for: "2026-08-05", deferred_until: "2026-08-10" })).toBe("2026-08-10");
+    expect(taskPlanningDate({ due_on: "2026-08-06", scheduled_for: "2026-08-05", deferred_until: null })).toBe("2026-08-06");
+    expect(taskPlanningDate({ due_on: null, scheduled_for: "2026-08-05", deferred_until: null })).toBe("2026-08-05");
+    expect(taskPlanningDate({ due_on: null, scheduled_for: null, deferred_until: null })).toBeNull();
+  });
+
+  it("builds a Monday-first six-week month grid and crosses year boundaries", () => {
+    const august = calendarMonthGrid("2026-08-17");
+    expect(august).toHaveLength(42);
+    expect(august[0]).toBe("2026-07-27");
+    expect(august[41]).toBe("2026-09-06");
+    expect(shiftCalendarMonth("2026-12-18", 1)).toBe("2027-01-01");
+    expect(shiftCalendarMonth("2026-01-18", -1)).toBe("2025-12-01");
   });
 
   it("accepts cancel, delete, and restore commands for a valid task id and rejects a bad one", () => {
