@@ -1,7 +1,7 @@
 "use client";
 
 import { type CSSProperties, useState } from "react";
-import { ArrowCounterClockwise, CaretLeft, CaretRight } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, CaretLeft, CaretRight, Check } from "@phosphor-icons/react";
 import { calendarWeekDays, calendarWeekStart, shiftCalendarWeek, taskPlanningDate, type WorkspaceData } from "@/lib/workspace";
 import { useToast } from "@/components/ui/toast";
 import { Dialog } from "@/components/ui/primitives";
@@ -11,19 +11,46 @@ import { calendarLabel } from "@/components/workspace/tasks/task-planner";
 
 export function TaskWeekRow({ task, data, onCommand, onEdit }: { task: WorkspaceData["tasks"][number]; data: WorkspaceData; onCommand: WorkspaceCommandFn; onEdit: () => void }) {
   const notify = useToast();
+  const [confirming, setConfirming] = useState(false);
   const domain = task.domain_id ? data.domains.find((item) => item.id === task.domain_id) : undefined;
   const isOpen = task.status === "open" && !task.archived_at;
   async function toggle() {
+    if (confirming) return;
+    if (isOpen) setConfirming(true);
     try {
       await onCommand({ action: isOpen ? "complete_task" : "reopen_task", taskId: task.id });
       notify(isOpen ? "Task completed." : "Task reopened.", "success");
-    } catch (error) { notify(error instanceof Error ? error.message : "Could not update that task.", "error"); }
+    } catch (error) {
+      setConfirming(false);
+      notify(error instanceof Error ? error.message : "Could not update that task.", "error");
+    }
   }
   const isHighPriority = task.priority === 3 && isOpen;
-  return <div className={`task-week-task${domain ? " task-week-task--domain" : ""}${!isOpen ? " is-done" : ""}${isHighPriority ? " is-high" : ""}`} style={domain ? ({ "--domain-color": domain.color } as CSSProperties) : undefined} title={isHighPriority ? "High priority" : undefined}>
-    <button className="task-week-task-toggle" type="button" aria-label={isOpen ? `Complete ${task.title}` : `Reopen ${task.title}`} onClick={toggle}>{isOpen ? <span className="task-week-task-dot" /> : <ArrowCounterClockwise aria-hidden size={11} weight="bold" />}</button>
-    <button className="task-week-task-title" type="button" onClick={onEdit}>{task.title}</button>
-  </div>;
+  return (
+    <div
+      className={`task-week-task${domain ? " task-week-task--domain" : ""}${!isOpen || confirming ? " is-done" : ""}${isHighPriority ? " is-high" : ""}${confirming ? " is-confirming" : ""}`}
+      style={domain ? ({ "--domain-color": domain.color } as CSSProperties) : undefined}
+      title={isHighPriority ? "High priority" : undefined}
+    >
+      <button
+        className={`task-week-task-toggle${confirming ? " is-confirming" : ""}`}
+        type="button"
+        aria-label={isOpen ? `Complete ${task.title}` : `Reopen ${task.title}`}
+        onClick={toggle}
+      >
+        {confirming ? (
+          <Check aria-hidden className="task-complete-check" size={11} weight="bold" />
+        ) : isOpen ? (
+          <span className="task-week-task-dot" />
+        ) : (
+          <ArrowCounterClockwise aria-hidden size={11} weight="bold" />
+        )}
+      </button>
+      <button className="task-week-task-title" type="button" onClick={onEdit}>
+        {task.title}
+      </button>
+    </div>
+  );
 }
 
 /** A seven-day agenda so a full week's dated work is visible at a glance, instead of one day at a time. */

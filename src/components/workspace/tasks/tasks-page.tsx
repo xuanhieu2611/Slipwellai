@@ -37,7 +37,8 @@ export function TasksPage({ data }: { data: TasksPageData }) {
       </Dialog>
       <section className="workspace-section tasks-workspace">
         <div className="tasks-toolbar">
-          <div className="task-view-switch" role="group" aria-label="Task view">
+          <div className="task-view-switch" data-active={taskView} role="group" aria-label="Task view">
+            <span className="task-view-switch-pill" aria-hidden />
             <button className={taskView === "planner" ? "is-active" : undefined} type="button" aria-pressed={taskView === "planner"} onClick={() => setTaskView("planner")}>
               <CalendarBlank aria-hidden size={17} weight="bold" />
               Planner

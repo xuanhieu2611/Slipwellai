@@ -35,52 +35,18 @@ Implement in this order. Each item must pass the Emil frequency + purpose gate b
 
 ### P0 - Highest leverage
 
-1. **View switcher morph (Tasks: Planner / Week / List)**  
-   - Files: `src/components/workspace/tasks/tasks-page.tsx`, `.task-view-switch` in `globals.css`  
-   - Purpose: state indication  
-   - Technique: Emil clip-path duplicate-tab morph, or a sliding pill with `transform` only  
-   - Tool: CSS (preferred). Motion only if layout measurement is required.
-
-2. **Task complete / reopen feedback**  
-   - Files: `task-card.tsx`, `task-week-view.tsx`, Today board complete controls  
-   - Purpose: feedback  
-   - Technique: brief check-icon scale + opacity (120–160ms ease-out); optional soft strike-through via opacity, not layout thrash  
-   - Avoid animating the whole list reflow.
-
-3. **Today Top Three drag settle**  
-   - Files: `today-board.tsx` (already `@dnd-kit`)  
-   - Purpose: spatial consistency after drop  
-   - Tool: keep dnd-kit; optionally add **motion** layout animation only for the priority list reorder settle  
-   - Keep drag itself snappy; no ornamental spring on every pointer move.
-
-4. **Overview counts (Open / Today / Past / Unscheduled)**  
-   - Files: `task-overview.tsx`  
-   - Purpose: state indication when filters change  
-   - Library: **NumberFlow** (`pick-ui-library`)  
-   - Only animate when the number actually changes; skip if reduced motion.
+1. **View switcher morph (Tasks: Planner / Week / List)** — done (sliding pill, CSS transform)
+2. **Task complete / reopen feedback** — done (check pop + soft title opacity; week-row strike)
+3. **Today Top Three drag settle** — done (dnd-kit settle with `--ease-in-out`; no `motion` install)
+4. **Overview counts (Open / Today / Past / Unscheduled)** — done (`@number-flow/react`, respects reduced motion)
 
 ### P1 - Premium polish
 
-5. **Page section enter (Today, Tasks, Work)**  
-   - Soft opacity + `translateY(6–8px)` on `.page-intro` / first section only  
-   - Once per navigation, ~200ms, stagger children 30–50ms max 3 items  
-   - Do not stagger long record lists (noise).
-
-6. **Record card presence for filtered lists**  
-   - When filter results change, animate newly appearing cards only (opacity + small Y), max short stagger  
-   - If the list is long (>20), skip stagger entirely.
-
-7. **Nav current indicator**  
-   - Sidebar / mobile nav: morph highlight between items with `transform` (not width animation of text)  
-   - Frequency is high - keep motion near-imperceptible (≤150ms).
-
-8. **Empty states**  
-   - `.empty-state` fade/rise once when a section goes empty  
-   - Purpose: prevent jarring disappearance of content.
-
-9. **Slipping signal cards**  
-   - Gentle enter when signals appear after refresh  
-   - No repeating pulse that feels like an alarm (shame-adjacent).
+5. **Page section enter (Today, Tasks, Work)** — rejected (tens/day nav; chrome rise is noise)
+6. **Record card presence for filtered lists** — parked (list noise risk; skip until filter UX needs it)
+7. **Nav current indicator** — partial (140ms color/background ease only; full morph rejected — nav is high-frequency)
+8. **Empty states** — rejected (common on Today; remounts replay motion; multi-empty pile-up)
+9. **Slipping signal cards** — done (`@starting-style` opacity + small Y; reduced-motion keeps opacity only)
 
 ### P2 - Only if P0/P1 feel settled
 

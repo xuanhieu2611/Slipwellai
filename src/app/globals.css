@@ -414,10 +414,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   min-height: 2.4rem;
   padding: .5rem .6rem;
   text-decoration: none;
-  transition: background-color .16s ease, color .16s ease;
+  transition: background-color .14s ease, color .14s ease;
 }
 .app-nav-link svg { color: currentColor; flex-shrink: 0; }
-.app-nav-link:hover { background: var(--surface-soft); color: var(--ink); }
 .app-nav-link.is-current { background: var(--accent-soft); color: var(--accent-ink); font-weight: 650; }
 
 .app-mobile-header-links { display: flex; gap: .15rem; }
@@ -770,27 +769,47 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   z-index: 10;
 }
 .task-view-switch {
-  align-items: center;
+  align-items: stretch;
   background: var(--surface-sunken);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   padding: .2rem;
+  position: relative;
 }
+.task-view-switch-pill {
+  background: var(--surface);
+  border-radius: calc(var(--r-md) - .2rem);
+  box-shadow: 0 1px 3px hsl(var(--shadow-color) / .12);
+  inset-block: .2rem;
+  inset-inline-start: .2rem;
+  pointer-events: none;
+  position: absolute;
+  transition: transform .2s var(--ease-in-out);
+  width: calc((100% - .4rem) / 3);
+  z-index: 0;
+}
+.task-view-switch[data-active="week"] .task-view-switch-pill { transform: translateX(100%); }
+.task-view-switch[data-active="list"] .task-view-switch-pill { transform: translateX(200%); }
 .task-view-switch button {
   align-items: center;
+  background: transparent;
   border-radius: calc(var(--r-md) - .2rem);
   color: var(--ink-muted);
   display: inline-flex;
   font-size: .82rem;
   font-weight: 600;
   gap: .4rem;
+  justify-content: center;
   min-height: 2.25rem;
   padding: .4rem .7rem;
-  transition: background-color .16s ease, color .16s ease, transform .12s ease, box-shadow .16s ease;
+  position: relative;
+  transition: color .16s ease, transform .12s var(--ease-out);
+  z-index: 1;
 }
 .task-view-switch button:active { transform: scale(.98); }
-.task-view-switch button.is-active { background: var(--surface); box-shadow: 0 1px 3px hsl(var(--shadow-color) / .12); color: var(--ink); }
+.task-view-switch button.is-active { color: var(--ink); }
 .tasks-new-task { box-shadow: 0 5px 14px hsl(var(--shadow-color) / .18); min-height: 2.75rem; }
 
 .task-overview {
@@ -895,10 +914,25 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .task-week-task--domain { border-left: 3px solid var(--domain-color); }
 .task-week-task.is-high { background: var(--attention-soft); }
 .task-week-task.is-high .task-week-task-dot { border-color: var(--attention); }
-.task-week-task.is-done .task-week-task-title { color: var(--ink-muted); text-decoration: line-through; }
-.task-week-task-toggle { align-items: center; border-radius: 999px; color: var(--ink-muted); display: inline-flex; flex-shrink: 0; height: 1.1rem; justify-content: center; margin-top: .12rem; width: 1.1rem; }
+.task-week-task.is-done .task-week-task-title {
+  color: var(--ink-muted);
+  opacity: .72;
+  text-decoration: line-through;
+  transition: opacity .14s var(--ease-out), color .14s ease;
+}
+.task-week-task-toggle {
+  align-items: center;
+  border-radius: 999px;
+  color: var(--ink-muted);
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 1.1rem;
+  justify-content: center;
+  margin-top: .12rem;
+  width: 1.1rem;
+}
 .task-week-task-dot { background: none; border: 1.5px solid var(--line-strong); border-radius: 999px; display: block; height: .7rem; width: .7rem; }
-.task-week-task-toggle:hover .task-week-task-dot { border-color: var(--accent); }
+.task-week-task-toggle.is-confirming { color: var(--accent); }
 .task-week-task-title { color: var(--ink); flex: 1; font-size: .78rem; font-weight: 550; line-height: 1.35; min-width: 0; overflow-wrap: break-word; text-align: left; }
 
 /* Filters read as a row of compact chips instead of a stacked form, so browsing
@@ -1168,9 +1202,36 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* Start from a visible scale, never scale(0) - nothing in the real world appears from nothing. */
 @keyframes panel-in { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: none; } }
 @keyframes menu-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
-@keyframes rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes rise-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes drop-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
 @keyframes sheet-in { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: none; } }
+
+/* Interruptible enter: transitions retarget; keyframes restart from zero. */
+.task-complete-check {
+  opacity: 1;
+  transform: none;
+  transition: opacity .14s var(--ease-out), transform .14s var(--ease-out);
+  @starting-style {
+    opacity: 0;
+    transform: scale(.9);
+  }
+}
+.button-base.is-task-confirming {
+  gap: .35rem;
+}
+.record-card.is-completing h3 {
+  opacity: .72;
+  transition: opacity .14s var(--ease-out);
+}
+.slipping-signal-enter {
+  opacity: 1;
+  transform: none;
+  transition: opacity .2s var(--ease-out), transform .2s var(--ease-out);
+  @starting-style {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -1178,6 +1239,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: .01ms !important;
+  }
+  .task-view-switch-pill { transition: none; }
+  /* Gentler, not zero: keep opacity comprehension, drop movement. */
+  .task-complete-check,
+  .slipping-signal-enter {
+    transform: none !important;
+    transition-duration: .15s !important;
+    transition-property: opacity !important;
+  }
+  .task-complete-check,
+  .slipping-signal-enter {
+    @starting-style {
+      opacity: 0;
+      transform: none;
+    }
   }
 }
 
@@ -1194,7 +1270,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 
 @media (hover: hover) and (pointer: fine) {
+  .app-nav-link:hover { background: var(--surface-soft); color: var(--ink); }
   .task-view-switch button:hover { color: var(--ink); }
+  .task-week-task-toggle:hover .task-week-task-dot { border-color: var(--accent); }
   .task-calendar-day:hover:not(.is-selected) { background: var(--surface-soft); }
   .task-unscheduled summary:hover { background: var(--surface-soft); }
 }
