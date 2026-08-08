@@ -59,6 +59,10 @@ export function TaskWeekView({ tasks, onCommand, today, data }: { tasks: Workspa
         </div>
       </div>;
     })}</div>
-    {editingTask && <Dialog title="Edit task" size="lg" onClose={() => setEditingId(null)}><TaskEditForm task={editingTask} data={data} onCommand={onCommand} onDone={() => setEditingId(null)} /></Dialog>}
+    {editingTask ? (
+      <Dialog open title="Edit task" size="lg" onClose={() => setEditingId(null)}>
+        <TaskEditForm task={editingTask} data={data} onCommand={onCommand} onDone={() => setEditingId(null)} />
+      </Dialog>
+    ) : null}
   </section>;
 }

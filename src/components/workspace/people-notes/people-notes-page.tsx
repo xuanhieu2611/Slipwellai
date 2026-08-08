@@ -35,8 +35,8 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
           </button>
         </div>
       </header>
-      {createDialog === "person" && (
-        <Dialog title="New person" onClose={() => setCreateDialog(null)}>
+      <Dialog open={createDialog === "person"} title="New person" onClose={() => setCreateDialog(null)}>
+        {createDialog === "person" ? (
           <form className="form-grid" onSubmit={(event) => submit(event, "create_person", { name: "name", context: "context", domainId: "domainId" }, "Person added.", () => setCreateDialog(null))}>
             <label className="field-label form-span">
               <span>Name</span>
@@ -49,10 +49,10 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
             <DomainSelect domains={data.domains} />
             <button className="button-base button-primary form-submit">Add person</button>
           </form>
-        </Dialog>
-      )}
-      {createDialog === "note" && (
-        <Dialog title="New note" size="lg" onClose={() => setCreateDialog(null)}>
+        ) : null}
+      </Dialog>
+      <Dialog open={createDialog === "note"} title="New note" size="lg" onClose={() => setCreateDialog(null)}>
+        {createDialog === "note" ? (
           <form className="form-grid" onSubmit={(event) => submit(event, "create_note", { title: "title", body: "body", domainId: "domainId", projectId: "projectId", personId: "personId", reviewOn: "reviewOn" }, "Note saved.", () => setCreateDialog(null))}>
             <label className="field-label form-span">
               <span>Title</span>
@@ -91,8 +91,8 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
             </label>
             <button className="button-base button-primary form-submit">Save note</button>
           </form>
-        </Dialog>
-      )}
+        ) : null}
+      </Dialog>
       <div className="workspace-columns">
         <section className="workspace-section">
           <div className="section-heading">

@@ -30,11 +30,9 @@ export function RetainersPage({ data }: { data: RetainersPageData }) {
           New retainer
         </button>
       </header>
-      {createOpen && (
-        <Dialog title="New retainer" size="lg" onClose={() => setCreateOpen(false)}>
-          <NewRetainerForm data={fullData} onCommand={command} onDone={() => setCreateOpen(false)} />
-        </Dialog>
-      )}
+      <Dialog open={createOpen} title="New retainer" size="lg" onClose={() => setCreateOpen(false)}>
+        {createOpen ? <NewRetainerForm data={fullData} onCommand={command} onDone={() => setCreateOpen(false)} /> : null}
+      </Dialog>
       <section className="workspace-section">
         <div className="section-heading">
           <div>

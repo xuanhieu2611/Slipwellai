@@ -1,62 +1,26 @@
 "use client";
 
+import { useTheme } from "next-themes";
 import { useSyncExternalStore } from "react";
 import { Moon, Sun } from "@phosphor-icons/react";
 
-type Theme = "light" | "dark";
-
-const STORAGE_KEY = "slipwell-theme";
-const CHANGE_EVENT = "slipwell-theme-change";
-
-function darkQuery() {
-  return window.matchMedia("(prefers-color-scheme: dark)");
-}
-
-/* The active theme lives on the document and in localStorage, so it is read as
-   external state rather than mirrored into React state. */
-function subscribe(onChange: () => void) {
-  const media = darkQuery();
-  media.addEventListener("change", onChange);
-  window.addEventListener("storage", onChange);
-  window.addEventListener(CHANGE_EVENT, onChange);
-  return () => {
-    media.removeEventListener("change", onChange);
-    window.removeEventListener("storage", onChange);
-    window.removeEventListener(CHANGE_EVENT, onChange);
-  };
-}
-
-function getSnapshot(): Theme {
-  const override = document.documentElement.dataset.theme;
-  if (override === "light" || override === "dark") return override;
-  return darkQuery().matches ? "dark" : "light";
-}
-
-// The server cannot know the viewer's preference; light matches the CSS default.
-const getServerSnapshot = (): Theme => "light";
+const emptySubscribe = () => () => undefined;
 
 export function ThemeToggle({ compact = false }: { compact?: boolean }) {
-  const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const next: Theme = theme === "dark" ? "light" : "dark";
-
-  function toggle() {
-    document.documentElement.dataset.theme = next;
-    try {
-      localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      // Private browsing can reject writes. The in-session theme still applies.
-    }
-    window.dispatchEvent(new Event(CHANGE_EVENT));
-  }
+  const { resolvedTheme, setTheme } = useTheme();
+  /* Avoid mismatched icon markup between SSR (unknown theme) and the client. */
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
+  const isDark = mounted && resolvedTheme === "dark";
+  const next = isDark ? "light" : "dark";
 
   return (
     <button
       aria-label={`Switch to ${next} mode`}
       className={compact ? "theme-toggle theme-toggle--compact" : "theme-toggle"}
-      onClick={toggle}
+      onClick={() => setTheme(next)}
       type="button"
     >
-      {theme === "dark" ? <Sun aria-hidden size={16} /> : <Moon aria-hidden size={16} />}
+      {isDark ? <Sun aria-hidden size={16} /> : <Moon aria-hidden size={16} />}
       <span className={compact ? "sr-only" : undefined}>{next === "dark" ? "Dark mode" : "Light mode"}</span>
     </button>
   );

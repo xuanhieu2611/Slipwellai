@@ -1,20 +1,32 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Menu } from "@base-ui/react/menu";
 import { DotsThreeVertical } from "@phosphor-icons/react";
+import clsx from "clsx";
 
 export type MenuAction = { label: string; onClick: () => void; tone?: "danger" };
 
 export function ActionsMenu({ actions }: { actions: MenuAction[] }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    function onPointerDown(event: PointerEvent) { if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false); }
-    function onKeyDown(event: KeyboardEvent) { if (event.key === "Escape") setOpen(false); }
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => { document.removeEventListener("pointerdown", onPointerDown); document.removeEventListener("keydown", onKeyDown); };
-  }, [open]);
-  return <div className="task-menu" ref={ref}><button className="button-base button-quiet task-menu-trigger" type="button" aria-label="More actions" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}><DotsThreeVertical aria-hidden size={18} weight="bold" /></button>{open && <div className="task-menu-panel" role="menu">{actions.map((action) => <button className={action.tone === "danger" ? "task-menu-item task-menu-item--danger" : "task-menu-item"} key={action.label} role="menuitem" type="button" onClick={() => { setOpen(false); action.onClick(); }}>{action.label}</button>)}</div>}</div>;
+  return (
+    <Menu.Root>
+      <Menu.Trigger aria-label="More actions" className="button-base button-quiet task-menu-trigger">
+        <DotsThreeVertical aria-hidden size={18} weight="bold" />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner align="end" className="task-menu-positioner" side="bottom" sideOffset={6}>
+          <Menu.Popup className="task-menu-panel">
+            {actions.map((action) => (
+              <Menu.Item
+                className={clsx("task-menu-item", action.tone === "danger" && "task-menu-item--danger")}
+                key={action.label}
+                onClick={action.onClick}
+              >
+                {action.label}
+              </Menu.Item>
+            ))}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  );
 }
