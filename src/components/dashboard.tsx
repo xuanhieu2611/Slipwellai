@@ -382,15 +382,15 @@ function ProposedItem({
       <h4>{total > 1 ? `Record ${index + 1} of ${total}` : "Slipwell suggests filing this"}</h4>
       <span className="review-tags">
         <span className="tag tag--accent">{recordTypeLabels[item.recordType]}</span>
-        {confidenceChip("Type", item.confidence.recordType)}
-        {confidenceChip("Title", item.confidence.title)}
-        {item.destination && confidenceChip("Destination", item.confidence.destination)}
+        {confidenceChip("Type", item.confidence?.recordType)}
+        {confidenceChip("Title", item.confidence?.title)}
+        {item.destination && confidenceChip("Destination", item.confidence?.destination)}
         {/* The model's own date confidence is only worth showing while it still stands.
             Once the resolver has declined to settle the date, its verdict is the honest
             one — "100% sure" beside "Date to confirm" would read as a contradiction. */}
         {resolvedDate.status === "unconfirmed"
           ? !draft.date && <span className="tag tag--attention">Date to confirm</span>
-          : (item.datePhrase || item.date) && confidenceChip("Date", item.confidence.date)}
+          : (item.datePhrase || item.date) && confidenceChip("Date", item.confidence?.date)}
       </span>
     </div>
     <p className="review-reason">{item.reason}</p>

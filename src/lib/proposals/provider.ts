@@ -104,7 +104,12 @@ export class OpenRouterProposalProvider implements ProposalProvider {
         throw new ProposalProviderError("proposal_invalid_output", "OpenRouter response was not valid JSON.");
       }
       const parsed = currentProposalEnvelopeSchema.safeParse(parsedJson);
-      if (!parsed.success) throw new ProposalProviderError("proposal_invalid_output", "OpenRouter response did not match the proposal schema.");
+      if (!parsed.success) {
+        // Field paths and error codes only - never the offending values, which can echo capture text.
+        const issues = parsed.error.issues.map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.code}`);
+        console.error("proposal_invalid_output", { captureId, model: models[0], issues });
+        throw new ProposalProviderError("proposal_invalid_output", "OpenRouter response did not match the proposal schema.");
+      }
       if (parsed.data.sourceCaptureId !== captureId) {
         throw new ProposalProviderError("proposal_invalid_output", "Proposal was linked to the wrong capture.");
       }

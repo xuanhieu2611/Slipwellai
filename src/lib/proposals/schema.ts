@@ -6,9 +6,13 @@ const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use 24-hour HH
 
 const recurrenceRuleSchema = z.enum(["daily", "weekly", "monthly"]);
 
+/* Every field here is optional, including recordType and title. A model that drops this
+   whole object (or part of it) has still proposed a usable record - confidence is only
+   ever shown as a chip in review, never used to gate what gets filed, so a missing score
+   should not sink an otherwise valid proposal. */
 const confidenceSchema = z.object({
-  recordType: z.number().min(0).max(1),
-  title: z.number().min(0).max(1),
+  recordType: z.number().min(0).max(1).optional(),
+  title: z.number().min(0).max(1).optional(),
   destination: z.number().min(0).max(1).optional(),
   date: z.number().min(0).max(1).optional(),
 });
@@ -37,7 +41,7 @@ const proposalItemFields = {
   recordType: recordTypeSchema,
   title: z.string().trim().min(1).max(280),
   body: z.string().trim().max(5000).optional(),
-  confidence: confidenceSchema,
+  confidence: confidenceSchema.optional(),
   needsReview: z.boolean(),
   reason: z.string().trim().min(1).max(500),
 };

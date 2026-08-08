@@ -518,10 +518,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .record-card:hover { border-color: var(--line-strong); box-shadow: 0 5px 16px -12px hsl(var(--shadow-color) / .25); }
 .record-card--domain {
   background: color-mix(in srgb, var(--domain-color) 20%, var(--surface));
-  border-left: 4px solid var(--domain-color);
-  padding-left: calc(1rem - 3px);
 }
-.record-card--domain:hover { border-color: var(--line-strong); border-left-color: var(--domain-color); }
+.record-card--domain:hover { border-color: var(--line-strong); }
 .record-card h3 { font-size: .95rem; font-weight: 600; line-height: 1.4; }
 .record-copy { color: var(--ink-muted); font-size: .875rem; line-height: 1.55; margin-top: .25rem; max-width: 72ch; }
 .record-meta { color: var(--ink-muted); font-size: .75rem; margin-top: .45rem; }
