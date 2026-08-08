@@ -10,7 +10,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
   const state = await getHomeState();
   if (state.kind === "setup") return <SetupRequired />;
   if (state.kind === "signed-out") return <SignIn initialError={auth && auth in authErrorMessages ? authErrorMessages[auth as AuthCallbackError] : undefined} />;
-  redirect(state.completed ? "/inbox" : "/onboarding");
+  redirect(state.completed ? "/today" : "/onboarding");
 }
 
 async function getHomeState(): Promise<

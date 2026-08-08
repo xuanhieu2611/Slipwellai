@@ -42,6 +42,11 @@ export const workspaceCommandSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("archive_domain"), domainId: id }),
   z.object({ action: z.literal("set_top_three"), taskId: id, localDate: z.iso.date() }),
   z.object({ action: z.literal("clear_top_three"), taskId: id }),
+  /* taskIds is the complete, already-reordered list of that day's top-three task ids (drag-and-drop
+     sends the whole list rather than a single from/to move, so the server can just re-stamp order
+     without reasoning about partial moves). The server still verifies every id actually belongs to
+     that date's top three before writing anything. */
+  z.object({ action: z.literal("reorder_top_three"), localDate: z.iso.date(), taskIds: z.array(id).min(1).max(3) }),
   z.object({ action: z.literal("resolve_routine"), routineId: id, localDate: z.iso.date(), outcome: z.enum(["completed", "skipped"]) }),
   z.object({ action: z.literal("complete_milestone"), milestoneId: id }),
   z.object({ action: z.literal("reopen_milestone"), milestoneId: id }),

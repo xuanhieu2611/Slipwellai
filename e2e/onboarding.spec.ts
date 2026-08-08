@@ -26,7 +26,7 @@ test.describe("authenticated shell", () => {
 test.describe("required-once onboarding", () => {
   test.skip(!incompleteOnboardingState, "Set PLAYWRIGHT_INCOMPLETE_ONBOARDING_STORAGE_STATE to a dedicated incomplete pilot account.");
 
-  test("saves a confirmed profile and directs the user to Inbox", async ({ browser }) => {
+  test("saves a confirmed profile and directs the user to Today", async ({ browser }) => {
     const context = await browser.newContext({ storageState: incompleteOnboardingState });
     const page = await context.newPage();
     await page.goto("/onboarding");
@@ -36,7 +36,7 @@ test.describe("required-once onboarding", () => {
     await page.getByLabel("Locale").fill("en-CA");
     await page.getByRole("button", { name: "Continue" }).click();
     await page.getByRole("button", { name: "Finish setup" }).click();
-    await expect(page).toHaveURL(/\/inbox$/);
+    await expect(page).toHaveURL(/\/today$/);
     await context.close();
   });
 });

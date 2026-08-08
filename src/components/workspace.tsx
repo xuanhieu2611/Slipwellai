@@ -2,7 +2,10 @@
 
 import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowCounterClockwise, CalendarBlank, CaretDown, CaretLeft, CaretRight, DotsThreeVertical, ListBullets, Plus, Rows, Tray } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, CalendarBlank, CaretDown, CaretLeft, CaretRight, DotsSixVertical, DotsThreeVertical, ListBullets, Plus, Rows, Star, Tray } from "@phosphor-icons/react";
+import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { nextCycleMonth } from "@/lib/retainers";
 import { activityEventLabel, calendarMonthGrid, calendarWeekDays, calendarWeekStart, isTaskOnDay, recurrenceLabel, retainerActivityEventLabel, shiftCalendarMonth, shiftCalendarWeek, taskDateLabel, taskPlanningDate, type WorkspaceData } from "@/lib/workspace";
 import { useToast } from "@/components/ui/toast";
@@ -224,22 +227,172 @@ function ActionsMenu({ actions }: { actions: MenuAction[] }) {
   return <div className="task-menu" ref={ref}><button className="button-base button-quiet task-menu-trigger" type="button" aria-label="More actions" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}><DotsThreeVertical aria-hidden size={18} weight="bold" /></button>{open && <div className="task-menu-panel" role="menu">{actions.map((action) => <button className={action.tone === "danger" ? "task-menu-item task-menu-item--danger" : "task-menu-item"} key={action.label} role="menuitem" type="button" onClick={() => { setOpen(false); action.onClick(); }}>{action.label}</button>)}</div>}</div>;
 }
 
-function TaskList({ tasks, onCommand, today, data, showTopThree = true, emptyText = "No tasks here yet. Capture something, or add the next small action yourself." }: { tasks: WorkspaceData["tasks"]; onCommand: (command: Record<string, unknown>) => Promise<void>; today: string; data: WorkspaceData; showTopThree?: boolean; emptyText?: string }) {
+function TaskCard({ task, onCommand, today, data, showTopThree = true, dragHandle }: { task: WorkspaceData["tasks"][number]; onCommand: (command: Record<string, unknown>) => Promise<void>; today: string; data: WorkspaceData; showTopThree?: boolean; dragHandle?: ReactNode }) {
   const notify = useToast();
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [deferringId, setDeferringId] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [deferring, setDeferring] = useState(false);
   async function act(command: Record<string, unknown>, success: string) {
     try { await onCommand(command); notify(success, "success"); } catch (error) { notify(error instanceof Error ? error.message : "Could not update that task.", "error"); }
   }
-  return <div className="space-y-3">{tasks.map((task) => {
-    const domain = task.domain_id ? data.domains.find((item) => item.id === task.domain_id) : undefined;
-    const project = task.project_id ? data.projects.find((item) => item.id === task.project_id) : undefined;
-    const person = task.person_id ? data.people.find((item) => item.id === task.person_id) : undefined;
-    const relatedNotes = data.notes.filter((note) => (task.domain_id && note.domain_id === task.domain_id) || (task.project_id && note.project_id === task.project_id) || (task.person_id && note.person_id === task.person_id)).slice(0, 3);
-    const openMenuActions: MenuAction[] = [...(showTopThree ? [task.top_three_date === today ? { label: "Remove priority", onClick: () => act({ action: "clear_top_three", taskId: task.id }, "Removed from today’s priorities.") } : { label: "Make priority", onClick: () => act({ action: "set_top_three", taskId: task.id, localDate: today }, "Added to today’s priorities.") }] : []), { label: "Edit", onClick: () => setEditingId(task.id) }, { label: "Cancel", onClick: () => act({ action: "cancel_task", taskId: task.id }, "Task canceled.") }, { label: "Delete", onClick: () => act({ action: "delete_task", taskId: task.id }, "Task deleted."), tone: "danger" }];
-    const closedMenuActions: MenuAction[] = [{ label: "Edit", onClick: () => setEditingId(task.id) }, { label: "Delete", onClick: () => act({ action: "delete_task", taskId: task.id }, "Task deleted."), tone: "danger" }];
-    return <article className={`record-card${domain ? " record-card--domain" : ""}`} style={domain ? ({ "--domain-color": domain.color } as CSSProperties) : undefined} key={task.id}><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3>{task.title}</h3>{task.priority === 3 && <span className="tag tag--attention">High priority</span>}{task.recurrence_rule && <span className="tag">{recurrenceLabel(task)}</span>}{task.status === "canceled" && <span className="tag">Canceled</span>}{task.archived_at && <span className="tag">Deleted</span>}</div>{task.details && <p className="record-copy">{task.details}</p>}<p className="record-meta">{taskDateLabel(task)}</p>{(domain || project || person) && <p className="record-meta flex flex-wrap items-center gap-2">{domain && <span><i className="domain-dot" style={{ background: domain.color }} />{domain.name}</span>}{project && <span>{project.name}</span>}{person && <span>{person.name}</span>}</p>}{task.tags.length > 0 && <div className="flex flex-wrap gap-1">{task.tags.map((tag) => <span className="tag" key={tag}>{tag}</span>)}</div>}{relatedNotes.length > 0 && <p className="record-meta">Related notes: {relatedNotes.map((note) => note.title).join(", ")}</p>}{deferringId === task.id && <DeferControl task={task} onCommand={onCommand} onDone={() => setDeferringId(null)} />}</div><div className="record-actions">{task.archived_at ? <><button className="button-base button-primary" onClick={() => act({ action: "restore_task", taskId: task.id }, "Task restored.")}>Restore</button><ActionsMenu actions={[{ label: "Delete", onClick: () => act({ action: "delete_task", taskId: task.id }, "Task deleted."), tone: "danger" }]} /></> : task.status === "open" ? <><button className="button-base button-primary" onClick={() => act({ action: "complete_task", taskId: task.id }, "Task completed.")}>Complete</button><button className="button-base button-secondary" onClick={() => setDeferringId(deferringId === task.id ? null : task.id)}>Defer</button><ActionsMenu actions={openMenuActions} /></> : <><button className="button-base button-secondary" onClick={() => act({ action: "reopen_task", taskId: task.id }, "Task reopened.")}>Reopen</button><ActionsMenu actions={closedMenuActions} /></>}</div>{editingId === task.id && <Dialog title="Edit task" size="lg" onClose={() => setEditingId(null)}><TaskEditForm task={task} data={data} onCommand={onCommand} onDone={() => setEditingId(null)} /></Dialog>}</article>;
-  })}{tasks.length === 0 && <p className="empty-state">{emptyText}</p>}</div>;
+  const domain = task.domain_id ? data.domains.find((item) => item.id === task.domain_id) : undefined;
+  const project = task.project_id ? data.projects.find((item) => item.id === task.project_id) : undefined;
+  const person = task.person_id ? data.people.find((item) => item.id === task.person_id) : undefined;
+  const relatedNotes = data.notes.filter((note) => (task.domain_id && note.domain_id === task.domain_id) || (task.project_id && note.project_id === task.project_id) || (task.person_id && note.person_id === task.person_id)).slice(0, 3);
+  const openMenuActions: MenuAction[] = [...(showTopThree ? [task.top_three_date === today ? { label: "Remove priority", onClick: () => act({ action: "clear_top_three", taskId: task.id }, "Removed from today’s priorities.") } : { label: "Make priority", onClick: () => act({ action: "set_top_three", taskId: task.id, localDate: today }, "Added to today’s priorities.") }] : []), { label: "Edit", onClick: () => setEditing(true) }, { label: "Cancel", onClick: () => act({ action: "cancel_task", taskId: task.id }, "Task canceled.") }, { label: "Delete", onClick: () => act({ action: "delete_task", taskId: task.id }, "Task deleted."), tone: "danger" }];
+  const closedMenuActions: MenuAction[] = [{ label: "Edit", onClick: () => setEditing(true) }, { label: "Delete", onClick: () => act({ action: "delete_task", taskId: task.id }, "Task deleted."), tone: "danger" }];
+  return <article className={`record-card${domain ? " record-card--domain" : ""}`} style={domain ? ({ "--domain-color": domain.color } as CSSProperties) : undefined}>{dragHandle}<div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3>{task.title}</h3>{task.priority === 3 && <span className="tag tag--attention">High priority</span>}{task.recurrence_rule && <span className="tag">{recurrenceLabel(task)}</span>}{task.status === "canceled" && <span className="tag">Canceled</span>}{task.archived_at && <span className="tag">Deleted</span>}</div>{task.details && <p className="record-copy">{task.details}</p>}<p className="record-meta">{taskDateLabel(task)}</p>{(domain || project || person) && <p className="record-meta flex flex-wrap items-center gap-2">{domain && <span><i className="domain-dot" style={{ background: domain.color }} />{domain.name}</span>}{project && <span>{project.name}</span>}{person && <span>{person.name}</span>}</p>}{task.tags.length > 0 && <div className="flex flex-wrap gap-1">{task.tags.map((tag) => <span className="tag" key={tag}>{tag}</span>)}</div>}{relatedNotes.length > 0 && <p className="record-meta">Related notes: {relatedNotes.map((note) => note.title).join(", ")}</p>}{deferring && <DeferControl task={task} onCommand={onCommand} onDone={() => setDeferring(false)} />}</div><div className="record-actions">{task.archived_at ? <><button className="button-base button-primary" onClick={() => act({ action: "restore_task", taskId: task.id }, "Task restored.")}>Restore</button><ActionsMenu actions={[{ label: "Delete", onClick: () => act({ action: "delete_task", taskId: task.id }, "Task deleted."), tone: "danger" }]} /></> : task.status === "open" ? <><button className="button-base button-primary" onClick={() => act({ action: "complete_task", taskId: task.id }, "Task completed.")}>Complete</button><button className="button-base button-secondary" onClick={() => setDeferring((value) => !value)}>Defer</button><ActionsMenu actions={openMenuActions} /></> : <><button className="button-base button-secondary" onClick={() => act({ action: "reopen_task", taskId: task.id }, "Task reopened.")}>Reopen</button><ActionsMenu actions={closedMenuActions} /></>}</div>{editing && <Dialog title="Edit task" size="lg" onClose={() => setEditing(false)}><TaskEditForm task={task} data={data} onCommand={onCommand} onDone={() => setEditing(false)} /></Dialog>}</article>;
+}
+
+function TaskList({ tasks, onCommand, today, data, showTopThree = true, emptyText = "No tasks here yet. Capture something, or add the next small action yourself." }: { tasks: WorkspaceData["tasks"]; onCommand: (command: Record<string, unknown>) => Promise<void>; today: string; data: WorkspaceData; showTopThree?: boolean; emptyText?: string }) {
+  return <div className="space-y-3">{tasks.map((task) => <TaskCard key={task.id} task={task} onCommand={onCommand} today={today} data={data} showTopThree={showTopThree} />)}{tasks.length === 0 && <p className="empty-state">{emptyText}</p>}</div>;
+}
+
+type DragOrigin = "list" | "priority";
+type TodayTask = WorkspaceData["tasks"][number];
+
+function DraggableTaskCard({ task, onCommand, today, data }: { task: TodayTask; onCommand: (command: Record<string, unknown>) => Promise<void>; today: string; data: WorkspaceData }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id, data: { origin: "list" satisfies DragOrigin, task } });
+  const style: CSSProperties = { position: "relative", transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined, opacity: isDragging ? 0.4 : undefined, zIndex: isDragging ? 5 : undefined };
+  return <div ref={setNodeRef} style={style}><TaskCard task={task} onCommand={onCommand} today={today} data={data} dragHandle={<button aria-label={`Drag “${task.title}” to Top Three`} className="today-drag-handle" type="button" {...attributes} {...listeners}><DotsSixVertical aria-hidden size={16} weight="bold" /></button>} /></div>;
+}
+
+function SortablePriorityCard({ task, onCommand, today, data }: { task: TodayTask; onCommand: (command: Record<string, unknown>) => Promise<void>; today: string; data: WorkspaceData }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id, data: { origin: "priority" satisfies DragOrigin, task } });
+  const style: CSSProperties = { position: "relative", transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : undefined, zIndex: isDragging ? 5 : undefined };
+  return <div ref={setNodeRef} style={style}><TaskCard task={task} onCommand={onCommand} today={today} data={data} dragHandle={<button aria-label={`Reorder “${task.title}”`} className="today-drag-handle" type="button" {...attributes} {...listeners}><DotsSixVertical aria-hidden size={16} weight="bold" /></button>} /></div>;
+}
+
+function TodayListZone({ tasks, onCommand, today, data, emptyText }: { tasks: TodayTask[]; onCommand: (command: Record<string, unknown>) => Promise<void>; today: string; data: WorkspaceData; emptyText: string }) {
+  const { setNodeRef, isOver } = useDroppable({ id: "today-list-zone" });
+  return <div className={`space-y-3 today-drop-zone${isOver ? " is-drop-target" : ""}`} ref={setNodeRef}>
+    {tasks.map((task) => <DraggableTaskCard data={data} key={task.id} onCommand={onCommand} task={task} today={today} />)}
+    {tasks.length === 0 && <p className="empty-state">{emptyText}</p>}
+  </div>;
+}
+
+function PriorityDropZone({ tasks, onCommand, today, data }: { tasks: TodayTask[]; onCommand: (command: Record<string, unknown>) => Promise<void>; today: string; data: WorkspaceData }) {
+  const { setNodeRef, isOver } = useDroppable({ id: "priority-zone" });
+  const remaining = 3 - tasks.length;
+  return <div className={`today-drop-zone today-priority-zone${isOver ? " is-drop-target" : ""}`} ref={setNodeRef}>
+    <SortableContext items={tasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
+      <div className="space-y-3">{tasks.map((task) => <SortablePriorityCard data={data} key={task.id} onCommand={onCommand} task={task} today={today} />)}</div>
+    </SortableContext>
+    {remaining > 0 && <div className="today-priority-placeholder"><Star aria-hidden size={18} weight="regular" /><span>{tasks.length === 0 ? "Drag a task here to make it today’s first priority." : `Room for ${remaining} more.`}</span></div>}
+  </div>;
+}
+
+function DragPreviewCard({ task, data }: { task: TodayTask; data: WorkspaceData }) {
+  const domain = task.domain_id ? data.domains.find((item) => item.id === task.domain_id) : undefined;
+  return <div className={`record-card today-drag-overlay${domain ? " record-card--domain" : ""}`} style={domain ? ({ "--domain-color": domain.color } as CSSProperties) : undefined}>
+    <DotsSixVertical aria-hidden className="today-drag-handle today-drag-handle--static" size={16} weight="bold" />
+    <div className="min-w-0"><h3>{task.title}</h3></div>
+  </div>;
+}
+
+function TodayBoard({ topThree, dueToday, onCommand, today, data }: { topThree: TodayTask[]; dueToday: TodayTask[]; onCommand: (command: Record<string, unknown>) => Promise<void>; today: string; data: WorkspaceData }) {
+  const notify = useToast();
+  // Re-synced from the server-derived lists only when the underlying `data` actually changes (a
+  // successful drag ends with router.refresh() producing a new `data`), not on every unrelated
+  // re-render of the parent, which would otherwise wipe an in-flight optimistic move. Adjusting
+  // state during render (rather than in an effect) avoids the extra commit-then-fix-up render.
+  const [prevData, setPrevData] = useState(data);
+  const [localTopThree, setLocalTopThree] = useState(topThree);
+  const [localDueToday, setLocalDueToday] = useState(dueToday);
+  if (data !== prevData) {
+    setPrevData(data);
+    setLocalTopThree(topThree);
+    setLocalDueToday(dueToday);
+  }
+  const [activeTask, setActiveTask] = useState<TodayTask | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+
+  function resolveTarget(overId: string): DragOrigin | null {
+    if (overId === "priority-zone") return "priority";
+    if (overId === "today-list-zone") return "list";
+    if (localTopThree.some((task) => task.id === overId)) return "priority";
+    if (localDueToday.some((task) => task.id === overId)) return "list";
+    return null;
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveTask((event.active.data.current?.task as TodayTask | undefined) ?? null);
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    setActiveTask(null);
+    const { active, over } = event;
+    if (!over) return;
+    const activeId = String(active.id);
+    const origin = active.data.current?.origin as DragOrigin | undefined;
+    const target = resolveTarget(String(over.id));
+    if (!origin || !target || (origin === "list" && target === "list")) return;
+
+    if (origin === "list" && target === "priority") {
+      if (localTopThree.length >= 3) { notify("Today already has three priorities. Remove one first.", "error"); return; }
+      const task = localDueToday.find((item) => item.id === activeId);
+      if (!task) return;
+      const previousList = localDueToday;
+      const previousPriority = localTopThree;
+      setLocalDueToday((current) => current.filter((item) => item.id !== activeId));
+      setLocalTopThree((current) => [...current, task]);
+      try {
+        await onCommand({ action: "set_top_three", taskId: activeId, localDate: today });
+        notify("Added to today’s priorities.", "success");
+      } catch (error) {
+        setLocalDueToday(previousList);
+        setLocalTopThree(previousPriority);
+        notify(error instanceof Error ? error.message : "Could not save that change.", "error");
+      }
+      return;
+    }
+
+    if (origin === "priority" && target === "priority") {
+      const oldIndex = localTopThree.findIndex((item) => item.id === activeId);
+      const newIndex = localTopThree.findIndex((item) => item.id === String(over.id));
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+      const previousPriority = localTopThree;
+      const reordered = arrayMove(localTopThree, oldIndex, newIndex);
+      setLocalTopThree(reordered);
+      try {
+        await onCommand({ action: "reorder_top_three", localDate: today, taskIds: reordered.map((item) => item.id) });
+      } catch (error) {
+        setLocalTopThree(previousPriority);
+        notify(error instanceof Error ? error.message : "Could not save that change.", "error");
+      }
+      return;
+    }
+
+    if (origin === "priority" && target === "list") {
+      const task = localTopThree.find((item) => item.id === activeId);
+      if (!task) return;
+      const previousList = localDueToday;
+      const previousPriority = localTopThree;
+      setLocalTopThree((current) => current.filter((item) => item.id !== activeId));
+      setLocalDueToday((current) => [task, ...current]);
+      try {
+        await onCommand({ action: "clear_top_three", taskId: activeId });
+        notify("Removed from today’s priorities.", "success");
+      } catch (error) {
+        setLocalDueToday(previousList);
+        setLocalTopThree(previousPriority);
+        notify(error instanceof Error ? error.message : "Could not save that change.", "error");
+      }
+    }
+  }
+
+  return <DndContext onDragEnd={handleDragEnd} onDragStart={handleDragStart} sensors={sensors}>
+    <div className="today-grid">
+      <section className="workspace-section today-all-tasks">
+        <div className="section-heading"><div><h2>Today</h2><p className="section-note">Due, scheduled, or intentionally deferred here — drag one onto Top Three</p></div><span className="tag">{localDueToday.length} to review</span></div>
+        <TodayListZone data={data} emptyText="Nothing left to review today. Capture something, or check Tasks for what’s ahead." onCommand={onCommand} tasks={localDueToday} today={today} />
+      </section>
+      <aside className="workspace-section today-priority-panel">
+        <div className="section-heading"><div><h2>Top Three</h2><p className="section-note">Drag to reorder, or drag one back out</p></div><span className="tag">{localTopThree.length}/3 selected</span></div>
+        <PriorityDropZone data={data} onCommand={onCommand} tasks={localTopThree} today={today} />
+      </aside>
+    </div>
+    <DragOverlay>{activeTask && <DragPreviewCard data={data} task={activeTask} />}</DragOverlay>
+  </DndContext>;
 }
 
 function TemplateItemRow({ item, onCommand }: { item: WorkspaceData["checklistTemplateItems"][number]; onCommand: (command: Record<string, unknown>) => Promise<void> }) {
@@ -818,7 +971,7 @@ export function Workspace({ surface, data }: { surface: Surface; data: Workspace
   const filteredProjects = filterProjects(data.projects, projectFilters);
   const filteredRetainers = filterRetainers(data.retainers, retainerFilters);
 
-  if (surface === "today") return <main className="workspace-page"><header className="page-intro"><p className="eyebrow">Today · {today}</p><h1>Choose what matters, then let the rest wait.</h1><p>Local time: {data.timezone}. Slipwell never quietly carries yesterday’s priorities into today.</p></header><section className="workspace-section"><div className="section-heading"><div><h2>Top Three</h2><p className="section-note">Your selected priorities</p></div><span className="tag">{topThree.length}/3 selected</span></div><TaskList tasks={topThree} onCommand={command} today={today} data={data} /></section><section className="workspace-section"><div className="section-heading"><div><h2>On the day</h2><p className="section-note">Due, scheduled, or intentionally deferred</p></div></div><TaskList tasks={dueToday} onCommand={command} today={today} data={data} /></section><section className="workspace-section"><div className="section-heading"><div><h2>Routines</h2><p className="section-note">Separate from tasks</p></div></div><div className="space-y-3">{data.routines.map((routine) => { const resolved = routineById.get(routine.id); return <article className="record-card" key={routine.id}><div><h3>{routine.name}</h3><p className="record-meta capitalize">{routine.period} · {resolved ? resolved.outcome : "Not yet checked"}</p></div>{!resolved && <div className="record-actions"><button className="button-base button-primary" onClick={() => safely(() => command({ action: "resolve_routine", routineId: routine.id, localDate: today, outcome: "completed" }), "Routine completed.")}>Complete</button><button className="button-base button-secondary" onClick={() => safely(() => command({ action: "resolve_routine", routineId: routine.id, localDate: today, outcome: "skipped" }), "Routine skipped.")}>Skip</button></div>}</article>; })}{data.routines.length === 0 && <p className="empty-state">Add a routine from People & Notes when a repeated behavior belongs here, not in your task list.</p>}</div></section><NotesToReview notes={data.notes} today={today} /><section className="workspace-section"><div className="section-heading"><div><h2>Slipping</h2><p className="section-note">Attention signals</p></div><button className="button-base button-secondary" onClick={refreshAttention}>Refresh attention</button></div><div className="space-y-3">{data.signals.filter((signal) => signal.entity_type !== "retainer_cycle_item").map((signal) => <SlippingSignalCard key={signal.id} signal={signal} data={data} command={command} resolveSignal={resolveSignal} />)}{data.signals.filter((signal) => signal.entity_type !== "retainer_cycle_item").length === 0 && <p className="empty-state">No active task or project signals. Refresh attention to check meaningful activity against each cadence.</p>}</div></section><section className="workspace-section"><div className="section-heading"><div><h2>Capture recovery</h2><p className="section-note">Recent captures</p></div></div><div className="space-y-2">{data.captures.map((capture) => <article className="compact-row" key={capture.id}><span>{capture.original_text}</span><span className="tag">{capture.status.replace("_", " ")}</span></article>)}{data.captures.length === 0 && <p className="empty-state">Your captured thoughts will appear here.</p>}</div></section></main>;
+  if (surface === "today") return <main className="workspace-page"><header className="page-intro"><p className="eyebrow">Today · {today}</p><h1>Choose what matters, then let the rest wait.</h1><p>Local time: {data.timezone}. Drag a task onto Top Three, or drag one back out. Slipwell never quietly carries yesterday’s priorities into today.</p></header><TodayBoard data={data} dueToday={dueToday} onCommand={command} today={today} topThree={topThree} /><section className="workspace-section"><div className="section-heading"><div><h2>Routines</h2><p className="section-note">Separate from tasks</p></div></div><div className="space-y-3">{data.routines.map((routine) => { const resolved = routineById.get(routine.id); return <article className="record-card" key={routine.id}><div><h3>{routine.name}</h3><p className="record-meta capitalize">{routine.period} · {resolved ? resolved.outcome : "Not yet checked"}</p></div>{!resolved && <div className="record-actions"><button className="button-base button-primary" onClick={() => safely(() => command({ action: "resolve_routine", routineId: routine.id, localDate: today, outcome: "completed" }), "Routine completed.")}>Complete</button><button className="button-base button-secondary" onClick={() => safely(() => command({ action: "resolve_routine", routineId: routine.id, localDate: today, outcome: "skipped" }), "Routine skipped.")}>Skip</button></div>}</article>; })}{data.routines.length === 0 && <p className="empty-state">Add a routine from People & Notes when a repeated behavior belongs here, not in your task list.</p>}</div></section><NotesToReview notes={data.notes} today={today} /><section className="workspace-section"><div className="section-heading"><div><h2>Slipping</h2><p className="section-note">Attention signals</p></div><button className="button-base button-secondary" onClick={refreshAttention}>Refresh attention</button></div><div className="space-y-3">{data.signals.filter((signal) => signal.entity_type !== "retainer_cycle_item").map((signal) => <SlippingSignalCard key={signal.id} signal={signal} data={data} command={command} resolveSignal={resolveSignal} />)}{data.signals.filter((signal) => signal.entity_type !== "retainer_cycle_item").length === 0 && <p className="empty-state">No active task or project signals. Refresh attention to check meaningful activity against each cadence.</p>}</div></section><section className="workspace-section"><div className="section-heading"><div><h2>Capture recovery</h2><p className="section-note">Recent captures</p></div></div><div className="space-y-2">{data.captures.map((capture) => <article className="compact-row" key={capture.id}><span>{capture.original_text}</span><span className="tag">{capture.status.replace("_", " ")}</span></article>)}{data.captures.length === 0 && <p className="empty-state">Your captured thoughts will appear here.</p>}</div></section></main>;
 
   if (surface === "tasks") return <main className="workspace-page tasks-page">
     <header className="page-intro tasks-page-intro"><h1>Tasks</h1><p>See every commitment across time, then narrow the view when the list gets busy.</p></header>

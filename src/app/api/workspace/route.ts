@@ -255,6 +255,22 @@ export async function POST(request: NextRequest) {
     } else if (command.action === "clear_top_three") {
       const { error } = await supabase.from("tasks").update({ top_three_date: null, top_three_order: null }).eq("id", command.taskId);
       if (error) throw error;
+    } else if (command.action === "reorder_top_three") {
+      const { data: current } = await supabase.from("tasks").select("id").eq("top_three_date", command.localDate);
+      const currentIds = new Set((current ?? []).map((row) => row.id));
+      if (command.taskIds.length !== currentIds.size || !command.taskIds.every((taskId) => currentIds.has(taskId))) {
+        return badRequest("Today’s priorities changed. Refresh and try again.");
+      }
+      /* Clearing first, then re-setting one at a time, keeps every intermediate state free of
+         duplicate (owner_id, top_three_date, top_three_order) values — writing the new order
+         directly in place can transiently give two rows the same order and trip that unique
+         index, since updates land one row at a time rather than as a single atomic swap. */
+      const { error: clearError } = await supabase.from("tasks").update({ top_three_date: null, top_three_order: null }).in("id", command.taskIds);
+      if (clearError) throw clearError;
+      for (const [index, taskId] of command.taskIds.entries()) {
+        const { error } = await supabase.from("tasks").update({ top_three_date: command.localDate, top_three_order: index + 1 }).eq("id", taskId);
+        if (error) throw error;
+      }
     } else if (command.action === "resolve_routine") {
       const { error } = await supabase.from("routine_completions").upsert({ routine_id: command.routineId, local_date: command.localDate, outcome: command.outcome }, { onConflict: "routine_id,local_date" });
       if (error) throw error;
