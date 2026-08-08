@@ -11,6 +11,7 @@ import {
   MagnifyingGlass,
   Plus,
   Sun,
+  Target,
   Tray,
   UserCircle,
   Users,
@@ -36,6 +37,7 @@ const primaryNav: ReadonlyArray<readonly [string, string, Icon]> = [
 
 const secondaryNav: ReadonlyArray<readonly [string, string, Icon]> = [
   ["/people-notes", "People & Notes", Users],
+  ["/routines", "Routines", Target],
   ["/settings", "Settings", Gear],
 ];
 

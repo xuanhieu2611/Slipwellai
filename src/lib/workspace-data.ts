@@ -1,8 +1,14 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { WorkspaceData } from "@/lib/workspace";
 
+/* A generous lower bound for the routine contribution heatmap (~53 weeks). Exact windowing
+   happens client-side against the viewer's local "today", so this only needs to comfortably
+   cover it, not match it exactly. */
+const ROUTINE_HISTORY_DAYS = 380;
+
 export async function getWorkspaceData(): Promise<WorkspaceData> {
   const supabase = await createSupabaseServerClient();
+  const routineHistoryCutoff = new Date(Date.now() - ROUTINE_HISTORY_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const [preferences, domains, tasks, projects, milestones, checklistTemplates, checklistTemplateItems, checklistInstances, checklistItems, people, personInteractions, notes, routines, routineCompletions, signals, captures, projectActivity, retainers, retainerTemplateItems, retainerCycles, retainerCycleItems, retainerActivity] = await Promise.all([
     supabase.from("user_preferences").select("timezone").maybeSingle(),
     supabase.from("domains").select("id, name, color, archived_at").is("archived_at", null).order("name"),
@@ -23,7 +29,7 @@ export async function getWorkspaceData(): Promise<WorkspaceData> {
     supabase.from("person_interactions").select("id, person_id, summary, follow_up_task_id, occurred_at").order("occurred_at", { ascending: false }).limit(100),
     supabase.from("notes").select("id, title, body, domain_id, project_id, person_id, review_on, created_at").is("archived_at", null).order("created_at", { ascending: false }),
     supabase.from("routines").select("id, name, period").is("archived_at", null).order("period").order("name"),
-    supabase.from("routine_completions").select("routine_id, local_date, outcome").order("local_date", { ascending: false }).limit(100),
+    supabase.from("routine_completions").select("routine_id, local_date, outcome").gte("local_date", routineHistoryCutoff).order("local_date", { ascending: false }),
     supabase.from("slipping_signals").select("id, entity_type, entity_id, reason, severity, outcome").eq("outcome", "open").order("created_at", { ascending: false }).limit(12),
     supabase.from("captures").select("id, original_text, status, created_at").order("created_at", { ascending: false }).limit(8),
     supabase.from("activity_events").select("id, entity_id, event_type, metadata, occurred_at").eq("entity_type", "project").order("occurred_at", { ascending: false }).limit(300),

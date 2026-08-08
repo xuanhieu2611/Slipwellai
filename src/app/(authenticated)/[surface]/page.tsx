@@ -7,8 +7,8 @@ import { getDashboardData } from "@/lib/dashboard";
 import { requireUser } from "@/lib/supabase/server";
 import { getWorkspaceData } from "@/lib/workspace-data";
 
-const buildStateSurfaces = new Set(["today", "tasks", "work", "retainers", "search", "people-notes", "settings"]);
-const workspaceSurfaces = new Set(["today", "tasks", "work", "retainers", "search", "people-notes"]);
+const buildStateSurfaces = new Set(["today", "tasks", "work", "retainers", "search", "people-notes", "routines", "settings"]);
+const workspaceSurfaces = new Set(["today", "tasks", "work", "retainers", "search", "people-notes", "routines"]);
 
 export default async function SurfacePage({ params, searchParams }: { params: Promise<{ surface: string }>; searchParams: Promise<{ revoke?: string }> }) {
   const { surface } = await params;
@@ -22,7 +22,7 @@ export default async function SurfacePage({ params, searchParams }: { params: Pr
   }
   if (workspaceSurfaces.has(surface)) {
     const data = await getWorkspaceData();
-    return <Workspace surface={surface as "today" | "tasks" | "work" | "retainers" | "search" | "people-notes"} data={data} />;
+    return <Workspace surface={surface as "today" | "tasks" | "work" | "retainers" | "search" | "people-notes" | "routines"} data={data} />;
   }
   return <BuildStatePage surface={surface} />;
 }

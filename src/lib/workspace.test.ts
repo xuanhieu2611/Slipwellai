@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activityEventLabel, calendarMonthGrid, isTaskOnDay, shiftCalendarMonth, taskDateLabel, taskPlanningDate, workspaceCommandSchema } from "@/lib/workspace";
+import { activityEventLabel, calendarMonthGrid, isTaskOnDay, routineCurrentStreak, routineHeatmapWeeks, shiftCalendarMonth, taskDateLabel, taskPlanningDate, workspaceCommandSchema } from "@/lib/workspace";
 
 describe("working-prototype workspace commands", () => {
   it("accepts a small manual task and rejects unsafe priorities", () => {
@@ -249,6 +249,33 @@ describe("working-prototype workspace commands", () => {
     expect(workspaceCommandSchema.safeParse({ action: "generate_retainer_cycle", retainerId, cycleMonth: "2026-09", idempotencyKey }).success).toBe(true);
     expect(workspaceCommandSchema.safeParse({ action: "generate_retainer_cycle", retainerId, cycleMonth: "2026-09" }).success).toBe(false);
     expect(workspaceCommandSchema.safeParse({ action: "generate_retainer_cycle", retainerId, cycleMonth: "not-a-month", idempotencyKey }).success).toBe(false);
+  });
+
+  it("counts a routine's current streak, treating an unresolved today as still open but an unresolved earlier day as a break", () => {
+    expect(routineCurrentStreak([{ local_date: "2026-08-06", outcome: "completed" }, { local_date: "2026-08-07", outcome: "completed" }, { local_date: "2026-08-08", outcome: "completed" }], "2026-08-08")).toBe(3);
+    expect(routineCurrentStreak([{ local_date: "2026-08-06", outcome: "completed" }, { local_date: "2026-08-07", outcome: "completed" }], "2026-08-08")).toBe(2);
+    expect(routineCurrentStreak([{ local_date: "2026-08-05", outcome: "completed" }, { local_date: "2026-08-07", outcome: "completed" }], "2026-08-08")).toBe(1);
+    expect(routineCurrentStreak([{ local_date: "2026-08-07", outcome: "skipped" }], "2026-08-08")).toBe(0);
+    expect(routineCurrentStreak([], "2026-08-08")).toBe(0);
+  });
+
+  it("builds a 53-week, Monday-first heatmap grid ending on today's week, with a month label only where the month changes", () => {
+    const weeks = routineHeatmapWeeks([{ local_date: "2026-08-06", outcome: "completed" }, { local_date: "2026-08-07", outcome: "skipped" }], "2026-08-08", 53);
+    expect(weeks).toHaveLength(53);
+    const lastWeek = weeks[52];
+    expect(lastWeek.cells).toHaveLength(7);
+    expect(lastWeek.cells.map((cell) => cell.date)).toContain("2026-08-08");
+    const today = lastWeek.cells.find((cell) => cell.date === "2026-08-08");
+    expect(today).toMatchObject({ outcome: null, isToday: true, isFuture: false });
+    const completedDay = lastWeek.cells.find((cell) => cell.date === "2026-08-06");
+    expect(completedDay).toMatchObject({ outcome: "completed", isToday: false });
+    const skippedDay = lastWeek.cells.find((cell) => cell.date === "2026-08-07");
+    expect(skippedDay).toMatchObject({ outcome: "skipped" });
+    const futureDay = lastWeek.cells.find((cell) => cell.date === "2026-08-09");
+    expect(futureDay).toMatchObject({ outcome: null, isFuture: true });
+    const monthLabels = weeks.map((week) => week.monthLabel).filter(Boolean);
+    expect(monthLabels.length).toBeGreaterThan(1);
+    expect(weeks[0].monthLabel).not.toBeNull();
   });
 
   it("accepts complete and reopen commands for a valid retainer cycle item id and rejects a bad one", () => {
