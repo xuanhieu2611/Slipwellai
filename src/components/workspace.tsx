@@ -2,9 +2,9 @@
 
 import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowCounterClockwise, CaretDown, DotsThreeVertical, Plus } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, CalendarBlank, CaretDown, CaretLeft, CaretRight, DotsThreeVertical, ListBullets, Plus, Tray } from "@phosphor-icons/react";
 import { nextCycleMonth } from "@/lib/retainers";
-import { activityEventLabel, isTaskOnDay, recurrenceLabel, retainerActivityEventLabel, taskDateLabel, type WorkspaceData } from "@/lib/workspace";
+import { activityEventLabel, calendarMonthGrid, isTaskOnDay, recurrenceLabel, retainerActivityEventLabel, shiftCalendarMonth, taskDateLabel, taskPlanningDate, type WorkspaceData } from "@/lib/workspace";
 import { useToast } from "@/components/ui/toast";
 import { Dialog } from "@/components/ui/primitives";
 
@@ -224,7 +224,7 @@ function ActionsMenu({ actions }: { actions: MenuAction[] }) {
   return <div className="task-menu" ref={ref}><button className="button-base button-quiet task-menu-trigger" type="button" aria-label="More actions" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}><DotsThreeVertical aria-hidden size={18} weight="bold" /></button>{open && <div className="task-menu-panel" role="menu">{actions.map((action) => <button className={action.tone === "danger" ? "task-menu-item task-menu-item--danger" : "task-menu-item"} key={action.label} role="menuitem" type="button" onClick={() => { setOpen(false); action.onClick(); }}>{action.label}</button>)}</div>}</div>;
 }
 
-function TaskList({ tasks, onCommand, today, data, showTopThree = true }: { tasks: WorkspaceData["tasks"]; onCommand: (command: Record<string, unknown>) => Promise<void>; today: string; data: WorkspaceData; showTopThree?: boolean }) {
+function TaskList({ tasks, onCommand, today, data, showTopThree = true, emptyText = "No tasks here yet. Capture something, or add the next small action yourself." }: { tasks: WorkspaceData["tasks"]; onCommand: (command: Record<string, unknown>) => Promise<void>; today: string; data: WorkspaceData; showTopThree?: boolean; emptyText?: string }) {
   const notify = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deferringId, setDeferringId] = useState<string | null>(null);
@@ -239,7 +239,7 @@ function TaskList({ tasks, onCommand, today, data, showTopThree = true }: { task
     const openMenuActions: MenuAction[] = [...(showTopThree ? [task.top_three_date === today ? { label: "Remove priority", onClick: () => act({ action: "clear_top_three", taskId: task.id }, "Removed from today’s priorities.") } : { label: "Make priority", onClick: () => act({ action: "set_top_three", taskId: task.id, localDate: today }, "Added to today’s priorities.") }] : []), { label: "Edit", onClick: () => setEditingId(task.id) }, { label: "Cancel", onClick: () => act({ action: "cancel_task", taskId: task.id }, "Task canceled.") }, { label: "Delete", onClick: () => act({ action: "delete_task", taskId: task.id }, "Task deleted."), tone: "danger" }];
     const closedMenuActions: MenuAction[] = [{ label: "Edit", onClick: () => setEditingId(task.id) }, { label: "Delete", onClick: () => act({ action: "delete_task", taskId: task.id }, "Task deleted."), tone: "danger" }];
     return <article className={`record-card${domain ? " record-card--domain" : ""}`} style={domain ? ({ "--domain-color": domain.color } as CSSProperties) : undefined} key={task.id}><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3>{task.title}</h3>{task.priority === 3 && <span className="tag tag--attention">High priority</span>}{task.recurrence_rule && <span className="tag">{recurrenceLabel(task)}</span>}{task.status === "canceled" && <span className="tag">Canceled</span>}{task.archived_at && <span className="tag">Deleted</span>}</div>{task.details && <p className="record-copy">{task.details}</p>}<p className="record-meta">{taskDateLabel(task)}</p>{(domain || project || person) && <p className="record-meta flex flex-wrap items-center gap-2">{domain && <span><i className="domain-dot" style={{ background: domain.color }} />{domain.name}</span>}{project && <span>{project.name}</span>}{person && <span>{person.name}</span>}</p>}{task.tags.length > 0 && <div className="flex flex-wrap gap-1">{task.tags.map((tag) => <span className="tag" key={tag}>{tag}</span>)}</div>}{relatedNotes.length > 0 && <p className="record-meta">Related notes: {relatedNotes.map((note) => note.title).join(", ")}</p>}{deferringId === task.id && <DeferControl task={task} onCommand={onCommand} onDone={() => setDeferringId(null)} />}</div><div className="record-actions">{task.archived_at ? <><button className="button-base button-primary" onClick={() => act({ action: "restore_task", taskId: task.id }, "Task restored.")}>Restore</button><ActionsMenu actions={[{ label: "Delete", onClick: () => act({ action: "delete_task", taskId: task.id }, "Task deleted."), tone: "danger" }]} /></> : task.status === "open" ? <><button className="button-base button-primary" onClick={() => act({ action: "complete_task", taskId: task.id }, "Task completed.")}>Complete</button><button className="button-base button-secondary" onClick={() => setDeferringId(deferringId === task.id ? null : task.id)}>Defer</button><ActionsMenu actions={openMenuActions} /></> : <><button className="button-base button-secondary" onClick={() => act({ action: "reopen_task", taskId: task.id }, "Task reopened.")}>Reopen</button><ActionsMenu actions={closedMenuActions} /></>}</div>{editingId === task.id && <Dialog title="Edit task" size="lg" onClose={() => setEditingId(null)}><TaskEditForm task={task} data={data} onCommand={onCommand} onDone={() => setEditingId(null)} /></Dialog>}</article>;
-  })}{tasks.length === 0 && <p className="empty-state">No tasks here yet. Capture something, or add the next small action yourself.</p>}</div>;
+  })}{tasks.length === 0 && <p className="empty-state">{emptyText}</p>}</div>;
 }
 
 function TemplateItemRow({ item, onCommand }: { item: WorkspaceData["checklistTemplateItems"][number]; onCommand: (command: Record<string, unknown>) => Promise<void> }) {
@@ -552,7 +552,7 @@ function filterAndSortTasks(tasks: WorkspaceData["tasks"], filters: TaskFilterSt
 }
 
 function FilterSelect({ label, value, onChange, active, children }: { label: string; value: string; onChange: (value: string) => void; active: boolean; children: ReactNode }) {
-  return <label className={active ? "filter-select is-active" : "filter-select"}><span className="sr-only">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)}>{children}</select><CaretDown aria-hidden size={11} weight="bold" /></label>;
+  return <label className={active ? "filter-select is-active" : "filter-select"}><span className="filter-select-label">{label}</span><select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>{children}</select><CaretDown aria-hidden size={11} weight="bold" /></label>;
 }
 
 function TaskFilters({ data, filters, onChange }: { data: WorkspaceData; filters: TaskFilterState; onChange: (next: TaskFilterState) => void }) {
@@ -570,6 +570,87 @@ function TaskFilters({ data, filters, onChange }: { data: WorkspaceData; filters
     <FilterSelect label="Slipping" value={filters.slipping} active={filters.slipping !== defaultTaskFilters.slipping} onChange={(value) => set("slipping", value as TaskFilterState["slipping"])}><option value="any">Any</option><option value="only">Slipping only</option></FilterSelect>
     <span className="task-filter-sort-group"><span className="task-filter-divider" aria-hidden="true" /><FilterSelect label="Sort by" value={filters.sort} active={filters.sort !== defaultTaskFilters.sort} onChange={(value) => set("sort", value as TaskFilterState["sort"])}><option value="created">Newest first</option><option value="date">Due or scheduled date</option><option value="priority">Priority</option></FilterSelect></span>
     {!isDefault && <button className="task-filter-reset" type="button" onClick={() => onChange(defaultTaskFilters)}><ArrowCounterClockwise aria-hidden size={13} weight="bold" />Reset</button>}
+  </div>;
+}
+
+const TASK_WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function calendarLabel(day: string, options: Intl.DateTimeFormatOptions) {
+  return new Intl.DateTimeFormat("en-US", { ...options, timeZone: "UTC" }).format(new Date(`${day}T00:00:00Z`));
+}
+
+function TaskOverview({ tasks, today }: { tasks: WorkspaceData["tasks"]; today: string }) {
+  const dueToday = tasks.filter((task) => isTaskOnDay(task, today)).length;
+  const overdue = tasks.filter((task) => {
+    const date = taskPlanningDate(task);
+    return Boolean(date && date < today);
+  }).length;
+  const unscheduled = tasks.filter((task) => !taskPlanningDate(task)).length;
+  return <dl className="task-overview" aria-label="Open task overview">
+    <div><dt>Open</dt><dd>{tasks.length}</dd></div>
+    <div><dt>Today</dt><dd>{dueToday}</dd></div>
+    <div className={overdue ? "has-attention" : undefined}><dt>Past date</dt><dd>{overdue}</dd></div>
+    <div><dt>Unscheduled</dt><dd>{unscheduled}</dd></div>
+  </dl>;
+}
+
+function TaskPlanner({ tasks, onCommand, today, data, showTopThree }: { tasks: WorkspaceData["tasks"]; onCommand: (command: Record<string, unknown>) => Promise<void>; today: string; data: WorkspaceData; showTopThree: boolean }) {
+  const [month, setMonth] = useState(`${today.slice(0, 7)}-01`);
+  const [selectedDay, setSelectedDay] = useState(today);
+  const days = calendarMonthGrid(month);
+  const datedTasks = tasks.filter((task) => taskPlanningDate(task));
+  const selectedTasks = datedTasks.filter((task) => taskPlanningDate(task) === selectedDay);
+  const unscheduledTasks = tasks.filter((task) => !taskPlanningDate(task));
+  const monthName = calendarLabel(month, { month: "long", year: "numeric" });
+  const selectedLabel = selectedDay === today ? `Today, ${calendarLabel(selectedDay, { weekday: "long", month: "long", day: "numeric" })}` : calendarLabel(selectedDay, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+
+  function chooseDay(day: string) {
+    setSelectedDay(day);
+    if (day.slice(0, 7) !== month.slice(0, 7)) setMonth(`${day.slice(0, 7)}-01`);
+  }
+
+  function moveMonth(amount: number) {
+    const next = shiftCalendarMonth(month, amount);
+    setMonth(next);
+    setSelectedDay(next);
+  }
+
+  function returnToToday() {
+    setMonth(`${today.slice(0, 7)}-01`);
+    setSelectedDay(today);
+  }
+
+  return <div className="task-planner">
+    <section className="task-calendar" aria-label="Task calendar">
+      <div className="task-calendar-head">
+        <div><h2>{monthName}</h2><p>Choose a day to inspect its work.</p></div>
+        <div className="task-calendar-actions">
+          {month.slice(0, 7) !== today.slice(0, 7) && <button className="button-base button-quiet" type="button" onClick={returnToToday}>Today</button>}
+          <button className="button-base button-quiet task-calendar-arrow" type="button" aria-label="Previous month" onClick={() => moveMonth(-1)}><CaretLeft aria-hidden size={16} weight="bold" /></button>
+          <button className="button-base button-quiet task-calendar-arrow" type="button" aria-label="Next month" onClick={() => moveMonth(1)}><CaretRight aria-hidden size={16} weight="bold" /></button>
+        </div>
+      </div>
+      <div className="task-calendar-weekdays" aria-hidden="true">{TASK_WEEKDAYS.map((weekday) => <span key={weekday}>{weekday}</span>)}</div>
+      <div className="task-calendar-grid">{days.map((day) => {
+        const count = datedTasks.filter((task) => taskPlanningDate(task) === day).length;
+        const hasEarlierOpenWork = day < today && tasks.some((task) => task.status === "open" && taskPlanningDate(task) === day);
+        const isCurrentMonth = day.slice(0, 7) === month.slice(0, 7);
+        const className = ["task-calendar-day", day === selectedDay && "is-selected", day === today && "is-today", !isCurrentMonth && "is-outside", hasEarlierOpenWork && "has-earlier-work"].filter(Boolean).join(" ");
+        const dayLabel = calendarLabel(day, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+        return <button className={className} type="button" key={day} aria-label={`${dayLabel}${count ? `, ${count} ${count === 1 ? "task" : "tasks"}` : ", no tasks"}`} aria-pressed={day === selectedDay} onClick={() => chooseDay(day)}><time dateTime={day}>{Number(day.slice(-2))}</time>{count > 0 && <span>{count}</span>}</button>;
+      })}</div>
+      <p className="task-calendar-note">Counts use a task&apos;s deferred date first, then due date, then scheduled date.</p>
+    </section>
+
+    <section className="task-agenda" aria-labelledby="selected-task-day">
+      <div className="task-agenda-head"><div><h2 id="selected-task-day">{selectedLabel}</h2><p>{selectedTasks.length ? `${selectedTasks.length} ${selectedTasks.length === 1 ? "task" : "tasks"} on this day` : "No dated work on this day"}</p></div><span className="task-count">{selectedTasks.length}</span></div>
+      <TaskList tasks={selectedTasks} onCommand={onCommand} today={today} data={data} showTopThree={showTopThree} emptyText="No tasks on this day. Pick another date or open Unscheduled." />
+      <details className="task-unscheduled">
+        <summary><span><Tray aria-hidden size={17} />Unscheduled</span><span>{unscheduledTasks.length}</span></summary>
+        <p>Tasks without a date stay visible here until you decide when they belong.</p>
+        <TaskList tasks={unscheduledTasks} onCommand={onCommand} today={today} data={data} showTopThree={showTopThree} emptyText="Every task in this view has a date." />
+      </details>
+    </section>
   </div>;
 }
 
@@ -673,6 +754,7 @@ export function Workspace({ surface, data }: { surface: Surface; data: Workspace
   const dueToday = openTasks.filter((task) => isTaskOnDay(task, today)).filter((task) => !topThree.some((priority) => priority.id === task.id));
   const routineById = new Map(data.routineCompletions.filter((item) => item.local_date === today).map((item) => [item.routine_id, item]));
   const [taskFilters, setTaskFilters] = useState<TaskFilterState>(defaultTaskFilters);
+  const [taskView, setTaskView] = useState<"planner" | "list">("planner");
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [createDialog, setCreateDialog] = useState<CreateDialog>(null);
   const [projectFilters, setProjectFilters] = useState<ProjectFilterState>(defaultProjectFilters);
@@ -684,7 +766,23 @@ export function Workspace({ surface, data }: { surface: Surface; data: Workspace
 
   if (surface === "today") return <main className="workspace-page"><header className="page-intro"><p className="eyebrow">Today · {today}</p><h1>Choose what matters, then let the rest wait.</h1><p>Local time: {data.timezone}. Slipwell never quietly carries yesterday’s priorities into today.</p></header><section className="workspace-section"><div className="section-heading"><div><h2>Top Three</h2><p className="section-note">Your selected priorities</p></div><span className="tag">{topThree.length}/3 selected</span></div><TaskList tasks={topThree} onCommand={command} today={today} data={data} /></section><section className="workspace-section"><div className="section-heading"><div><h2>On the day</h2><p className="section-note">Due, scheduled, or intentionally deferred</p></div></div><TaskList tasks={dueToday} onCommand={command} today={today} data={data} /></section><section className="workspace-section"><div className="section-heading"><div><h2>Routines</h2><p className="section-note">Separate from tasks</p></div></div><div className="space-y-3">{data.routines.map((routine) => { const resolved = routineById.get(routine.id); return <article className="record-card" key={routine.id}><div><h3>{routine.name}</h3><p className="record-meta capitalize">{routine.period} · {resolved ? resolved.outcome : "Not yet checked"}</p></div>{!resolved && <div className="record-actions"><button className="button-base button-primary" onClick={() => safely(() => command({ action: "resolve_routine", routineId: routine.id, localDate: today, outcome: "completed" }), "Routine completed.")}>Complete</button><button className="button-base button-secondary" onClick={() => safely(() => command({ action: "resolve_routine", routineId: routine.id, localDate: today, outcome: "skipped" }), "Routine skipped.")}>Skip</button></div>}</article>; })}{data.routines.length === 0 && <p className="empty-state">Add a routine from People & Notes when a repeated behavior belongs here, not in your task list.</p>}</div></section><NotesToReview notes={data.notes} today={today} /><section className="workspace-section"><div className="section-heading"><div><h2>Slipping</h2><p className="section-note">Attention signals</p></div><button className="button-base button-secondary" onClick={refreshAttention}>Refresh attention</button></div><div className="space-y-3">{data.signals.filter((signal) => signal.entity_type !== "retainer_cycle_item").map((signal) => <SlippingSignalCard key={signal.id} signal={signal} data={data} command={command} resolveSignal={resolveSignal} />)}{data.signals.filter((signal) => signal.entity_type !== "retainer_cycle_item").length === 0 && <p className="empty-state">No active task or project signals. Refresh attention to check meaningful activity against each cadence.</p>}</div></section><section className="workspace-section"><div className="section-heading"><div><h2>Capture recovery</h2><p className="section-note">Recent captures</p></div></div><div className="space-y-2">{data.captures.map((capture) => <article className="compact-row" key={capture.id}><span>{capture.original_text}</span><span className="tag">{capture.status.replace("_", " ")}</span></article>)}{data.captures.length === 0 && <p className="empty-state">Your captured thoughts will appear here.</p>}</div></section></main>;
 
-  if (surface === "tasks") return <main className="workspace-page"><header className="page-intro page-intro--with-action"><div className="page-intro-text"><p className="eyebrow">Tasks</p><h1>Small next actions with real context.</h1><p>Create a task in a few seconds; dates and links remain optional.</p></div><button className="button-base button-primary" onClick={() => setNewTaskOpen(true)}><Plus aria-hidden size={16} weight="bold" />New task</button></header>{newTaskOpen && <Dialog title="New task" size="lg" onClose={() => setNewTaskOpen(false)}><NewTaskForm data={data} onCommand={command} onDone={() => setNewTaskOpen(false)} /></Dialog>}<section className="workspace-section"><div className="section-heading"><div><h2>Tasks</h2><p className="section-note">Filter and sort</p></div><span className="tag">{filteredTasks.length} shown</span></div><TaskFilters data={data} filters={taskFilters} onChange={setTaskFilters} /><TaskList tasks={filteredTasks} onCommand={command} today={today} data={data} showTopThree={taskFilters.status === "open" || taskFilters.status === "any"} /></section></main>;
+  if (surface === "tasks") return <main className="workspace-page tasks-page">
+    <header className="page-intro tasks-page-intro"><h1>Tasks</h1><p>See every commitment across time, then narrow the view when the list gets busy.</p></header>
+    {newTaskOpen && <Dialog title="New task" size="lg" onClose={() => setNewTaskOpen(false)}><NewTaskForm data={data} onCommand={command} onDone={() => setNewTaskOpen(false)} /></Dialog>}
+    <section className="workspace-section tasks-workspace">
+      <div className="tasks-toolbar">
+        <div className="task-view-switch" role="group" aria-label="Task view">
+          <button className={taskView === "planner" ? "is-active" : undefined} type="button" aria-pressed={taskView === "planner"} onClick={() => setTaskView("planner")}><CalendarBlank aria-hidden size={17} weight="bold" />Planner</button>
+          <button className={taskView === "list" ? "is-active" : undefined} type="button" aria-pressed={taskView === "list"} onClick={() => setTaskView("list")}><ListBullets aria-hidden size={17} weight="bold" />List</button>
+        </div>
+        <button className="button-base button-primary tasks-new-task" type="button" onClick={() => setNewTaskOpen(true)}><Plus aria-hidden size={17} weight="bold" />New task</button>
+      </div>
+      <TaskOverview tasks={openTasks} today={today} />
+      <div className="task-browse-head"><div><h2>{taskView === "planner" ? "Plan by date" : "All tasks"}</h2><p>{taskView === "planner" ? "Calendar counts reflect the active filters below." : "Filter and sort the complete task list."}</p></div><span>{filteredTasks.length} shown</span></div>
+      <TaskFilters data={data} filters={taskFilters} onChange={setTaskFilters} />
+      {taskView === "planner" ? <TaskPlanner tasks={filteredTasks} onCommand={command} today={today} data={data} showTopThree={taskFilters.status === "open" || taskFilters.status === "any"} /> : <div className="task-list-view"><TaskList tasks={filteredTasks} onCommand={command} today={today} data={data} showTopThree={taskFilters.status === "open" || taskFilters.status === "any"} /></div>}
+    </section>
+  </main>;
 
   if (surface === "work") return <main className="workspace-page"><header className="page-intro page-intro--with-action"><div className="page-intro-text"><p className="eyebrow">Work</p><h1>Finite projects, durable domains.</h1><p>Projects have an ending. Domains provide ongoing context without demanding a complete taxonomy.</p></div><div className="page-actions"><button className="button-base button-secondary" onClick={() => setCreateDialog("domain")}><Plus aria-hidden size={16} weight="bold" />New domain</button><button className="button-base button-primary" onClick={() => setCreateDialog("project")}><Plus aria-hidden size={16} weight="bold" />New project</button></div></header>{createDialog === "domain" && <Dialog title="New domain" onClose={() => setCreateDialog(null)}><form className="form-grid" onSubmit={(event) => submit(event, "create_domain", { name: "name", description: "description", color: "color" }, "Domain created.", () => setCreateDialog(null))}><label className="field-label form-span"><span>Name</span><input className="field-base" name="name" required maxLength={80} placeholder="Client work" /></label><label className="field-label form-span"><span>Description</span><input className="field-base" name="description" maxLength={1000} placeholder="Optional context" /></label><DomainColorPicker /><button className="button-base button-primary form-submit">Add domain</button></form></Dialog>}{createDialog === "project" && <Dialog title="New project" size="lg" onClose={() => setCreateDialog(null)}><NewProjectForm data={data} onCommand={command} onDone={() => setCreateDialog(null)} /></Dialog>}<section className="workspace-section"><div className="section-heading"><div><h2>Domains</h2><p className="section-note">Ongoing areas of responsibility</p></div><span className="tag">{data.domains.length} active</span></div><div className="space-y-2">{data.domains.map((domain) => { const openTaskCount = data.tasks.filter((task) => task.domain_id === domain.id && task.status === "open" && !task.archived_at).length; const activeProjectCount = data.projects.filter((project) => project.domain_id === domain.id && ["planned", "active", "paused"].includes(project.status)).length; return <div className="compact-row" key={domain.id}><span><i className="domain-dot" style={{ background: domain.color }} />{domain.name}</span><span className="compact-row-actions"><span className="tag">{openTaskCount} open, {activeProjectCount} active</span><button className="button-base button-quiet" onClick={() => safely(() => command({ action: "archive_domain", domainId: domain.id }), "Domain archived.")}>Archive</button></span></div>; })}{data.domains.length === 0 && <p className="empty-state">A few domains are enough. You can also skip them.</p>}</div></section><section className="workspace-section"><div className="section-heading"><div><h2>Project progress</h2><p className="section-note">Inspect the plan, not a cosmetic percentage</p></div><span className="tag">{filteredProjects.length} shown</span></div><ProjectFilters filters={projectFilters} onChange={setProjectFilters} /><ProjectList projects={filteredProjects} data={data} onCommand={command} /></section><TemplateLibrary data={data} onCommand={command} /></main>;
 
