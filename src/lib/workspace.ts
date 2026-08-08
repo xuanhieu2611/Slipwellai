@@ -173,6 +173,49 @@ export function shiftCalendarWeek(day: string, amount: number) {
   return addDays(day, amount * 7);
 }
 
+type RoutineOutcome = "completed" | "skipped";
+type RoutineCompletion = { local_date: string; outcome: RoutineOutcome };
+
+/* Walks backward from today counting consecutive completed days. Today itself is skipped when
+   unresolved rather than treated as a break, since it simply hasn't happened yet; every earlier
+   day still needs an explicit "completed" record to keep the streak alive. */
+export function routineCurrentStreak(completions: RoutineCompletion[], today: string) {
+  const outcomeByDate = new Map(completions.map((completion) => [completion.local_date, completion.outcome]));
+  let streak = 0;
+  let cursor = today;
+  if (outcomeByDate.get(cursor) !== "completed") cursor = addDays(cursor, -1);
+  while (outcomeByDate.get(cursor) === "completed") {
+    streak += 1;
+    cursor = addDays(cursor, -1);
+  }
+  return streak;
+}
+
+export type RoutineHeatmapCell = { date: string; outcome: RoutineOutcome | null; isToday: boolean; isFuture: boolean };
+export type RoutineHeatmapWeek = { start: string; cells: RoutineHeatmapCell[]; monthLabel: string | null };
+
+/** Returns `weeks` Monday-first columns ending with the week containing `today`, each with a
+ *  month label when that column is the first to fall in a new month (for header labels). */
+export function routineHeatmapWeeks(completions: RoutineCompletion[], today: string, weeks = 53): RoutineHeatmapWeek[] {
+  const outcomeByDate = new Map(completions.map((completion) => [completion.local_date, completion.outcome]));
+  const lastWeekStart = calendarWeekStart(today);
+  const firstWeekStart = shiftCalendarWeek(lastWeekStart, -(weeks - 1));
+  let lastMonth = "";
+  return Array.from({ length: weeks }, (_, index) => {
+    const start = shiftCalendarWeek(firstWeekStart, index);
+    const cells = calendarWeekDays(start).map((date) => ({
+      date,
+      outcome: outcomeByDate.get(date) ?? null,
+      isToday: date === today,
+      isFuture: date > today,
+    }));
+    const month = start.slice(0, 7);
+    const monthLabel = month !== lastMonth ? new Date(`${start}T00:00:00Z`).toLocaleString("en-US", { month: "short", timeZone: "UTC" }) : null;
+    lastMonth = month;
+    return { start, cells, monthLabel };
+  });
+}
+
 export function recurrenceLabel(task: Pick<WorkspaceData["tasks"][number], "recurrence_rule" | "recurrence_interval" | "recurrence_unit">) {
   if (!task.recurrence_rule) return null;
   if (task.recurrence_rule === "custom") return `Every ${task.recurrence_interval} ${task.recurrence_unit}`;
