@@ -2,9 +2,9 @@
 
 import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowCounterClockwise, CalendarBlank, CaretDown, CaretLeft, CaretRight, DotsThreeVertical, ListBullets, Plus, Tray } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, CalendarBlank, CaretDown, CaretLeft, CaretRight, DotsThreeVertical, ListBullets, Plus, Rows, Tray } from "@phosphor-icons/react";
 import { nextCycleMonth } from "@/lib/retainers";
-import { activityEventLabel, calendarMonthGrid, isTaskOnDay, recurrenceLabel, retainerActivityEventLabel, shiftCalendarMonth, taskDateLabel, taskPlanningDate, type WorkspaceData } from "@/lib/workspace";
+import { activityEventLabel, calendarMonthGrid, calendarWeekDays, calendarWeekStart, isTaskOnDay, recurrenceLabel, retainerActivityEventLabel, shiftCalendarMonth, shiftCalendarWeek, taskDateLabel, taskPlanningDate, type WorkspaceData } from "@/lib/workspace";
 import { useToast } from "@/components/ui/toast";
 import { Dialog } from "@/components/ui/primitives";
 
@@ -654,6 +654,60 @@ function TaskPlanner({ tasks, onCommand, today, data, showTopThree }: { tasks: W
   </div>;
 }
 
+function TaskWeekRow({ task, data, onCommand, onEdit }: { task: WorkspaceData["tasks"][number]; data: WorkspaceData; onCommand: (command: Record<string, unknown>) => Promise<void>; onEdit: () => void }) {
+  const notify = useToast();
+  const domain = task.domain_id ? data.domains.find((item) => item.id === task.domain_id) : undefined;
+  const isOpen = task.status === "open" && !task.archived_at;
+  async function toggle() {
+    try {
+      await onCommand({ action: isOpen ? "complete_task" : "reopen_task", taskId: task.id });
+      notify(isOpen ? "Task completed." : "Task reopened.", "success");
+    } catch (error) { notify(error instanceof Error ? error.message : "Could not update that task.", "error"); }
+  }
+  const isHighPriority = task.priority === 3 && isOpen;
+  return <div className={`task-week-task${domain ? " task-week-task--domain" : ""}${!isOpen ? " is-done" : ""}${isHighPriority ? " is-high" : ""}`} style={domain ? ({ "--domain-color": domain.color } as CSSProperties) : undefined} title={isHighPriority ? "High priority" : undefined}>
+    <button className="task-week-task-toggle" type="button" aria-label={isOpen ? `Complete ${task.title}` : `Reopen ${task.title}`} onClick={toggle}>{isOpen ? <span className="task-week-task-dot" /> : <ArrowCounterClockwise aria-hidden size={11} weight="bold" />}</button>
+    <button className="task-week-task-title" type="button" onClick={onEdit}>{task.title}</button>
+  </div>;
+}
+
+/** A seven-day agenda so a full week's dated work is visible at a glance, instead of one day at a time. */
+function TaskWeekView({ tasks, onCommand, today, data }: { tasks: WorkspaceData["tasks"]; onCommand: (command: Record<string, unknown>) => Promise<void>; today: string; data: WorkspaceData }) {
+  const [anchor, setAnchor] = useState(today);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const days = calendarWeekDays(anchor);
+  const datedTasks = tasks.filter((task) => taskPlanningDate(task));
+  const rangeLabel = `${calendarLabel(days[0], { month: "short", day: "numeric" })} – ${calendarLabel(days[6], { month: "short", day: "numeric", year: "numeric" })}`;
+  const editingTask = editingId ? tasks.find((task) => task.id === editingId) : undefined;
+
+  function moveWeek(amount: number) {
+    setAnchor(shiftCalendarWeek(anchor, amount));
+  }
+
+  return <section className="task-week" aria-label="Task week view">
+    <div className="task-week-head">
+      <div><h2>Week of {rangeLabel}</h2><p>All dated work across the seven days.</p></div>
+      <div className="task-calendar-actions">
+        {calendarWeekStart(anchor) !== calendarWeekStart(today) && <button className="button-base button-quiet" type="button" onClick={() => setAnchor(today)}>Today</button>}
+        <button className="button-base button-quiet task-calendar-arrow" type="button" aria-label="Previous week" onClick={() => moveWeek(-1)}><CaretLeft aria-hidden size={16} weight="bold" /></button>
+        <button className="button-base button-quiet task-calendar-arrow" type="button" aria-label="Next week" onClick={() => moveWeek(1)}><CaretRight aria-hidden size={16} weight="bold" /></button>
+      </div>
+    </div>
+    <div className="task-week-grid">{days.map((day) => {
+      const dayTasks = datedTasks.filter((task) => taskPlanningDate(task) === day);
+      const dayLabel = calendarLabel(day, { weekday: "short", month: "short", day: "numeric" });
+      return <div className={`task-week-day${day === today ? " is-today" : ""}`} key={day}>
+        <div className="task-week-day-head"><span>{dayLabel}</span><span className="task-count">{dayTasks.length}</span></div>
+        <div className="task-week-day-list">
+          {dayTasks.map((task) => <TaskWeekRow task={task} data={data} onCommand={onCommand} onEdit={() => setEditingId(task.id)} key={task.id} />)}
+          {dayTasks.length === 0 && <p className="task-week-day-empty">Nothing dated</p>}
+        </div>
+      </div>;
+    })}</div>
+    {editingTask && <Dialog title="Edit task" size="lg" onClose={() => setEditingId(null)}><TaskEditForm task={editingTask} data={data} onCommand={onCommand} onDone={() => setEditingId(null)} /></Dialog>}
+  </section>;
+}
+
 type ProjectFilterState = { status: "current" | "completed" | "canceled" | "deleted" | "any" };
 
 const defaultProjectFilters: ProjectFilterState = { status: "current" };
@@ -754,7 +808,7 @@ export function Workspace({ surface, data }: { surface: Surface; data: Workspace
   const dueToday = openTasks.filter((task) => isTaskOnDay(task, today)).filter((task) => !topThree.some((priority) => priority.id === task.id));
   const routineById = new Map(data.routineCompletions.filter((item) => item.local_date === today).map((item) => [item.routine_id, item]));
   const [taskFilters, setTaskFilters] = useState<TaskFilterState>(defaultTaskFilters);
-  const [taskView, setTaskView] = useState<"planner" | "list">("planner");
+  const [taskView, setTaskView] = useState<"planner" | "week" | "list">("planner");
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [createDialog, setCreateDialog] = useState<CreateDialog>(null);
   const [projectFilters, setProjectFilters] = useState<ProjectFilterState>(defaultProjectFilters);
@@ -773,14 +827,15 @@ export function Workspace({ surface, data }: { surface: Surface; data: Workspace
       <div className="tasks-toolbar">
         <div className="task-view-switch" role="group" aria-label="Task view">
           <button className={taskView === "planner" ? "is-active" : undefined} type="button" aria-pressed={taskView === "planner"} onClick={() => setTaskView("planner")}><CalendarBlank aria-hidden size={17} weight="bold" />Planner</button>
+          <button className={taskView === "week" ? "is-active" : undefined} type="button" aria-pressed={taskView === "week"} onClick={() => setTaskView("week")}><Rows aria-hidden size={17} weight="bold" />Week</button>
           <button className={taskView === "list" ? "is-active" : undefined} type="button" aria-pressed={taskView === "list"} onClick={() => setTaskView("list")}><ListBullets aria-hidden size={17} weight="bold" />List</button>
         </div>
         <button className="button-base button-primary tasks-new-task" type="button" onClick={() => setNewTaskOpen(true)}><Plus aria-hidden size={17} weight="bold" />New task</button>
       </div>
       <TaskOverview tasks={openTasks} today={today} />
-      <div className="task-browse-head"><div><h2>{taskView === "planner" ? "Plan by date" : "All tasks"}</h2><p>{taskView === "planner" ? "Calendar counts reflect the active filters below." : "Filter and sort the complete task list."}</p></div><span>{filteredTasks.length} shown</span></div>
+      <div className="task-browse-head"><div><h2>{taskView === "planner" ? "Plan by date" : taskView === "week" ? "This week" : "All tasks"}</h2><p>{taskView === "planner" ? "Calendar counts reflect the active filters below." : taskView === "week" ? "See every dated task across the next seven days." : "Filter and sort the complete task list."}</p></div><span>{filteredTasks.length} shown</span></div>
       <TaskFilters data={data} filters={taskFilters} onChange={setTaskFilters} />
-      {taskView === "planner" ? <TaskPlanner tasks={filteredTasks} onCommand={command} today={today} data={data} showTopThree={taskFilters.status === "open" || taskFilters.status === "any"} /> : <div className="task-list-view"><TaskList tasks={filteredTasks} onCommand={command} today={today} data={data} showTopThree={taskFilters.status === "open" || taskFilters.status === "any"} /></div>}
+      {taskView === "planner" ? <TaskPlanner tasks={filteredTasks} onCommand={command} today={today} data={data} showTopThree={taskFilters.status === "open" || taskFilters.status === "any"} /> : taskView === "week" ? <TaskWeekView tasks={filteredTasks} onCommand={command} today={today} data={data} /> : <div className="task-list-view"><TaskList tasks={filteredTasks} onCommand={command} today={today} data={data} showTopThree={taskFilters.status === "open" || taskFilters.status === "any"} /></div>}
     </section>
   </main>;
 
