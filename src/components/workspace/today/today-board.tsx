@@ -19,10 +19,37 @@ export function DraggableTaskCard({ task, onCommand, today, data }: { task: Toda
   return <div ref={setNodeRef} style={style}><TaskCard task={task} onCommand={onCommand} today={today} data={data} dragHandle={<button aria-label={`Drag “${task.title}” to Top Three`} className="today-drag-handle" type="button" {...attributes} {...listeners}><DotsSixVertical aria-hidden size={16} weight="bold" /></button>} /></div>;
 }
 
+/* On-screen sibling morph uses ease-in-out (--ease-in-out), not ease-out. */
+const PRIORITY_SETTLE = { duration: 200, easing: "cubic-bezier(0.77, 0, 0.175, 1)" } as const;
+
 export function SortablePriorityCard({ task, onCommand, today, data }: { task: TodayTask; onCommand: WorkspaceCommandFn; today: string; data: WorkspaceData }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id, data: { origin: "priority" satisfies DragOrigin, task } });
-  const style: CSSProperties = { position: "relative", transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : undefined, zIndex: isDragging ? 5 : undefined };
-  return <div ref={setNodeRef} style={style}><TaskCard task={task} onCommand={onCommand} today={today} data={data} dragHandle={<button aria-label={`Reorder “${task.title}”`} className="today-drag-handle" type="button" {...attributes} {...listeners}><DotsSixVertical aria-hidden size={16} weight="bold" /></button>} /></div>;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: task.id,
+    data: { origin: "priority" satisfies DragOrigin, task },
+    transition: PRIORITY_SETTLE,
+  });
+  const style: CSSProperties = {
+    position: "relative",
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : undefined,
+    zIndex: isDragging ? 5 : undefined,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <TaskCard
+        task={task}
+        onCommand={onCommand}
+        today={today}
+        data={data}
+        dragHandle={
+          <button aria-label={`Reorder “${task.title}”`} className="today-drag-handle" type="button" {...attributes} {...listeners}>
+            <DotsSixVertical aria-hidden size={16} weight="bold" />
+          </button>
+        }
+      />
+    </div>
+  );
 }
 
 export function TodayListZone({ tasks, onCommand, today, data, emptyText }: { tasks: TodayTask[]; onCommand: WorkspaceCommandFn; today: string; data: WorkspaceData; emptyText: string }) {
