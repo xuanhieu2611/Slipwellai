@@ -443,6 +443,65 @@ describe("working-prototype workspace commands", () => {
     ).toMatchObject({ tags: ["billing"] });
   });
 
+  it("accepts pronouns and tags on person creation, mirroring create_task's tags field, and defaults both to blank/empty", () => {
+    const base = { action: "create_person", name: "Priya", context: null };
+    expect(workspaceCommandSchema.parse(base)).toMatchObject({ pronouns: null, tags: [] });
+    expect(
+      workspaceCommandSchema.parse({
+        ...base,
+        pronouns: "she/her",
+        tags: ["client", "rivera-studio"],
+      }),
+    ).toMatchObject({ pronouns: "she/her", tags: ["client", "rivera-studio"] });
+    expect(workspaceCommandSchema.parse({ ...base, pronouns: null })).toMatchObject({
+      pronouns: null,
+    });
+    expect(workspaceCommandSchema.safeParse({ ...base, pronouns: "x".repeat(61) }).success).toBe(
+      false,
+    );
+    expect(
+      workspaceCommandSchema.safeParse({
+        ...base,
+        tags: Array.from({ length: 21 }, (_, index) => `tag-${index}`),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("lets a person update carry pronouns and tags, mirroring create_person's fields, and defaults both to blank/empty", () => {
+    const personId = "847a0e15-63ef-4a68-98f7-51fdbe09f29d";
+    const base = { action: "update_person", personId, name: "Priya", context: null };
+    expect(workspaceCommandSchema.parse(base)).toMatchObject({ pronouns: null, tags: [] });
+    expect(
+      workspaceCommandSchema.parse({ ...base, pronouns: "she/her", tags: ["client"] }),
+    ).toMatchObject({ pronouns: "she/her", tags: ["client"] });
+  });
+
+  it("accepts tags on note creation and update, mirroring create_task's field, and defaults to an empty array", () => {
+    const noteId = "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98";
+    expect(
+      workspaceCommandSchema.parse({ action: "create_note", title: "Call notes", body: null }),
+    ).toMatchObject({ tags: [] });
+    expect(
+      workspaceCommandSchema.parse({
+        action: "create_note",
+        title: "Call notes",
+        body: null,
+        tags: ["client", "ideas"],
+      }),
+    ).toMatchObject({ tags: ["client", "ideas"] });
+    expect(
+      workspaceCommandSchema.parse({ action: "update_note", noteId, title: "Call notes" }),
+    ).toMatchObject({ tags: [] });
+    expect(
+      workspaceCommandSchema.parse({
+        action: "update_note",
+        noteId,
+        title: "Call notes",
+        tags: ["client"],
+      }),
+    ).toMatchObject({ tags: ["client"] });
+  });
+
   it("accepts the yearly and weekdays recurrence rules with a scheduled anchor", () => {
     const idempotencyKey = "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98";
     expect(

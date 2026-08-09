@@ -81,7 +81,7 @@ async function loadPeople(supabase: Awaited<ReturnType<typeof client>>) {
      action, matching the tasks/projects delete/restore recovery promise. */
   const people = await supabase
     .from("people")
-    .select("id, name, context, domain_id, archived_at, created_at")
+    .select("id, name, context, pronouns, tags, domain_id, archived_at, created_at")
     .order("name");
   return (people.data ?? []) as WorkspaceData["people"];
 }
@@ -92,7 +92,9 @@ async function loadNotes(supabase: Awaited<ReturnType<typeof client>>) {
      action, matching the tasks/projects delete/restore recovery promise. */
   const notes = await supabase
     .from("notes")
-    .select("id, title, body, domain_id, project_id, person_id, review_on, archived_at, created_at")
+    .select(
+      "id, title, body, tags, domain_id, project_id, person_id, review_on, archived_at, created_at",
+    )
     .order("created_at", { ascending: false });
   return (notes.data ?? []) as WorkspaceData["notes"];
 }

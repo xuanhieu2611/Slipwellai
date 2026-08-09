@@ -131,6 +131,8 @@ export const workspaceCommandSchema = z.discriminatedUnion("action", [
     action: z.literal("create_person"),
     name: shortText(160),
     context: optionalText(1_000),
+    pronouns: optionalText(60),
+    tags: z.array(shortText(40)).max(20).default([]),
     domainId: optionalId,
   }),
   z.object({
@@ -138,6 +140,8 @@ export const workspaceCommandSchema = z.discriminatedUnion("action", [
     personId: id,
     name: shortText(160),
     context: optionalText(1_000),
+    pronouns: optionalText(60),
+    tags: z.array(shortText(40)).max(20).default([]),
     domainId: optionalId,
   }),
   z.object({ action: z.literal("delete_person"), personId: id }),
@@ -152,6 +156,7 @@ export const workspaceCommandSchema = z.discriminatedUnion("action", [
     action: z.literal("create_note"),
     title: shortText(280),
     body: optionalText(20_000),
+    tags: z.array(shortText(40)).max(20).default([]),
     domainId: optionalId,
     projectId: optionalId,
     personId: optionalId,
@@ -162,6 +167,7 @@ export const workspaceCommandSchema = z.discriminatedUnion("action", [
     noteId: id,
     title: shortText(280),
     body: optionalText(20_000),
+    tags: z.array(shortText(40)).max(20).default([]),
     domainId: optionalId,
     projectId: optionalId,
     personId: optionalId,
@@ -361,6 +367,8 @@ export type WorkspaceData = {
     id: string;
     name: string;
     context: string | null;
+    pronouns: string | null;
+    tags: string[];
     domain_id: string | null;
     archived_at: string | null;
     created_at: string;
@@ -376,6 +384,7 @@ export type WorkspaceData = {
     id: string;
     title: string;
     body: string | null;
+    tags: string[];
     domain_id: string | null;
     project_id: string | null;
     person_id: string | null;

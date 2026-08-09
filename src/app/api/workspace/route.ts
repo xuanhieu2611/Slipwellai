@@ -518,6 +518,8 @@ export async function POST(request: NextRequest) {
       const { error } = await supabase.from("people").insert({
         name: command.name,
         context: command.context,
+        pronouns: command.pronouns,
+        tags: command.tags,
         domain_id: command.domainId ?? null,
       });
       if (error) throw error;
@@ -537,6 +539,8 @@ export async function POST(request: NextRequest) {
         .update({
           name: command.name,
           context: command.context,
+          pronouns: command.pronouns,
+          tags: command.tags,
           domain_id: command.domainId ?? null,
           updated_at: new Date().toISOString(),
         })
@@ -586,6 +590,7 @@ export async function POST(request: NextRequest) {
       const { error } = await supabase.from("notes").insert({
         title: command.title,
         body: command.body,
+        tags: command.tags,
         domain_id: command.domainId ?? null,
         project_id: command.projectId ?? null,
         person_id: command.personId ?? null,
@@ -609,6 +614,7 @@ export async function POST(request: NextRequest) {
         .update({
           title: command.title,
           body: command.body,
+          tags: command.tags,
           domain_id: command.domainId ?? null,
           project_id: command.projectId ?? null,
           person_id: command.personId ?? null,
