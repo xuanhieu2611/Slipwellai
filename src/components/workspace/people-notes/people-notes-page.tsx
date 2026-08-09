@@ -101,7 +101,11 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
             </label>
             <label className="field-label form-span">
               <span>Tags</span>
-              <input className="field-base" name="tags" placeholder="client, collaborator (comma separated)" />
+              <input
+                className="field-base"
+                name="tags"
+                placeholder="client, collaborator (comma separated)"
+              />
             </label>
             <DomainSelect domains={data.domains} />
             <button className="button-base button-primary form-submit">Add person</button>
@@ -116,7 +120,14 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
               submit(
                 event,
                 "update_person",
-                { personId: "personId", name: "name", context: "context", pronouns: "pronouns", tags: { source: "tags", array: true }, domainId: "domainId" },
+                {
+                  personId: "personId",
+                  name: "name",
+                  context: "context",
+                  pronouns: "pronouns",
+                  tags: { source: "tags", array: true },
+                  domainId: "domainId",
+                },
                 "Person updated.",
                 () => setEditingPersonId(null),
               )
@@ -144,11 +155,22 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
             </label>
             <label className="field-label">
               <span>Pronouns</span>
-              <input className="field-base" name="pronouns" maxLength={60} defaultValue={editingPerson.pronouns ?? ""} placeholder="she/her" />
+              <input
+                className="field-base"
+                name="pronouns"
+                maxLength={60}
+                defaultValue={editingPerson.pronouns ?? ""}
+                placeholder="she/her"
+              />
             </label>
             <label className="field-label form-span">
               <span>Tags</span>
-              <input className="field-base" name="tags" placeholder="client, collaborator (comma separated)" defaultValue={editingPerson.tags.join(", ")} />
+              <input
+                className="field-base"
+                name="tags"
+                placeholder="client, collaborator (comma separated)"
+                defaultValue={editingPerson.tags.join(", ")}
+              />
             </label>
             <DomainSelect domains={data.domains} defaultValue={editingPerson.domain_id ?? ""} />
             <div className="record-actions form-span">
@@ -214,7 +236,11 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
             </label>
             <label className="field-label form-span">
               <span>Tags</span>
-              <input className="field-base" name="tags" placeholder="client, ideas (comma separated)" />
+              <input
+                className="field-base"
+                name="tags"
+                placeholder="client, ideas (comma separated)"
+              />
             </label>
             <DomainSelect domains={data.domains} />
             <label className="field-label">
@@ -294,7 +320,12 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
             </label>
             <label className="field-label form-span">
               <span>Tags</span>
-              <input className="field-base" name="tags" placeholder="client, ideas (comma separated)" defaultValue={editingNote.tags.join(", ")} />
+              <input
+                className="field-base"
+                name="tags"
+                placeholder="client, ideas (comma separated)"
+                defaultValue={editingNote.tags.join(", ")}
+              />
             </label>
             <DomainSelect domains={data.domains} defaultValue={editingNote.domain_id ?? ""} />
             <label className="field-label">

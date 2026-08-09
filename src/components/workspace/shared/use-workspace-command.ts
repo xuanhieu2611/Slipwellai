@@ -110,7 +110,8 @@ export function useWorkspaceCommand() {
       const form = event.currentTarget;
       const payload: Record<string, unknown> = { action };
       for (const [key, spec] of Object.entries(fields))
-        payload[key] = typeof spec === "string" ? formValue(form, spec) : tagsValue(form, spec.source);
+        payload[key] =
+          typeof spec === "string" ? formValue(form, spec) : tagsValue(form, spec.source);
       await command(payload);
       form.reset();
       notify(success, "success");
