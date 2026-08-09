@@ -2,7 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { SearchFilters } from "@/components/workspace/search/search-filters";
-import { defaultSearchFilters, isDefaultSearchFilters, searchRecords, type SearchFilterState } from "@/lib/search";
+import {
+  defaultSearchFilters,
+  isDefaultSearchFilters,
+  searchRecords,
+  type SearchFilterState,
+} from "@/lib/search";
 import type { SearchPageData } from "@/lib/workspace-page-data";
 
 export function SearchPage({ data }: { data: SearchPageData }) {
@@ -58,9 +63,9 @@ export function SearchPage({ data }: { data: SearchPageData }) {
           )}
           {!shouldSearch && (
             <p className="empty-state">
-              Start with a word or phrase, or set a filter below to browse without typing.
-              Full-text indexing is the next hardening step; this prototype view demonstrates the
-              unified search experience.
+              Start with a word or phrase, or set a filter below to browse without typing. Full-text
+              indexing is the next hardening step; this prototype view demonstrates the unified
+              search experience.
             </p>
           )}
         </div>

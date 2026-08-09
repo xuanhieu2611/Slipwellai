@@ -1874,13 +1874,51 @@ summary:focus-visible {
 /* Search's record-type filter reads as a labeled cluster of native checkboxes rather than a
    pill select, since more than one type can be active at once (unlike the single-select
    status/domain/project/person filters it sits beside). */
-.search-type-filter { align-items: center; background: var(--surface-sunken); border: 1px solid var(--line); border-radius: var(--r-md); display: inline-flex; flex-wrap: wrap; gap: .5rem .65rem; padding: .45rem .75rem; }
-.search-type-filter .inline-checkbox { white-space: nowrap; }
-.search-date-filter { align-items: center; background: var(--surface-sunken); border: 1px solid var(--line); border-radius: var(--r-md); display: inline-flex; gap: .4rem; padding: .4rem .7rem; }
-.search-date-filter.is-active { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
-.search-date-filter .field-base { background: transparent; border: 0; color: var(--ink); font-size: .78rem; font-weight: 600; min-height: 0; min-width: 0; padding: 0; width: 7.6rem; }
-.search-date-filter .field-base:focus { border: 0; box-shadow: none; }
-.search-date-filter-sep { color: var(--ink-muted); font-size: .75rem; }
+.search-type-filter {
+  align-items: center;
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.65rem;
+  padding: 0.45rem 0.75rem;
+}
+.search-type-filter .inline-checkbox {
+  white-space: nowrap;
+}
+.search-date-filter {
+  align-items: center;
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  display: inline-flex;
+  gap: 0.4rem;
+  padding: 0.4rem 0.7rem;
+}
+.search-date-filter.is-active {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.search-date-filter .field-base {
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 600;
+  min-height: 0;
+  min-width: 0;
+  padding: 0;
+  width: 7.6rem;
+}
+.search-date-filter .field-base:focus {
+  border: 0;
+  box-shadow: none;
+}
+.search-date-filter-sep {
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+}
 
 /* ---------- review inbox ---------- */
 

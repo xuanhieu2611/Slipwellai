@@ -28,7 +28,14 @@ import type { SearchPageData } from "@/lib/workspace-page-data";
  *    date, so they are excluded whenever a date range filter is active.
  */
 
-export const SEARCH_RECORD_TYPES = ["task", "project", "person", "note", "domain", "capture"] as const;
+export const SEARCH_RECORD_TYPES = [
+  "task",
+  "project",
+  "person",
+  "note",
+  "domain",
+  "capture",
+] as const;
 export type SearchRecordType = (typeof SEARCH_RECORD_TYPES)[number];
 
 export const SEARCH_TYPE_LABELS: Record<SearchRecordType, string> = {
@@ -102,7 +109,9 @@ function taskStatusBucket(task: SearchPageData["tasks"][number]): SearchStatusBu
   return null; // the unused "archived" enum value, if it were ever set without archived_at
 }
 
-function projectStatusBucket(project: SearchPageData["projects"][number]): SearchStatusBucket | null {
+function projectStatusBucket(
+  project: SearchPageData["projects"][number],
+): SearchStatusBucket | null {
   if (project.archived_at) return null;
   if (project.status === "completed") return "completed";
   if (project.status === "canceled") return "canceled";
@@ -196,7 +205,11 @@ function buildEntries(data: SearchPageData): SearchEntry[] {
 
 const RESULT_LIMIT = 30;
 
-export function searchRecords(data: SearchPageData, query: string, filters: SearchFilterState): SearchResult[] {
+export function searchRecords(
+  data: SearchPageData,
+  query: string,
+  filters: SearchFilterState,
+): SearchResult[] {
   const q = query.trim().toLowerCase();
   const entries = buildEntries(data).filter((entry) => {
     if (!filters.types.includes(entry.type)) return false;
@@ -214,5 +227,7 @@ export function searchRecords(data: SearchPageData, query: string, filters: Sear
     if (q && !`${entry.title} ${entry.context}`.toLowerCase().includes(q)) return false;
     return true;
   });
-  return entries.slice(0, RESULT_LIMIT).map(({ type, typeLabel, id, title, context }) => ({ type, typeLabel, id, title, context }));
+  return entries
+    .slice(0, RESULT_LIMIT)
+    .map(({ type, typeLabel, id, title, context }) => ({ type, typeLabel, id, title, context }));
 }

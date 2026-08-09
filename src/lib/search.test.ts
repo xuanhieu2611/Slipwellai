@@ -1,12 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { defaultSearchFilters, isDefaultSearchFilters, searchRecords, type SearchFilterState } from "@/lib/search";
+import {
+  defaultSearchFilters,
+  isDefaultSearchFilters,
+  searchRecords,
+  type SearchFilterState,
+} from "@/lib/search";
 import type { SearchPageData } from "@/lib/workspace-page-data";
 
 function baseData(): SearchPageData {
   return {
     domains: [
-      { id: "domain-work", name: "Full-time job", description: null, color: "#2348c8", archived_at: null },
-      { id: "domain-ads", name: "Ad retainer", description: null, color: "#8a5200", archived_at: null },
+      {
+        id: "domain-work",
+        name: "Full-time job",
+        description: null,
+        color: "#2348c8",
+        slipping_cadence_days: null,
+        archived_at: null,
+      },
+      {
+        id: "domain-ads",
+        name: "Ad retainer",
+        description: null,
+        color: "#8a5200",
+        slipping_cadence_days: null,
+        archived_at: null,
+      },
     ],
     tasks: [
       {
@@ -73,12 +92,24 @@ function baseData(): SearchPageData {
         created_at: "2026-07-01T00:00:00Z",
       },
     ],
-    people: [{ id: "person-1", name: "Rivera Studio", context: "Ad retainer client", domain_id: "domain-ads", archived_at: null, created_at: "2026-01-01T00:00:00Z" }],
+    people: [
+      {
+        id: "person-1",
+        name: "Rivera Studio",
+        context: "Ad retainer client",
+        pronouns: null,
+        tags: [],
+        domain_id: "domain-ads",
+        archived_at: null,
+        created_at: "2026-01-01T00:00:00Z",
+      },
+    ],
     notes: [
       {
         id: "note-1",
         title: "Client call notes",
         body: "Discussed the September campaign",
+        tags: [],
         domain_id: "domain-ads",
         project_id: "project-1",
         person_id: "person-1",
@@ -88,8 +119,18 @@ function baseData(): SearchPageData {
       },
     ],
     captures: [
-      { id: "capture-filed", original_text: "Rivera Studio wants a new services page", status: "filed", created_at: "2026-08-05T12:00:00Z" },
-      { id: "capture-failed", original_text: "Untranscribed voice memo", status: "failed", created_at: "2026-08-06T12:00:00Z" },
+      {
+        id: "capture-filed",
+        original_text: "Rivera Studio wants a new services page",
+        status: "filed",
+        created_at: "2026-08-05T12:00:00Z",
+      },
+      {
+        id: "capture-failed",
+        original_text: "Untranscribed voice memo",
+        status: "failed",
+        created_at: "2026-08-06T12:00:00Z",
+      },
     ],
   };
 }
@@ -108,7 +149,15 @@ describe("searchRecords", () => {
   it("lets filters alone drive results with an empty query", () => {
     const filters: SearchFilterState = { ...defaultSearchFilters, types: ["person"] };
     const results = searchRecords(baseData(), "", filters);
-    expect(results).toEqual([{ type: "person", typeLabel: "Person", id: "person-1", title: "Rivera Studio", context: "Ad retainer client" }]);
+    expect(results).toEqual([
+      {
+        type: "person",
+        typeLabel: "Person",
+        id: "person-1",
+        title: "Rivera Studio",
+        context: "Ad retainer client",
+      },
+    ]);
   });
 
   it("narrows by record type", () => {
@@ -119,7 +168,10 @@ describe("searchRecords", () => {
   });
 
   it("maps task/project/capture status onto shared open/completed/canceled buckets", () => {
-    const completed = searchRecords(baseData(), "", { ...defaultSearchFilters, status: "completed" });
+    const completed = searchRecords(baseData(), "", {
+      ...defaultSearchFilters,
+      status: "completed",
+    });
     expect(completed.map((r) => r.id).sort()).toEqual(["capture-filed", "task-completed"]);
 
     // A failed capture never produced a filed record, so it buckets under "canceled" rather than
@@ -130,25 +182,45 @@ describe("searchRecords", () => {
 
   it("excludes types without a meaningful status once a status filter is active", () => {
     const results = searchRecords(baseData(), "", { ...defaultSearchFilters, status: "open" });
-    expect(results.some((r) => r.type === "person" || r.type === "domain" || r.type === "note")).toBe(false);
+    expect(
+      results.some((r) => r.type === "person" || r.type === "domain" || r.type === "note"),
+    ).toBe(false);
   });
 
   it("narrows by domain, including the domain record's own self-match", () => {
-    const results = searchRecords(baseData(), "", { ...defaultSearchFilters, domainId: "domain-ads" });
+    const results = searchRecords(baseData(), "", {
+      ...defaultSearchFilters,
+      domainId: "domain-ads",
+    });
     const ids = results.map((r) => r.id).sort();
     expect(ids).toEqual(["domain-ads", "note-1", "person-1", "project-1", "task-open"]);
   });
 
   it("narrows by project and by person", () => {
-    const byProject = searchRecords(baseData(), "", { ...defaultSearchFilters, projectId: "project-1" });
+    const byProject = searchRecords(baseData(), "", {
+      ...defaultSearchFilters,
+      projectId: "project-1",
+    });
     expect(byProject.map((r) => r.id).sort()).toEqual(["note-1", "project-1", "task-open"]);
 
-    const byPerson = searchRecords(baseData(), "", { ...defaultSearchFilters, personId: "person-1" });
-    expect(byPerson.map((r) => r.id).sort()).toEqual(["note-1", "person-1", "project-1", "task-open"]);
+    const byPerson = searchRecords(baseData(), "", {
+      ...defaultSearchFilters,
+      personId: "person-1",
+    });
+    expect(byPerson.map((r) => r.id).sort()).toEqual([
+      "note-1",
+      "person-1",
+      "project-1",
+      "task-open",
+    ]);
   });
 
   it("filters by each type's most relevant date and excludes types without one", () => {
-    const results = searchRecords(baseData(), "", { ...defaultSearchFilters, dateFrom: "2026-08-01", dateTo: "2026-08-31" });
+    const results = searchRecords(baseData(), "", {
+      ...defaultSearchFilters,
+      dateFrom: "2026-08-01",
+      dateTo: "2026-08-31",
+    });
     const ids = results.map((r) => r.id).sort();
     // task-open due 08-10, note-1 review 08-15, both captures created in August; project target is 09-01 (excluded),
     // task-completed due 06-01 (excluded), people/domains have no date (excluded).
@@ -156,8 +228,19 @@ describe("searchRecords", () => {
   });
 
   it("combines a text query with active filters", () => {
-    const results = searchRecords(baseData(), "campaign", { ...defaultSearchFilters, types: ["note"] });
-    expect(results).toEqual([{ type: "note", typeLabel: "Note", id: "note-1", title: "Client call notes", context: "Discussed the September campaign" }]);
+    const results = searchRecords(baseData(), "campaign", {
+      ...defaultSearchFilters,
+      types: ["note"],
+    });
+    expect(results).toEqual([
+      {
+        type: "note",
+        typeLabel: "Note",
+        id: "note-1",
+        title: "Client call notes",
+        context: "Discussed the September campaign",
+      },
+    ]);
   });
 });
 
