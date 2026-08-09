@@ -216,6 +216,22 @@ export async function POST(request: NextRequest) {
       await verifyRelations(command);
       const { error } = await supabase.from("people").insert({ name: command.name, context: command.context, domain_id: command.domainId ?? null });
       if (error) throw error;
+    } else if (command.action === "update_person") {
+      const { data: person } = await supabase.from("people").select("id").eq("id", command.personId).maybeSingle();
+      if (!person) return badRequest("Person not found.");
+      /* Only domainId is an actual relation to verify here; command.personId is the person being
+         edited, not a link, so passing the whole command would collide with relationTables'
+         unrelated "personId" key (a task/note's person link) — same reasoning as update_project. */
+      await verifyRelations({ domainId: command.domainId });
+      const { error } = await supabase.from("people").update({ name: command.name, context: command.context, domain_id: command.domainId ?? null, updated_at: new Date().toISOString() }).eq("id", command.personId);
+      if (error) throw error;
+    } else if (command.action === "delete_person" || command.action === "restore_person") {
+      /* Mirrors delete_task/restore_task: toggle the existing archived_at column. This is the
+         resolution path archive_domain's blocking message points to for a domain's linked people. */
+      const { data: person } = await supabase.from("people").select("id").eq("id", command.personId).maybeSingle();
+      if (!person) return badRequest("Person not found.");
+      const { error } = await supabase.from("people").update({ archived_at: command.action === "delete_person" ? new Date().toISOString() : null }).eq("id", command.personId);
+      if (error) throw error;
     } else if (command.action === "create_person_interaction") {
       const { data: person } = await supabase.from("people").select("id").eq("id", command.personId).maybeSingle();
       if (!person) return badRequest("Person not found.");
@@ -230,6 +246,22 @@ export async function POST(request: NextRequest) {
     } else if (command.action === "create_note") {
       await verifyRelations(command);
       const { error } = await supabase.from("notes").insert({ title: command.title, body: command.body, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null, review_on: command.reviewOn ?? null });
+      if (error) throw error;
+    } else if (command.action === "update_note") {
+      const { data: note } = await supabase.from("notes").select("id").eq("id", command.noteId).maybeSingle();
+      if (!note) return badRequest("Note not found.");
+      await verifyRelations({ domainId: command.domainId, projectId: command.projectId, personId: command.personId });
+      const { error } = await supabase
+        .from("notes")
+        .update({ title: command.title, body: command.body, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null, review_on: command.reviewOn ?? null, updated_at: new Date().toISOString() })
+        .eq("id", command.noteId);
+      if (error) throw error;
+    } else if (command.action === "delete_note" || command.action === "restore_note") {
+      /* Mirrors delete_task/restore_task: toggle the existing archived_at column. This is the
+         resolution path archive_domain's blocking message points to for a domain's linked notes. */
+      const { data: note } = await supabase.from("notes").select("id").eq("id", command.noteId).maybeSingle();
+      if (!note) return badRequest("Note not found.");
+      const { error } = await supabase.from("notes").update({ archived_at: command.action === "delete_note" ? new Date().toISOString() : null }).eq("id", command.noteId);
       if (error) throw error;
     } else if (command.action === "create_routine") {
       const { error } = await supabase.from("routines").insert({ name: command.name, period: command.period });

@@ -37,6 +37,8 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_KEY)("workspace integration (hosted p
   const createdRetainerIds: string[] = [];
   const createdSignalIds: string[] = [];
   const createdDomainIds: string[] = [];
+  const createdPersonIds: string[] = [];
+  const createdNoteIds: string[] = [];
 
   beforeAll(async () => {
     userA = await signedInClient(USER_A);
@@ -51,6 +53,8 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_KEY)("workspace integration (hosted p
     if (createdSignalIds.length) await userA.from("slipping_signals").delete().in("id", createdSignalIds);
     if (createdTaskIds.length) await userA.from("tasks").delete().in("id", createdTaskIds);
     if (createdDomainIds.length) await userA.from("domains").delete().in("id", createdDomainIds);
+    if (createdNoteIds.length) await userA.from("notes").delete().in("id", createdNoteIds);
+    if (createdPersonIds.length) await userA.from("people").delete().in("id", createdPersonIds);
     /* Deleting the project first cascades away its checklist instances and items (both
        on-delete-cascade), which clears the on-delete-restrict references those rows hold on the
        template and its items, so the template cleanup below no longer conflicts with them. */
@@ -263,6 +267,78 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_KEY)("workspace integration (hosted p
     const archived = await userA.from("domains").update({ archived_at: new Date().toISOString() }).eq("id", domainId).select("archived_at").single();
     expect(archived.error).toBeNull();
     expect(archived.data?.archived_at).not.toBeNull();
+  });
+
+  it("keeps a second account from reading, updating, or deleting another user's person", async () => {
+    const name = "[integration-test] owned by user A person";
+    const created = await userA.from("people").insert({ name }).select("id").single();
+    expect(created.error).toBeNull();
+    const personId = created.data!.id;
+    createdPersonIds.push(personId);
+
+    const read = await userB.from("people").select("id").eq("id", personId).maybeSingle();
+    expect(read.error).toBeNull();
+    expect(read.data).toBeNull();
+
+    const update = await userB.from("people").update({ name: "hijacked" }).eq("id", personId).select();
+    expect(update.error).toBeNull();
+    expect(update.data).toEqual([]);
+
+    const remove = await userB.from("people").delete().eq("id", personId).select();
+    expect(remove.error).toBeNull();
+    expect(remove.data).toEqual([]);
+
+    const confirm = await userA.from("people").select("name, archived_at").eq("id", personId).single();
+    expect(confirm.data?.name).toBe(name);
+    expect(confirm.data?.archived_at).toBeNull();
+  });
+
+  it("keeps a second account from reading, updating, or deleting another user's note", async () => {
+    const title = "[integration-test] owned by user A note";
+    const created = await userA.from("notes").insert({ title }).select("id").single();
+    expect(created.error).toBeNull();
+    const noteId = created.data!.id;
+    createdNoteIds.push(noteId);
+
+    const read = await userB.from("notes").select("id").eq("id", noteId).maybeSingle();
+    expect(read.error).toBeNull();
+    expect(read.data).toBeNull();
+
+    const update = await userB.from("notes").update({ title: "hijacked" }).eq("id", noteId).select();
+    expect(update.error).toBeNull();
+    expect(update.data).toEqual([]);
+
+    const remove = await userB.from("notes").delete().eq("id", noteId).select();
+    expect(remove.error).toBeNull();
+    expect(remove.data).toEqual([]);
+
+    const confirm = await userA.from("notes").select("title, archived_at").eq("id", noteId).single();
+    expect(confirm.data?.title).toBe(title);
+    expect(confirm.data?.archived_at).toBeNull();
+  });
+
+  it("mirrors delete_person/restore_person and delete_note/restore_note: toggling archived_at is the whole soft-delete/recovery mechanism", async () => {
+    const person = await userA.from("people").insert({ name: "[integration-test] person delete/restore" }).select("id, archived_at").single();
+    expect(person.error).toBeNull();
+    const personId = person.data!.id;
+    createdPersonIds.push(personId);
+    expect(person.data?.archived_at).toBeNull();
+
+    const deletedPerson = await userA.from("people").update({ archived_at: new Date().toISOString() }).eq("id", personId).select("archived_at").single();
+    expect(deletedPerson.data?.archived_at).not.toBeNull();
+    const restoredPerson = await userA.from("people").update({ archived_at: null }).eq("id", personId).select("archived_at").single();
+    expect(restoredPerson.data?.archived_at).toBeNull();
+
+    const note = await userA.from("notes").insert({ title: "[integration-test] note delete/restore" }).select("id, archived_at").single();
+    expect(note.error).toBeNull();
+    const noteId = note.data!.id;
+    createdNoteIds.push(noteId);
+    expect(note.data?.archived_at).toBeNull();
+
+    const deletedNote = await userA.from("notes").update({ archived_at: new Date().toISOString() }).eq("id", noteId).select("archived_at").single();
+    expect(deletedNote.data?.archived_at).not.toBeNull();
+    const restoredNote = await userA.from("notes").update({ archived_at: null }).eq("id", noteId).select("archived_at").single();
+    expect(restoredNote.data?.archived_at).toBeNull();
   });
 
   it("blocks a hard delete of an applied checklist template item at the on-delete-restrict constraint, and confirms the soft-delete (archived_at) path leaves applied checklists intact", async () => {
