@@ -68,7 +68,6 @@ The PRD uses **Phase 0** for validation/prototyping and **P0** for requirements 
 
 The repository now contains an npm-based Phase 0 application scaffold and product documents:
 
-- Next.js 16 App Router, React 19, strict TypeScript, and Tailwind CSS 4 under `src/`.
 - Supabase SSR clients, public email/password and Google OAuth authentication, API routes, and version-controlled migrations under `supabase/migrations/`.
 - A source-first text capture prototype, server-only OpenRouter proposal adapter, review/correction UI, retainer rollover lab, and Slipping lab.
 - Vitest unit tests for proposal validation and basic retainer/Slipping behavior.
@@ -80,8 +79,7 @@ Before running or suggesting commands:
 
 - Use **npm** and preserve `package-lock.json`; do not introduce a second package manager or lockfile.
 - Use scripts defined in `package.json` instead of inventing parallel commands.
-- Current commands are `npm run dev`, `npm run lint`, `npm test`, and `npm run build`.
-- A dedicated format check, dedicated type-check script, integration-test script, and end-to-end-test script are still required by the MVP tracker.
+- A dedicated formatting-check script is still required by the MVP tracker.
 - Never assume a prototype path is production-ready merely because its UI exists; consult the tracker status and exit gate.
 
 ## MVP tracker workflow
@@ -364,20 +362,7 @@ Match tests to the risk of the change.
 
 ### Quality commands
 
-Current runnable checks are:
-
-- `npm run lint`
-- `npm test`
-- `npm run build`
-
-Before the commercial MVP can be declared complete, add and keep canonical `package.json` commands for at least:
-
-- Formatting check.
-- Lint.
-- Type check.
-- Unit/integration tests.
-- End-to-end tests.
-- Production build.
+Use the scripts defined in `package.json` rather than inventing parallel commands. Before the commercial MVP can be declared complete, add and keep a canonical formatting-check command — it's the one required check still missing.
 
 Run the smallest relevant checks during iteration and the complete required suite before declaring a risky change finished. If a check cannot run, report why and what remains unverified.
 
