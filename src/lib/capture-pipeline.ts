@@ -49,3 +49,46 @@ export function captureStatusAfterApplications(
     ? ("filed" as const)
     : ("discarded" as const);
 }
+
+type AttentionCapture = { status: string; interpretation_claimed_at?: string | null };
+
+/* A `filed` or `discarded` capture is resolved and belongs in history, not on Today. A
+   fresh `interpreting` claim is normal in-flight work and only becomes worth flagging once
+   it goes stale — reuses isStrandedCapture rather than re-deriving the same staleness rule. */
+export function captureNeedsAttention(capture: AttentionCapture, now: Date = new Date()) {
+  switch (capture.status) {
+    case "needs_review":
+    case "failed":
+    case "queued":
+      return true;
+    case "interpreting":
+      return isStrandedCapture(capture, now);
+    default:
+      return false;
+  }
+}
+
+/** Today's recovery list: the subset of a capture feed still waiting on the user. */
+export function capturesNeedingAttention<T extends AttentionCapture>(
+  captures: readonly T[],
+  now: Date = new Date(),
+): T[] {
+  return captures.filter((capture) => captureNeedsAttention(capture, now));
+}
+
+/* Plain-language status for a capture Today is flagging, matching the tag language the
+   Inbox already uses for the same states (PendingCapture, Review) so the two surfaces never
+   describe the same capture differently. */
+export function captureAttentionLabel(capture: AttentionCapture, now: Date = new Date()) {
+  switch (capture.status) {
+    case "needs_review":
+      return "Needs review";
+    case "failed":
+      return "Interpretation failed";
+    case "queued":
+    case "interpreting":
+      return isStrandedCapture(capture, now) ? "Waiting to interpret" : "Interpreting";
+    default:
+      return "Needs attention";
+  }
+}

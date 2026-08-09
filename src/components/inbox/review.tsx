@@ -112,8 +112,8 @@ export function Review({
       {confirmingDiscard ? (
         <div className="review-confirm" role="group" aria-label="Confirm discard">
           <p>
-            Discard this capture? It leaves your inbox. The original words stay in Capture recovery
-            on Today.
+            Discard this capture? It leaves your inbox and Today’s attention list. Your original
+            words are kept, never deleted.
           </p>
           <Button
             autoFocus

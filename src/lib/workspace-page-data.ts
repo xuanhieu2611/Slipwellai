@@ -12,6 +12,7 @@ export type TodayPageData = Pick<
   | "routineCompletions"
   | "signals"
   | "captures"
+  | "captureAttention"
 >;
 
 export type TasksPageData = Pick<

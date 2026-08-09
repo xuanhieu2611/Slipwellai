@@ -410,7 +410,23 @@ export type WorkspaceData = {
     severity: "attention" | "urgent" | "informational";
     outcome: string;
   }>;
-  captures: Array<{ id: string; original_text: string; status: string; created_at: string }>;
+  captures: Array<{
+    id: string;
+    original_text: string;
+    status: string;
+    created_at: string;
+    interpretation_claimed_at: string | null;
+  }>;
+  /* Every capture Today needs to flag, regardless of how it ranks in the recency-capped
+     `captures` feed above — see loadCaptureAttention in workspace-data.ts for why this is a
+     separate query rather than a filter over `captures`. */
+  captureAttention: Array<{
+    id: string;
+    original_text: string;
+    status: string;
+    created_at: string;
+    interpretation_claimed_at: string | null;
+  }>;
   projectActivity: Array<{
     id: string;
     entity_id: string;

@@ -4,6 +4,7 @@ import { isTaskOnDay, type WorkspaceData } from "@/lib/workspace";
 import type { TodayPageData } from "@/lib/workspace-page-data";
 import { dateInZone } from "@/components/workspace/shared/form-utils";
 import { useWorkspaceCommand } from "@/components/workspace/shared/use-workspace-command";
+import { NeedsAttention } from "@/components/workspace/today/needs-attention";
 import { NotesToReview } from "@/components/workspace/today/notes-to-review";
 import { SlippingSignalCard } from "@/components/workspace/today/slipping-signal-card";
 import { TodayBoard } from "@/components/workspace/today/today-board";
@@ -138,25 +139,7 @@ export function TodayPage({ data }: { data: TodayPageData }) {
           )}
         </div>
       </section>
-      <section className="workspace-section">
-        <div className="section-heading">
-          <div>
-            <h2>Capture recovery</h2>
-            <p className="section-note">Recent captures</p>
-          </div>
-        </div>
-        <div className="space-y-2">
-          {data.captures.map((capture) => (
-            <article className="compact-row" key={capture.id}>
-              <span>{capture.original_text}</span>
-              <span className="tag">{capture.status.replace("_", " ")}</span>
-            </article>
-          ))}
-          {data.captures.length === 0 && (
-            <p className="empty-state">Your captured thoughts will appear here.</p>
-          )}
-        </div>
-      </section>
+      <NeedsAttention captureAttention={data.captureAttention} />
     </main>
   );
 }

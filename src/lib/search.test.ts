@@ -124,12 +124,14 @@ function baseData(): SearchPageData {
         original_text: "Rivera Studio wants a new services page",
         status: "filed",
         created_at: "2026-08-05T12:00:00Z",
+        interpretation_claimed_at: null,
       },
       {
         id: "capture-failed",
         original_text: "Untranscribed voice memo",
         status: "failed",
         created_at: "2026-08-06T12:00:00Z",
+        interpretation_claimed_at: null,
       },
     ],
   };
