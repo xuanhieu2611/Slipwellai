@@ -63,8 +63,14 @@ describe("readDatePhrase", () => {
 
   it("resolves the end of the month, including a leap February", () => {
     expect(reading("end of the month")).toEqual({ status: "exact", date: "2026-08-31" });
-    expect(reading("end of the month", "2028-02-03")).toEqual({ status: "exact", date: "2028-02-29" });
-    expect(reading("end of the month", "2026-02-03")).toEqual({ status: "exact", date: "2026-02-28" });
+    expect(reading("end of the month", "2028-02-03")).toEqual({
+      status: "exact",
+      date: "2028-02-29",
+    });
+    expect(reading("end of the month", "2026-02-03")).toEqual({
+      status: "exact",
+      date: "2026-02-28",
+    });
   });
 
   it("keeps both readings of next-weekday when they differ", () => {
@@ -132,27 +138,41 @@ describe("addMonths", () => {
 
 describe("resolveProposalDate", () => {
   it("confirms a date the capture's own words produce", () => {
-    const resolved = resolveProposalDate({ datePhrase: "tomorrow", date: "2026-08-06", dateKind: "due" }, WEDNESDAY);
+    const resolved = resolveProposalDate(
+      { datePhrase: "tomorrow", date: "2026-08-06", dateKind: "due" },
+      WEDNESDAY,
+    );
     expect(resolved).toMatchObject({ status: "confirmed", kind: "due", date: "2026-08-06" });
     expect(acceptedDate(resolved)).toBe("2026-08-06");
   });
 
   it("overrides a model date that disagrees with the capture's words", () => {
     const resolved = resolveProposalDate({ datePhrase: "tomorrow", date: "2026-08-13" }, WEDNESDAY);
-    expect(resolved).toMatchObject({ status: "corrected", date: "2026-08-06", proposedDate: "2026-08-13" });
+    expect(resolved).toMatchObject({
+      status: "corrected",
+      date: "2026-08-06",
+      proposedDate: "2026-08-13",
+    });
     if (resolved.status === "corrected") expect(resolved.note).toContain("Thu 6 Aug");
     expect(acceptedDate(resolved)).toBe("2026-08-06");
   });
 
   it("files nothing when the phrase has two honest readings", () => {
-    const resolved = resolveProposalDate({ datePhrase: "next Friday", date: "2026-08-07" }, WEDNESDAY);
+    const resolved = resolveProposalDate(
+      { datePhrase: "next Friday", date: "2026-08-07" },
+      WEDNESDAY,
+    );
     expect(resolved.status).toBe("unconfirmed");
-    if (resolved.status === "unconfirmed") expect(resolved.options).toEqual(["2026-08-07", "2026-08-14"]);
+    if (resolved.status === "unconfirmed")
+      expect(resolved.options).toEqual(["2026-08-07", "2026-08-14"]);
     expect(acceptedDate(resolved)).toBeNull();
   });
 
   it("keeps an unverifiable model date as a suggestion only", () => {
-    const unreadable = resolveProposalDate({ datePhrase: "the Tuesday after next", date: "2026-08-18" }, WEDNESDAY);
+    const unreadable = resolveProposalDate(
+      { datePhrase: "the Tuesday after next", date: "2026-08-18" },
+      WEDNESDAY,
+    );
     expect(unreadable).toMatchObject({ status: "unconfirmed", options: ["2026-08-18"] });
     if (unreadable.status === "unconfirmed") expect(unreadable.note).toContain("Tue 18 Aug");
     expect(acceptedDate(unreadable)).toBeNull();
@@ -161,7 +181,8 @@ describe("resolveProposalDate", () => {
   it("never preselects a date the capture did not put into words", () => {
     const resolved = resolveProposalDate({ date: "2026-08-20" }, WEDNESDAY);
     expect(resolved).toMatchObject({ status: "unconfirmed", options: ["2026-08-20"] });
-    if (resolved.status === "unconfirmed") expect(resolved.note).toContain("not stated in your capture");
+    if (resolved.status === "unconfirmed")
+      expect(resolved.note).toContain("not stated in your capture");
   });
 
   it("asks about a resolved date that has already passed", () => {
@@ -172,11 +193,17 @@ describe("resolveProposalDate", () => {
 
   it("stays silent when the capture proposed no date at all", () => {
     expect(resolveProposalDate({}, WEDNESDAY)).toEqual({ status: "none", kind: "due" });
-    expect(resolveProposalDate({ dateKind: "scheduled" }, WEDNESDAY)).toEqual({ status: "none", kind: "scheduled" });
+    expect(resolveProposalDate({ dateKind: "scheduled" }, WEDNESDAY)).toEqual({
+      status: "none",
+      kind: "scheduled",
+    });
   });
 
   it("carries the requested date semantics through", () => {
-    const resolved = resolveProposalDate({ datePhrase: "Friday", date: "2026-08-07", dateKind: "scheduled" }, WEDNESDAY);
+    const resolved = resolveProposalDate(
+      { datePhrase: "Friday", date: "2026-08-07", dateKind: "scheduled" },
+      WEDNESDAY,
+    );
     expect(resolved).toMatchObject({ status: "confirmed", kind: "scheduled" });
   });
 });
@@ -192,7 +219,13 @@ describe("readRecurrencePhrase", () => {
   });
 
   it("names a real repeat this MVP cannot express instead of rounding it off", () => {
-    for (const phrase of ["every other Tuesday", "biweekly", "quarterly", "every 3 weeks", "every weekday"]) {
+    for (const phrase of [
+      "every other Tuesday",
+      "biweekly",
+      "quarterly",
+      "every 3 weeks",
+      "every weekday",
+    ]) {
       expect(readRecurrencePhrase(phrase).status).toBe("unsupported");
     }
   });
@@ -203,16 +236,25 @@ describe("readRecurrencePhrase", () => {
 });
 
 describe("resolveProposalRecurrence", () => {
-  const confirmedDate = resolveProposalDate({ datePhrase: "Monday", date: "2026-08-10", dateKind: "scheduled" }, WEDNESDAY);
+  const confirmedDate = resolveProposalDate(
+    { datePhrase: "Monday", date: "2026-08-10", dateKind: "scheduled" },
+    WEDNESDAY,
+  );
 
   it("confirms a repeat the capture's words support", () => {
-    const resolved = resolveProposalRecurrence({ rule: "weekly", phrase: "every Monday" }, confirmedDate);
+    const resolved = resolveProposalRecurrence(
+      { rule: "weekly", phrase: "every Monday" },
+      confirmedDate,
+    );
     expect(resolved).toEqual({ status: "confirmed", rule: "weekly" });
     expect(acceptedRecurrence(resolved)).toBe("weekly");
   });
 
   it("corrects a rule the phrase contradicts", () => {
-    const resolved = resolveProposalRecurrence({ rule: "daily", phrase: "every month" }, confirmedDate);
+    const resolved = resolveProposalRecurrence(
+      { rule: "daily", phrase: "every month" },
+      confirmedDate,
+    );
     expect(resolved).toMatchObject({ status: "corrected", rule: "monthly", proposedRule: "daily" });
     expect(acceptedRecurrence(resolved)).toBe("monthly");
   });
@@ -224,14 +266,20 @@ describe("resolveProposalRecurrence", () => {
   });
 
   it("drops an unsupported cadence rather than filing the wrong one", () => {
-    const resolved = resolveProposalRecurrence({ rule: "weekly", phrase: "every other Tuesday" }, confirmedDate);
+    const resolved = resolveProposalRecurrence(
+      { rule: "weekly", phrase: "every other Tuesday" },
+      confirmedDate,
+    );
     expect(resolved.status).toBe("dropped");
     if (resolved.status === "dropped") expect(resolved.note).toContain("daily, weekly, or monthly");
   });
 
   it("will not repeat from a date the user has not settled", () => {
     const unsettled = resolveProposalDate({ datePhrase: "next Friday" }, WEDNESDAY);
-    const resolved = resolveProposalRecurrence({ rule: "weekly", phrase: "every Friday" }, unsettled);
+    const resolved = resolveProposalRecurrence(
+      { rule: "weekly", phrase: "every Friday" },
+      unsettled,
+    );
     expect(resolved).toMatchObject({ status: "needs_date", rule: "weekly" });
     expect(acceptedRecurrence(resolved)).toBeNull();
   });
@@ -243,7 +291,10 @@ describe("resolveProposalRecurrence", () => {
 
 describe("dateNotes", () => {
   it("says everything that was not settled, and nothing that was", () => {
-    const confirmed = resolveProposalDate({ datePhrase: "tomorrow", date: "2026-08-06" }, WEDNESDAY);
+    const confirmed = resolveProposalDate(
+      { datePhrase: "tomorrow", date: "2026-08-06" },
+      WEDNESDAY,
+    );
     expect(dateNotes(confirmed, { status: "none" })).toEqual([]);
 
     const unconfirmed = resolveProposalDate({ datePhrase: "next Friday" }, WEDNESDAY);

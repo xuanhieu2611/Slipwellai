@@ -36,11 +36,21 @@ function ProjectCheckRow({
         disabled={busy}
         onClick={onToggle}
       >
-        {done ? <Check aria-hidden className="task-complete-check" size={12} weight="bold" /> : <span className="project-check-dot" aria-hidden />}
+        {done ? (
+          <Check aria-hidden className="task-complete-check" size={12} weight="bold" />
+        ) : (
+          <span className="project-check-dot" aria-hidden />
+        )}
       </button>
       <span className="project-check-title">{title}</span>
       {onDelete ? (
-        <button className="project-check-delete" type="button" aria-label={`Delete ${title}`} disabled={busy} onClick={onDelete}>
+        <button
+          className="project-check-delete"
+          type="button"
+          aria-label={`Delete ${title}`}
+          disabled={busy}
+          onClick={onDelete}
+        >
           <Trash aria-hidden size={14} weight="bold" />
         </button>
       ) : null}
@@ -48,7 +58,15 @@ function ProjectCheckRow({
   );
 }
 
-export function ProjectChecklist({ projectId, data, onCommand }: { projectId: string; data: WorkspaceData; onCommand: WorkspaceCommandFn }) {
+export function ProjectChecklist({
+  projectId,
+  data,
+  onCommand,
+}: {
+  projectId: string;
+  data: WorkspaceData;
+  onCommand: WorkspaceCommandFn;
+}) {
   const notify = useToast();
   const [busyId, setBusyId] = useState<string | null>(null);
   const instances = data.checklistInstances.filter((instance) => instance.project_id === projectId);
@@ -59,10 +77,16 @@ export function ProjectChecklist({ projectId, data, onCommand }: { projectId: st
     setBusyId(item.id);
     const isOpen = item.status === "open";
     try {
-      await onCommand({ action: isOpen ? "complete_checklist_item" : "reopen_checklist_item", itemId: item.id });
+      await onCommand({
+        action: isOpen ? "complete_checklist_item" : "reopen_checklist_item",
+        itemId: item.id,
+      });
       notify(isOpen ? "Checklist item completed." : "Checklist item reopened.", "success");
     } catch (error) {
-      notify(error instanceof Error ? error.message : "Could not update that checklist item.", "error");
+      notify(
+        error instanceof Error ? error.message : "Could not update that checklist item.",
+        "error",
+      );
     } finally {
       setBusyId(null);
     }
@@ -166,7 +190,10 @@ function MilestonePanel({
   async function add(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    const ok = await act({ action: "create_milestone", projectId, title: formValue(form, "title") }, "Milestone added.");
+    const ok = await act(
+      { action: "create_milestone", projectId, title: formValue(form, "title") },
+      "Milestone added.",
+    );
     if (ok) form.reset();
   }
 
@@ -174,7 +201,9 @@ function MilestonePanel({
     <section className="project-panel">
       <div className="project-panel-head">
         <h4>Milestones</h4>
-        <span className="tag">{milestones.length ? `${completed}/${milestones.length}` : "None yet"}</span>
+        <span className="tag">
+          {milestones.length ? `${completed}/${milestones.length}` : "None yet"}
+        </span>
       </div>
       {milestones.length > 0 ? (
         <div className="project-check-list">
@@ -190,13 +219,22 @@ function MilestonePanel({
           ))}
         </div>
       ) : (
-        <p className="project-panel-empty">Add checkpoints when the outcome needs more than one step.</p>
+        <p className="project-panel-empty">
+          Add checkpoints when the outcome needs more than one step.
+        </p>
       )}
       <form className="inline-form project-add-row" onSubmit={add}>
         <label className="sr-only" htmlFor={`milestone-${projectId}`}>
           New milestone
         </label>
-        <input className="field-base" id={`milestone-${projectId}`} name="title" required maxLength={280} placeholder="Add a checkpoint" />
+        <input
+          className="field-base"
+          id={`milestone-${projectId}`}
+          name="title"
+          required
+          maxLength={280}
+          placeholder="Add a checkpoint"
+        />
         <button className="button-base button-secondary" type="submit">
           Add
         </button>
@@ -205,7 +243,15 @@ function MilestonePanel({
   );
 }
 
-export function ProjectList({ projects, data, onCommand }: { projects: WorkspaceData["projects"]; data: WorkspaceData; onCommand: WorkspaceCommandFn }) {
+export function ProjectList({
+  projects,
+  data,
+  onCommand,
+}: {
+  projects: WorkspaceData["projects"];
+  data: WorkspaceData;
+  onCommand: WorkspaceCommandFn;
+}) {
   const notify = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -221,25 +267,57 @@ export function ProjectList({ projects, data, onCommand }: { projects: Workspace
   return (
     <div className="space-y-4">
       {projects.map((project) => {
-        const domain = project.domain_id ? data.domains.find((item) => item.id === project.domain_id) : undefined;
-        const person = project.person_id ? data.people.find((item) => item.id === project.person_id) : undefined;
-        const milestones = data.milestones.filter((milestone) => milestone.project_id === project.id);
-        const completedMilestones = milestones.filter((milestone) => milestone.status === "completed").length;
+        const domain = project.domain_id
+          ? data.domains.find((item) => item.id === project.domain_id)
+          : undefined;
+        const person = project.person_id
+          ? data.people.find((item) => item.id === project.person_id)
+          : undefined;
+        const milestones = data.milestones.filter(
+          (milestone) => milestone.project_id === project.id,
+        );
+        const completedMilestones = milestones.filter(
+          (milestone) => milestone.status === "completed",
+        ).length;
         const checklistItemCount = data.checklistInstances
           .filter((instance) => instance.project_id === project.id)
-          .reduce((count, instance) => count + data.checklistItems.filter((item) => item.instance_id === instance.id).length, 0);
+          .reduce(
+            (count, instance) =>
+              count + data.checklistItems.filter((item) => item.instance_id === instance.id).length,
+            0,
+          );
 
         const editMenuActions: MenuAction[] = [
           { label: "Edit", onClick: () => setEditingId(project.id) },
-          { label: "Delete", onClick: () => act({ action: "delete_project", projectId: project.id }, "Project deleted."), tone: "danger" },
+          {
+            label: "Delete",
+            onClick: () =>
+              act({ action: "delete_project", projectId: project.id }, "Project deleted."),
+            tone: "danger",
+          },
         ];
         const activeMenuActions: MenuAction[] = [
           { label: "Edit", onClick: () => setEditingId(project.id) },
           ...(project.status === "active"
-            ? [{ label: "Pause", onClick: () => act({ action: "pause_project", projectId: project.id }, "Project paused.") }]
+            ? [
+                {
+                  label: "Pause",
+                  onClick: () =>
+                    act({ action: "pause_project", projectId: project.id }, "Project paused."),
+                },
+              ]
             : []),
-          { label: "Cancel", onClick: () => act({ action: "cancel_project", projectId: project.id }, "Project canceled.") },
-          { label: "Delete", onClick: () => act({ action: "delete_project", projectId: project.id }, "Project deleted."), tone: "danger" },
+          {
+            label: "Cancel",
+            onClick: () =>
+              act({ action: "cancel_project", projectId: project.id }, "Project canceled."),
+          },
+          {
+            label: "Delete",
+            onClick: () =>
+              act({ action: "delete_project", projectId: project.id }, "Project deleted."),
+            tone: "danger",
+          },
         ];
 
         const planMeta = milestones.length
@@ -261,7 +339,8 @@ export function ProjectList({ projects, data, onCommand }: { projects: Workspace
                 </div>
                 {project.description ? <p className="record-copy">{project.description}</p> : null}
                 <p className="record-meta">
-                  {project.target_on ? `Target ${project.target_on}` : "No target date"} · {planMeta}
+                  {project.target_on ? `Target ${project.target_on}` : "No target date"} ·{" "}
+                  {planMeta}
                 </p>
                 {(domain || person) && (
                   <p className="record-meta flex flex-wrap items-center gap-2">
@@ -277,20 +356,35 @@ export function ProjectList({ projects, data, onCommand }: { projects: Workspace
               </div>
               <div className="record-actions">
                 {project.archived_at ? (
-                  <button className="button-base button-primary" onClick={() => act({ action: "restore_project", projectId: project.id }, "Project restored.")}>
+                  <button
+                    className="button-base button-primary"
+                    onClick={() =>
+                      act({ action: "restore_project", projectId: project.id }, "Project restored.")
+                    }
+                  >
                     Restore
                   </button>
                 ) : project.status === "active" ? (
                   <>
                     <button
                       className="button-base button-secondary"
-                      onClick={() => act({ action: "record_project_progress", projectId: project.id }, "Progress recorded.")}
+                      onClick={() =>
+                        act(
+                          { action: "record_project_progress", projectId: project.id },
+                          "Progress recorded.",
+                        )
+                      }
                     >
                       Mark progress
                     </button>
                     <button
                       className="button-base button-primary"
-                      onClick={() => act({ action: "complete_project", projectId: project.id }, "Project completed.")}
+                      onClick={() =>
+                        act(
+                          { action: "complete_project", projectId: project.id },
+                          "Project completed.",
+                        )
+                      }
                     >
                       Complete
                     </button>
@@ -298,7 +392,12 @@ export function ProjectList({ projects, data, onCommand }: { projects: Workspace
                   </>
                 ) : project.status === "paused" ? (
                   <>
-                    <button className="button-base button-primary" onClick={() => act({ action: "resume_project", projectId: project.id }, "Project resumed.")}>
+                    <button
+                      className="button-base button-primary"
+                      onClick={() =>
+                        act({ action: "resume_project", projectId: project.id }, "Project resumed.")
+                      }
+                    >
                       Resume
                     </button>
                     <ActionsMenu actions={activeMenuActions} />
@@ -311,19 +410,32 @@ export function ProjectList({ projects, data, onCommand }: { projects: Workspace
 
             {editingId === project.id ? (
               <Dialog open title="Edit project" size="lg" onClose={() => setEditingId(null)}>
-                <ProjectEditForm project={project} data={data} onCommand={onCommand} onDone={() => setEditingId(null)} />
+                <ProjectEditForm
+                  project={project}
+                  data={data}
+                  onCommand={onCommand}
+                  onDone={() => setEditingId(null)}
+                />
               </Dialog>
             ) : null}
 
             <div className="project-body">
-              <MilestonePanel projectId={project.id} milestones={milestones} onCommand={onCommand} />
+              <MilestonePanel
+                projectId={project.id}
+                milestones={milestones}
+                onCommand={onCommand}
+              />
               <ProjectChecklist projectId={project.id} data={data} onCommand={onCommand} />
               <ProjectActivity projectId={project.id} data={data} />
             </div>
           </article>
         );
       })}
-      {projects.length === 0 && <p className="empty-state">Projects appear here when an outcome needs more than one action.</p>}
+      {projects.length === 0 && (
+        <p className="empty-state">
+          Projects appear here when an outcome needs more than one action.
+        </p>
+      )}
     </div>
   );
 }

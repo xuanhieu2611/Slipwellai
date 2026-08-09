@@ -8,16 +8,28 @@ export type RetainerFilterState = { status: "current" | "ended" | "deleted" | "a
 
 export const defaultRetainerFilters: RetainerFilterState = { status: "current" };
 
-export function filterRetainers(retainers: WorkspaceData["retainers"], filters: RetainerFilterState) {
+export function filterRetainers(
+  retainers: WorkspaceData["retainers"],
+  filters: RetainerFilterState,
+) {
   return retainers.filter((retainer) => {
-    if (filters.status === "current") return !retainer.archived_at && (retainer.status === "active" || retainer.status === "paused");
+    if (filters.status === "current")
+      return (
+        !retainer.archived_at && (retainer.status === "active" || retainer.status === "paused")
+      );
     if (filters.status === "ended") return !retainer.archived_at && retainer.status === "ended";
     if (filters.status === "deleted") return Boolean(retainer.archived_at);
     return true;
   });
 }
 
-export function RetainerFilters({ filters, onChange }: { filters: RetainerFilterState; onChange: (next: RetainerFilterState) => void }) {
+export function RetainerFilters({
+  filters,
+  onChange,
+}: {
+  filters: RetainerFilterState;
+  onChange: (next: RetainerFilterState) => void;
+}) {
   const isDefault = filters.status === defaultRetainerFilters.status;
   return (
     <div className="task-filter-bar" role="group" aria-label="Filter retainers">
@@ -34,7 +46,11 @@ export function RetainerFilters({ filters, onChange }: { filters: RetainerFilter
         ]}
       />
       {!isDefault && (
-        <button className="task-filter-reset" type="button" onClick={() => onChange(defaultRetainerFilters)}>
+        <button
+          className="task-filter-reset"
+          type="button"
+          onClick={() => onChange(defaultRetainerFilters)}
+        >
           <ArrowCounterClockwise aria-hidden size={13} weight="bold" />
           Reset
         </button>

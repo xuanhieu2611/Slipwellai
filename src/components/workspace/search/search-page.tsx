@@ -13,18 +13,29 @@ export function SearchPage({ data }: { data: SearchPageData }) {
   const filtersActive = !isDefaultSearchFilters(filters);
   const shouldSearch = hasQuery || filtersActive;
 
-  const results = useMemo(() => (shouldSearch ? searchRecords(data, query, filters) : []), [data, query, filters, shouldSearch]);
+  const results = useMemo(
+    () => (shouldSearch ? searchRecords(data, query, filters) : []),
+    [data, query, filters, shouldSearch],
+  );
 
   return (
     <main className="workspace-page">
       <header className="page-intro">
         <p className="eyebrow">Search</p>
         <h1>Find the thing you meant to keep.</h1>
-        <p>This working-prototype search only queries records already authorized for your account.</p>
+        <p>
+          This working-prototype search only queries records already authorized for your account.
+        </p>
       </header>
       <label className="field-label">
         <span>Search all current records</span>
-        <input autoFocus className="field-base search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try a client, project, task, or phrase" />
+        <input
+          autoFocus
+          className="field-base search-input"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Try a client, project, task, or phrase"
+        />
       </label>
       <SearchFilters data={data} filters={filters} onChange={setFilters} />
       <section className="workspace-section mt-6">
@@ -42,9 +53,15 @@ export function SearchPage({ data }: { data: SearchPageData }) {
               </div>
             </article>
           ))}
-          {shouldSearch && results.length === 0 && <p className="empty-state">Nothing matched. Search stays inside your own records.</p>}
+          {shouldSearch && results.length === 0 && (
+            <p className="empty-state">Nothing matched. Search stays inside your own records.</p>
+          )}
           {!shouldSearch && (
-            <p className="empty-state">Start with a word or phrase, or set a filter below to browse without typing. Full-text indexing is the next hardening step; this prototype view demonstrates the unified search experience.</p>
+            <p className="empty-state">
+              Start with a word or phrase, or set a filter below to browse without typing.
+              Full-text indexing is the next hardening step; this prototype view demonstrates the
+              unified search experience.
+            </p>
           )}
         </div>
       </section>

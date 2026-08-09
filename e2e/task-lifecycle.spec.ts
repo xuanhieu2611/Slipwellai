@@ -8,9 +8,14 @@ const authenticatedState = process.env.PLAYWRIGHT_AUTH_STORAGE_STATE;
    — not the AI-chosen title — is what locates the right card among whatever else this shared
    account's inbox already has in it. */
 test.describe("capture to task lifecycle", () => {
-  test.skip(!authenticatedState, "Set PLAYWRIGHT_AUTH_STORAGE_STATE to an authenticated storage state for test@test.com.");
+  test.skip(
+    !authenticatedState,
+    "Set PLAYWRIGHT_AUTH_STORAGE_STATE to an authenticated storage state for test@test.com.",
+  );
 
-  test("captures a task, accepts its proposal, shows it in Today, completes it, and reopens it", async ({ page }) => {
+  test("captures a task, accepts its proposal, shows it in Today, completes it, and reopens it", async ({
+    page,
+  }) => {
     test.setTimeout(300_000); // real AI interpretation latency plus several navigations
     const marker = `e2e-task-lifecycle-${Date.now()}`;
     const taskTitle = `Call the plumber about the kitchen sink ${marker}`;
@@ -27,7 +32,10 @@ test.describe("capture to task lifecycle", () => {
     await page.waitForTimeout(2_000);
 
     const card = page.locator(".review-card").filter({ hasText: marker });
-    const strandedRetry = page.locator("article").filter({ hasText: marker }).getByRole("button", { name: "Interpret it now" });
+    const strandedRetry = page
+      .locator("article")
+      .filter({ hasText: marker })
+      .getByRole("button", { name: "Interpret it now" });
     await expect(async () => {
       await page.reload();
       if (await strandedRetry.isVisible().catch(() => false)) await strandedRetry.click();

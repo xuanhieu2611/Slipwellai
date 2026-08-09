@@ -25,19 +25,34 @@ type InstallInputs = {
 const manualSteps: Record<InstallPlatform, { summary: string; steps: readonly string[] }> = {
   ios: {
     summary: "Safari on iPhone and iPad installs Slipwell from the Share menu.",
-    steps: ["Tap the Share button in the Safari toolbar.", "Choose Add to Home Screen.", "Confirm with Add."],
+    steps: [
+      "Tap the Share button in the Safari toolbar.",
+      "Choose Add to Home Screen.",
+      "Confirm with Add.",
+    ],
   },
   safari: {
     summary: "Safari on macOS installs Slipwell from the Share menu.",
-    steps: ["Open the Share menu in the Safari toolbar.", "Choose Add to Dock.", "Confirm with Add."],
+    steps: [
+      "Open the Share menu in the Safari toolbar.",
+      "Choose Add to Dock.",
+      "Confirm with Add.",
+    ],
   },
   firefox: {
     summary: "Firefox does not install web apps. Slipwell still works fully in a normal tab.",
-    steps: ["Pin the Slipwell tab, or bookmark it for quick access.", "Use Chrome, Edge, or Safari if you want an installed window."],
+    steps: [
+      "Pin the Slipwell tab, or bookmark it for quick access.",
+      "Use Chrome, Edge, or Safari if you want an installed window.",
+    ],
   },
   generic: {
     summary: "Your browser can usually install Slipwell from its own menu.",
-    steps: ["Open the browser menu.", "Choose Install app or Add to Home screen.", "Confirm the install."],
+    steps: [
+      "Open the browser menu.",
+      "Choose Install app or Add to Home screen.",
+      "Confirm the install.",
+    ],
   },
 };
 
@@ -51,7 +66,11 @@ export function detectInstallPlatform(userAgent: string): InstallPlatform {
   return "generic";
 }
 
-export function describeInstall({ standalone, promptAvailable, userAgent }: InstallInputs): InstallGuidance {
+export function describeInstall({
+  standalone,
+  promptAvailable,
+  userAgent,
+}: InstallInputs): InstallGuidance {
   if (standalone) return { kind: "installed" };
   if (promptAvailable) return { kind: "prompt" };
   const platform = detectInstallPlatform(userAgent);
@@ -62,6 +81,8 @@ export function describeInstall({ standalone, promptAvailable, userAgent }: Inst
  * Offline support is optional. A browser without a service worker still gets
  * the full online product, so registration must never be a hard requirement.
  */
-export function canRegisterServiceWorker(navigatorLike: { serviceWorker?: unknown } | undefined): boolean {
+export function canRegisterServiceWorker(
+  navigatorLike: { serviceWorker?: unknown } | undefined,
+): boolean {
   return Boolean(navigatorLike && "serviceWorker" in navigatorLike && navigatorLike.serviceWorker);
 }

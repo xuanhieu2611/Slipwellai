@@ -18,22 +18,39 @@ const noSubscription = () => () => {};
 
 /* Client-only so a relative label never disagrees with the server-rendered markup. */
 export function CaptureAge({ iso }: { iso: string }) {
-  const label = useSyncExternalStore(noSubscription, () => captureAge(iso), () => "");
+  const label = useSyncExternalStore(
+    noSubscription,
+    () => captureAge(iso),
+    () => "",
+  );
   return label ? <time dateTime={iso}>{label}</time> : null;
 }
 
 export const failureCopy: Record<string, string> = {
-  proposal_timeout: "Interpreting this capture took too long. Try again, or discard it if you no longer need it.",
-  proposal_invalid_output: "Slipwell could not read a usable record out of these words. Try again, or discard this and capture it with a little more context.",
-  proposal_provider_error: "The interpretation service did not respond. Your words are saved. Try again in a moment.",
+  proposal_timeout:
+    "Interpreting this capture took too long. Try again, or discard it if you no longer need it.",
+  proposal_invalid_output:
+    "Slipwell could not read a usable record out of these words. Try again, or discard this and capture it with a little more context.",
+  proposal_provider_error:
+    "The interpretation service did not respond. Your words are saved. Try again in a moment.",
 };
 
-export const recordTypeLabels = { task: "Task", note: "Note", retainer_update: "Retainer update" } as const;
+export const recordTypeLabels = {
+  task: "Task",
+  note: "Note",
+  retainer_update: "Retainer update",
+} as const;
 
 export function CaptureOrigin({ capture }: { capture: DashboardData["captures"][number] }) {
-  return <span className="review-origin">
-    {capture.source_type === "voice" ? <Microphone aria-hidden size={15} /> : <Keyboard aria-hidden size={15} />}
-    {capture.source_type === "voice" ? "Voice transcript" : "Typed"}
-    <CaptureAge iso={capture.created_at} />
-  </span>;
+  return (
+    <span className="review-origin">
+      {capture.source_type === "voice" ? (
+        <Microphone aria-hidden size={15} />
+      ) : (
+        <Keyboard aria-hidden size={15} />
+      )}
+      {capture.source_type === "voice" ? "Voice transcript" : "Typed"}
+      <CaptureAge iso={capture.created_at} />
+    </span>
+  );
 }

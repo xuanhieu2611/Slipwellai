@@ -1,6 +1,8 @@
 import type { OnboardingRepository } from "@/lib/onboarding-service";
 
-type SupabaseClient = Awaited<ReturnType<typeof import("@/lib/supabase/server").createSupabaseServerClient>>;
+type SupabaseClient = Awaited<
+  ReturnType<typeof import("@/lib/supabase/server").createSupabaseServerClient>
+>;
 
 const throwIfError = (error: { message: string } | null) => {
   if (error) throw new Error(error.message);
@@ -15,7 +17,11 @@ export function createSupabaseOnboardingRepository(supabase: SupabaseClient): On
           .select("display_name, company_name, work_type, onboarding_completed_at")
           .eq("id", ownerId)
           .maybeSingle(),
-        supabase.from("user_preferences").select("timezone, locale").eq("owner_id", ownerId).maybeSingle(),
+        supabase
+          .from("user_preferences")
+          .select("timezone, locale")
+          .eq("owner_id", ownerId)
+          .maybeSingle(),
       ]);
       throwIfError(profileResult.error);
       throwIfError(preferencesResult.error);
@@ -44,7 +50,11 @@ export function createSupabaseOnboardingRepository(supabase: SupabaseClient): On
     async complete(ownerId) {
       const result = await supabase
         .from("profiles")
-        .update({ onboarding_version: 1, onboarding_completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .update({
+          onboarding_version: 1,
+          onboarding_completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", ownerId);
       throwIfError(result.error);
     },

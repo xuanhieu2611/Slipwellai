@@ -27,7 +27,10 @@ export async function PATCH(request: NextRequest) {
         : await completeOnboarding(repository, user.id);
     return NextResponse.json({ state });
   } catch (error) {
-    if (error instanceof Error && error.message === "Complete your profile before finishing setup.") {
+    if (
+      error instanceof Error &&
+      error.message === "Complete your profile before finishing setup."
+    ) {
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
     return serverError("We couldn't save your setup yet. Try again.");

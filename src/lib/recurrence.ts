@@ -37,11 +37,15 @@ export function nextRecurrenceDate(date: string, rule: RecurrenceRule, custom?: 
        advances to Feb 28 the following non-leap year, staying in February rather than rolling
        into March. */
     const lastDay = lastDayOfMonth(targetYear, month);
-    return new Date(Date.UTC(targetYear, month - 1, Math.min(day, lastDay))).toISOString().slice(0, 10);
+    return new Date(Date.UTC(targetYear, month - 1, Math.min(day, lastDay)))
+      .toISOString()
+      .slice(0, 10);
   }
   const targetMonth = month + 1;
   const targetYear = targetMonth === 13 ? year + 1 : year;
   const normalizedMonth = targetMonth === 13 ? 1 : targetMonth;
   const lastDay = lastDayOfMonth(targetYear, normalizedMonth);
-  return new Date(Date.UTC(targetYear, normalizedMonth - 1, Math.min(day, lastDay))).toISOString().slice(0, 10);
+  return new Date(Date.UTC(targetYear, normalizedMonth - 1, Math.min(day, lastDay)))
+    .toISOString()
+    .slice(0, 10);
 }

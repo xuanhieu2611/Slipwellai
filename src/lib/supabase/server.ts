@@ -23,7 +23,10 @@ export async function createSupabaseServerClient() {
 
 export async function requireUser() {
   const supabase = await createSupabaseServerClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
   if (error || !user) return { supabase, user: null };
   return { supabase, user };
 }

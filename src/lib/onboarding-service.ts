@@ -15,7 +15,9 @@ type ProfileRow = {
 type PreferencesRow = { timezone: string | null; locale: string | null };
 
 export interface OnboardingRepository {
-  read(ownerId: string): Promise<{ profile: ProfileRow | null; preferences: PreferencesRow | null }>;
+  read(
+    ownerId: string,
+  ): Promise<{ profile: ProfileRow | null; preferences: PreferencesRow | null }>;
   saveProfile(ownerId: string, profile: OnboardingProfileInput): Promise<void>;
   complete(ownerId: string): Promise<void>;
 }

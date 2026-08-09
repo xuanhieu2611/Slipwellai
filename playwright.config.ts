@@ -8,8 +8,17 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], storageState: process.env.PLAYWRIGHT_AUTH_STORAGE_STATE } },
-    { name: "mobile", use: { ...devices["iPhone 13"], storageState: process.env.PLAYWRIGHT_AUTH_STORAGE_STATE } },
+    {
+      name: "desktop",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: process.env.PLAYWRIGHT_AUTH_STORAGE_STATE,
+      },
+    },
+    {
+      name: "mobile",
+      use: { ...devices["iPhone 13"], storageState: process.env.PLAYWRIGHT_AUTH_STORAGE_STATE },
+    },
   ],
   webServer: {
     command: "npm run build && npm run start",

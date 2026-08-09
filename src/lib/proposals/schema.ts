@@ -127,7 +127,10 @@ export function toCurrentEnvelope(envelope: AnyProposalEnvelope): ProposalEnvelo
     return {
       schemaVersion: "3",
       sourceCaptureId: envelope.sourceCaptureId,
-      proposals: envelope.proposals.map(({ dueOn, dueTime, ...item }) => ({ ...item, ...upgradeDates({ dueOn, dueTime }) })),
+      proposals: envelope.proposals.map(({ dueOn, dueTime, ...item }) => ({
+        ...item,
+        ...upgradeDates({ dueOn, dueTime }),
+      })),
     };
   }
 
@@ -187,7 +190,9 @@ const filedDateFields = {
   recurrenceRule: recurrenceRuleSchema.optional(),
 };
 
-const requiresDateForRecurrence = <T extends { date?: string; recurrenceRule?: string }>(value: T) => !value.recurrenceRule || Boolean(value.date);
+const requiresDateForRecurrence = <T extends { date?: string; recurrenceRule?: string }>(
+  value: T,
+) => !value.recurrenceRule || Boolean(value.date);
 const recurrenceNeedsDate = { message: "A repeating task needs a first date.", path: ["date"] };
 
 export const fileManuallySchema = z
@@ -221,7 +226,12 @@ export const proposalActionSchema = z.object({
 /* The date columns a record is written with, from either the review payload or the
    deterministic resolution of an unedited proposal. A repeat is anchored on its date, so
    a repeating task is always scheduled as well as optionally due. */
-export function filedDateColumns(input: { dateKind?: "due" | "scheduled"; date?: string | null; time?: string | null; recurrenceRule?: "daily" | "weekly" | "monthly" | null }) {
+export function filedDateColumns(input: {
+  dateKind?: "due" | "scheduled";
+  date?: string | null;
+  time?: string | null;
+  recurrenceRule?: "daily" | "weekly" | "monthly" | null;
+}) {
   const date = input.date || null;
   const recurrenceRule = date ? input.recurrenceRule || null : null;
   const scheduled = input.dateKind === "scheduled" || Boolean(recurrenceRule);
