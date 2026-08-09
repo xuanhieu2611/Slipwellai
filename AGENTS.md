@@ -18,9 +18,11 @@ The founder is Slipwell's first dogfooding user and represents a concrete exampl
 
 The founder is a software engineer with a full-time role who also:
 
-- Manages an advertising client with recurring weekly updates, monthly analytics, and ongoing campaign work.
-- Maintains a client website where new work arrives unpredictably as ad hoc requests.
+- Manages paid social advertising for an online education client, including recurring daily reporting, weekly performance updates, monthly analytics reviews, and ongoing campaign decisions.
+- Builds and maintains websites for local businesses. New services, company milestones, and design changes arrive unpredictably, sometimes months apart, as ad hoc client requests.
+- Is building Slipwell as a consumer software product.
 - Is developing an independent AI consultancy, personal brand, and AI-agent services business.
+- Is developing a clothing brand as another independent venture.
 - Balances these professional contexts with personal commitments without a team operations function.
 
 Use this scenario when evaluating product behavior, onboarding, demos, and founder-led marketing. It should exercise the full core loop: quickly capture an unstructured commitment, review the proposed structure, connect it to the correct domain, finite project, retainer, person, or note, surface it through Today or search, and use Slipping to protect important work that lacks external urgency.
@@ -28,14 +30,16 @@ Use this scenario when evaluating product behavior, onboarding, demos, and found
 Preserve these modeling distinctions:
 
 - The full-time job is a domain. Slipwell is the founder's personal execution layer and does not replace the employer's team systems.
-- The advertising engagement is a retainer with recurring cycles, expected reports, one-off work, carry-forward, and history.
-- Website work is a finite project when it has a defined outcome, or an ongoing retainer when it is a continuing maintenance relationship. Do not force every client request into the same model.
-- The AI consultancy is a durable domain containing finite projects such as validating an offer, launching a site, creating a case study, or acquiring the first clients.
+- The advertising engagement is a retainer with recurring cycles, expected daily, weekly, and monthly reports, one-off work, carry-forward, and history.
+- Website work is a finite project when a defined batch of requested changes has an intended completion state, or an ongoing retainer only when it is a continuing maintenance agreement. Do not force every sporadic client request into a retainer.
+- Slipwell, the AI consultancy, and the clothing brand are separate durable ventures. Model each as a domain when the distinction is useful, with finite projects for current outcomes such as running a founder alpha, validating an offer, building an agent demo, or validating an initial clothing release.
 - Routines remain separate from tasks, and calendar data remains read-only context in the MVP.
 
 The central founder problem is context fragmentation: urgent employment and client work can crowd out important business-building work, while recurring and ad hoc commitments arrive across conversations and tools. The intended outcome is not automatic execution or an all-in-one workspace. It is a trusted capture and attention system that reduces mental load, preserves commitments, and shows what needs deliberate attention before it becomes a problem.
 
 Do not generalize the primary audience to all employed professionals, developers, side-project builders, or consumers based on this scenario alone. Founder dogfooding is product evidence, but it does not satisfy the external interview, willingness-to-pay, alpha, retention, or conversion gates in `MVP-BUILD-TRACKER.md`.
+
+Use `FOUNDER-OPERATING-GUIDE.md` for the founder's recommended Slipwell configuration, operating rhythm, and repeatable product-demo flow. Use `X-MARKETING-STRATEGY.md` for founder-led positioning, content pillars, publishing cadence, copy-ready posts, media guidance, and validation metrics.
 
 ## Read before changing the product
 
