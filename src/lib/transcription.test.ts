@@ -16,9 +16,12 @@ describe("OpenRouter transcription adapter", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(transcribeAudio({ audio: new Blob(["audio"], { type: "audio/webm" }), mimeType: "audio/webm" })).resolves.toBe(
-      "Remember to send the proposal.",
-    );
+    await expect(
+      transcribeAudio({
+        audio: new Blob(["audio"], { type: "audio/webm" }),
+        mimeType: "audio/webm",
+      }),
+    ).resolves.toBe("Remember to send the proposal.");
 
     expect(fetchMock).toHaveBeenCalledWith(
       "https://openrouter.ai/api/v1/audio/transcriptions",
@@ -35,8 +38,13 @@ describe("OpenRouter transcription adapter", () => {
   it("requires the existing OpenRouter server credential", async () => {
     vi.stubEnv("OPENROUTER_API_KEY", "");
 
-    await expect(transcribeAudio({ audio: new Blob(["audio"]), mimeType: "audio/webm" })).rejects.toEqual(
-      new TranscriptionError("transcription_not_configured", "Voice transcription is not configured yet."),
+    await expect(
+      transcribeAudio({ audio: new Blob(["audio"]), mimeType: "audio/webm" }),
+    ).rejects.toEqual(
+      new TranscriptionError(
+        "transcription_not_configured",
+        "Voice transcription is not configured yet.",
+      ),
     );
   });
 });

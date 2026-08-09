@@ -12,9 +12,18 @@ export function useWorkspaceCommand() {
   const notify = useToast();
 
   async function command(body: Record<string, unknown>) {
-    const response = await fetch("/api/workspace", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const response = await fetch("/api/workspace", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
     const payload: unknown = await response.json();
-    if (!response.ok) throw new Error(typeof payload === "object" && payload && "error" in payload ? String(payload.error) : "Could not save that change.");
+    if (!response.ok)
+      throw new Error(
+        typeof payload === "object" && payload && "error" in payload
+          ? String(payload.error)
+          : "Could not save that change.",
+      );
     router.refresh();
   }
 
@@ -29,30 +38,68 @@ export function useWorkspaceCommand() {
 
   async function refreshAttention() {
     await safely(async () => {
-      const response = await fetch("/api/slipping/evaluate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ scope: "core" }) });
+      const response = await fetch("/api/slipping/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope: "core" }),
+      });
       const payload: unknown = await response.json();
-      if (!response.ok) throw new Error(typeof payload === "object" && payload && "error" in payload ? String(payload.error) : "Could not refresh attention.");
+      if (!response.ok)
+        throw new Error(
+          typeof payload === "object" && payload && "error" in payload
+            ? String(payload.error)
+            : "Could not refresh attention.",
+        );
       router.refresh();
     }, "Attention signals refreshed.");
   }
 
-  async function resolveSignal(signalId: string, outcome: "marked_attention" | "deferred" | "dismissed" | "cadence_changed", extra?: Record<string, unknown>, success = "Signal resolved.") {
+  async function resolveSignal(
+    signalId: string,
+    outcome: "marked_attention" | "deferred" | "dismissed" | "cadence_changed",
+    extra?: Record<string, unknown>,
+    success = "Signal resolved.",
+  ) {
     await safely(async () => {
-      const response = await fetch(`/api/slipping/${signalId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ outcome, ...extra }) });
+      const response = await fetch(`/api/slipping/${signalId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outcome, ...extra }),
+      });
       const payload: unknown = await response.json();
-      if (!response.ok) throw new Error(typeof payload === "object" && payload && "error" in payload ? String(payload.error) : "Could not resolve that signal.");
+      if (!response.ok)
+        throw new Error(
+          typeof payload === "object" && payload && "error" in payload
+            ? String(payload.error)
+            : "Could not resolve that signal.",
+        );
       router.refresh();
     }, success);
   }
 
   async function checkRetainerSlipping(retainerId: string) {
-    const response = await fetch("/api/slipping/evaluate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ retainerId }) });
+    const response = await fetch("/api/slipping/evaluate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ retainerId }),
+    });
     const payload: unknown = await response.json();
-    if (!response.ok) throw new Error(typeof payload === "object" && payload && "error" in payload ? String(payload.error) : "Could not check Slipping.");
+    if (!response.ok)
+      throw new Error(
+        typeof payload === "object" && payload && "error" in payload
+          ? String(payload.error)
+          : "Could not check Slipping.",
+      );
     router.refresh();
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>, action: string, fields: Record<string, string>, success: string, onSuccess?: () => void) {
+  async function submit(
+    event: FormEvent<HTMLFormElement>,
+    action: string,
+    fields: Record<string, string>,
+    success: string,
+    onSuccess?: () => void,
+  ) {
     event.preventDefault();
     try {
       const form = event.currentTarget;
@@ -67,5 +114,13 @@ export function useWorkspaceCommand() {
     }
   }
 
-  return { command, safely, refreshAttention, resolveSignal, checkRetainerSlipping, submit, notify };
+  return {
+    command,
+    safely,
+    refreshAttention,
+    resolveSignal,
+    checkRetainerSlipping,
+    submit,
+    notify,
+  };
 }

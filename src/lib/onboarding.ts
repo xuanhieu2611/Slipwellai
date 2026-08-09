@@ -16,8 +16,7 @@ export const workTypeLabels: Record<WorkType, string> = {
   other_independent_professional: "Other independent professional",
 };
 
-const trimmed = (maximum: number) =>
-  z.string().trim().min(1).max(maximum);
+const trimmed = (maximum: number) => z.string().trim().min(1).max(maximum);
 
 const optionalTrimmed = (maximum: number) =>
   z

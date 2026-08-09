@@ -31,17 +31,30 @@ describe("claimCaptureForInterpretation", () => {
     const now = new Date("2026-08-05T12:00:00.000Z");
     const { supabase, calls } = claimClient({ id: captureId, original_text: "stored words" });
 
-    const result = await claimCaptureForInterpretation({ supabase: supabase as never, captureId, reason: "queued", now });
+    const result = await claimCaptureForInterpretation({
+      supabase: supabase as never,
+      captureId,
+      reason: "queued",
+      now,
+    });
 
     expect(result).toEqual({ id: captureId, original_text: "stored words" });
-    expect(calls.update).toEqual({ status: "interpreting", failure_code: null, interpretation_claimed_at: now.toISOString() });
+    expect(calls.update).toEqual({
+      status: "interpreting",
+      failure_code: null,
+      interpretation_claimed_at: now.toISOString(),
+    });
     expect(calls.or).toContain("status.eq.queued");
   });
 
   it("returns nothing when another request already holds the claim, so interpretation is not duplicated", async () => {
     const { supabase } = claimClient(null);
 
-    const result = await claimCaptureForInterpretation({ supabase: supabase as never, captureId, reason: "queued" });
+    const result = await claimCaptureForInterpretation({
+      supabase: supabase as never,
+      captureId,
+      reason: "queued",
+    });
 
     expect(result).toBeNull();
   });
@@ -85,7 +98,9 @@ describe("interpretCapture", () => {
   it("keeps a failed interpretation recoverable through an addressable failed proposal", async () => {
     const { supabase, inserts, updates } = stubClient();
     const provider = {
-      propose: vi.fn().mockRejectedValue(new ProposalProviderError("proposal_timeout", "timed out")),
+      propose: vi
+        .fn()
+        .mockRejectedValue(new ProposalProviderError("proposal_timeout", "timed out")),
     } as ProposalProvider;
 
     const result = await interpretCapture({
@@ -94,10 +109,16 @@ describe("interpretCapture", () => {
       provider,
     });
 
-    expect(result).toEqual({ error: "The proposal service is unavailable. Your original capture is ready for retry." });
+    expect(result).toEqual({
+      error: "The proposal service is unavailable. Your original capture is ready for retry.",
+    });
     expect(inserts).toContainEqual({
       table: "proposals",
-      value: expect.objectContaining({ capture_id: captureId, status: "failed", proposal_json: {} }),
+      value: expect.objectContaining({
+        capture_id: captureId,
+        status: "failed",
+        proposal_json: {},
+      }),
     });
     expect(updates).toContainEqual({
       table: "captures",
@@ -112,12 +133,20 @@ describe("interpretCapture", () => {
     const domain = { id: "22222222-2222-4222-8222-222222222222", name: "Client work" };
     const { supabase } = stubClient({
       domains: [domain],
-      people: [{ id: "33333333-3333-4333-8333-333333333333", name: "Dana Rivera", domain_id: domain.id }],
+      people: [
+        { id: "33333333-3333-4333-8333-333333333333", name: "Dana Rivera", domain_id: domain.id },
+      ],
       user_preferences: [{ timezone: "Europe/Lisbon" }],
     });
-    const propose = vi.fn().mockResolvedValue({ schemaVersion: "3", sourceCaptureId: captureId, proposals: [] });
+    const propose = vi
+      .fn()
+      .mockResolvedValue({ schemaVersion: "3", sourceCaptureId: captureId, proposals: [] });
 
-    await interpretCapture({ supabase: supabase as never, capture: { id: captureId, original_text: "note for dana" }, provider: { propose } });
+    await interpretCapture({
+      supabase: supabase as never,
+      capture: { id: captureId, original_text: "note for dana" },
+      provider: { propose },
+    });
 
     expect(propose).toHaveBeenCalledWith(
       expect.objectContaining({

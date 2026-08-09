@@ -62,7 +62,8 @@ function matchByName<T extends { id: string; name: string }>(
   if (!wanted) return { status: "none" };
   const hits = records.filter((record) => normalizeDestinationName(record.name) === wanted);
   if (hits.length === 0) return { status: "unmatched", name: name!.trim() };
-  if (hits.length > 1) return { status: "ambiguous", name: name!.trim(), candidateIds: hits.map((hit) => hit.id) };
+  if (hits.length > 1)
+    return { status: "ambiguous", name: name!.trim(), candidateIds: hits.map((hit) => hit.id) };
   return { status: "matched", id: hits[0].id, name: hits[0].name };
 }
 
@@ -79,13 +80,22 @@ export function resolveDestination(
      It only applies when the capture named no domain: an unmatched or ambiguous domain
      name is a question, and inheriting over it would bury it. */
   if (domain.status === "none") {
-    const parent = project.status === "matched"
-      ? { source: "project" as const, record: catalog.projects.find((item) => item.id === project.id) }
-      : person.status === "matched"
-        ? { source: "person" as const, record: catalog.people.find((item) => item.id === person.id) }
-        : null;
+    const parent =
+      project.status === "matched"
+        ? {
+            source: "project" as const,
+            record: catalog.projects.find((item) => item.id === project.id),
+          }
+        : person.status === "matched"
+          ? {
+              source: "person" as const,
+              record: catalog.people.find((item) => item.id === person.id),
+            }
+          : null;
     const inheritedId = parent?.record?.domain_id ?? null;
-    const inherited = inheritedId ? catalog.domains.find((item) => item.id === inheritedId) : undefined;
+    const inherited = inheritedId
+      ? catalog.domains.find((item) => item.id === inheritedId)
+      : undefined;
     if (parent && inherited) {
       return {
         domain: { status: "matched", id: inherited.id, name: inherited.name },
@@ -118,18 +128,26 @@ export function unmatchedNames(resolved: ResolvedDestination) {
   };
 }
 
-export function describeDestination(resolved: ResolvedDestination, catalog: DestinationCatalog): string {
+export function describeDestination(
+  resolved: ResolvedDestination,
+  catalog: DestinationCatalog,
+): string {
   const parts: string[] = [];
   if (resolved.domain.status === "matched") {
-    parts.push(resolved.domainInheritedFrom ? `${resolved.domain.name} (from its ${resolved.domainInheritedFrom})` : resolved.domain.name);
+    parts.push(
+      resolved.domainInheritedFrom
+        ? `${resolved.domain.name} (from its ${resolved.domainInheritedFrom})`
+        : resolved.domain.name,
+    );
   }
   if (resolved.project.status === "matched") parts.push(resolved.project.name);
   if (resolved.person.status === "matched") parts.push(resolved.person.name);
   if (parts.length > 0) return parts.join(" · ");
   const unmatched = unmatchedNames(resolved);
   const named = unmatched.project ?? unmatched.person ?? unmatched.domain;
-  if (named) return catalog.domains.length + catalog.projects.length + catalog.people.length === 0
-    ? `${named}: nothing to file into yet`
-    : `${named}: no match in your records`;
+  if (named)
+    return catalog.domains.length + catalog.projects.length + catalog.people.length === 0
+      ? `${named}: nothing to file into yet`
+      : `${named}: no match in your records`;
   return "Unfiled";
 }

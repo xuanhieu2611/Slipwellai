@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { cycleBounds, expectedDate, nextCycleMonth, signalActionSchema, slippingExplanation } from "./retainers";
+import {
+  cycleBounds,
+  expectedDate,
+  nextCycleMonth,
+  signalActionSchema,
+  slippingExplanation,
+} from "./retainers";
 
 describe("retainer cycle bounds", () => {
   it("clamps a 31st-day cycle in February of a non-leap year", () => {
@@ -17,7 +23,13 @@ describe("retainer cycle bounds", () => {
 
 describe("Slipping explanations", () => {
   it("explains overdue open work without treating a cosmetic edit as attention", () => {
-    expect(slippingExplanation({ expectedOn: "2026-07-20", timezone: "America/Vancouver", now: new Date("2026-08-02T10:00:00Z") })).toMatchObject({ severity: "urgent" });
+    expect(
+      slippingExplanation({
+        expectedOn: "2026-07-20",
+        timezone: "America/Vancouver",
+        now: new Date("2026-08-02T10:00:00Z"),
+      }),
+    ).toMatchObject({ severity: "urgent" });
   });
 
   /* America/Vancouver falls back from PDT (UTC-7) to PST (UTC-8) at 2026-11-01T09:00:00Z. At
@@ -25,11 +37,23 @@ describe("Slipping explanations", () => {
      calendar day behind the "2026-11-01" a naive now.toISOString() comparison would use — which
      would wrongly read a deliverable expected "2026-10-31" as already overdue a day early. */
   it("resolves the local calendar day, not the UTC one, just before a fall-back DST transition", () => {
-    expect(slippingExplanation({ expectedOn: "2026-10-31", timezone: "America/Vancouver", now: new Date("2026-11-01T05:00:00Z") })).toBeNull();
+    expect(
+      slippingExplanation({
+        expectedOn: "2026-10-31",
+        timezone: "America/Vancouver",
+        now: new Date("2026-11-01T05:00:00Z"),
+      }),
+    ).toBeNull();
   });
 
   it("resolves the local calendar day correctly once the post-transition PST offset applies", () => {
-    expect(slippingExplanation({ expectedOn: "2026-10-31", timezone: "America/Vancouver", now: new Date("2026-11-01T09:01:00Z") })).toMatchObject({ severity: "attention" });
+    expect(
+      slippingExplanation({
+        expectedOn: "2026-10-31",
+        timezone: "America/Vancouver",
+        now: new Date("2026-11-01T09:01:00Z"),
+      }),
+    ).toMatchObject({ severity: "attention" });
   });
 });
 
@@ -51,8 +75,12 @@ describe("signalActionSchema", () => {
   });
 
   it("rejects a cadenceDays value outside 1-365", () => {
-    expect(signalActionSchema.safeParse({ outcome: "cadence_changed", cadenceDays: 0 }).success).toBe(false);
-    expect(signalActionSchema.safeParse({ outcome: "cadence_changed", cadenceDays: 366 }).success).toBe(false);
+    expect(
+      signalActionSchema.safeParse({ outcome: "cadence_changed", cadenceDays: 0 }).success,
+    ).toBe(false);
+    expect(
+      signalActionSchema.safeParse({ outcome: "cadence_changed", cadenceDays: 366 }).success,
+    ).toBe(false);
   });
 
   it("still parses the existing three outcomes without cadenceDays", () => {

@@ -52,7 +52,9 @@ describe("application-shell service worker", () => {
   });
 
   it("serves immutable build assets from the cache", () => {
-    expect(strategy({ method: "GET", url: `${origin}/_next/static/chunks/main.js` })).toBe("cache-first");
+    expect(strategy({ method: "GET", url: `${origin}/_next/static/chunks/main.js` })).toBe(
+      "cache-first",
+    );
     expect(strategy({ method: "GET", url: `${origin}/icons/icon-192.png` })).toBe("cache-first");
   });
 
@@ -73,8 +75,12 @@ describe("application-shell service worker", () => {
   });
 
   it("leaves cross-origin requests alone", () => {
-    expect(strategy({ method: "GET", url: "https://project.supabase.co/auth/v1/user" })).toBe("network-only");
-    expect(strategy({ method: "GET", url: "https://cdn.example.com/_next/static/chunks/main.js" })).toBe("network-only");
+    expect(strategy({ method: "GET", url: "https://project.supabase.co/auth/v1/user" })).toBe(
+      "network-only",
+    );
+    expect(
+      strategy({ method: "GET", url: "https://cdn.example.com/_next/static/chunks/main.js" }),
+    ).toBe("network-only");
   });
 
   it("falls through to the network for anything it does not recognise", () => {
