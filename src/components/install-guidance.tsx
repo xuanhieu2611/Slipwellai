@@ -6,7 +6,10 @@ import { describeInstall, type InstallGuidance as Guidance } from "@/lib/pwa";
 import { Button, StatusMessage } from "@/components/ui/primitives";
 
 /** Chromium's deferred install event. It is not in the DOM lib and is absent in other browsers. */
-type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
+type InstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: string }>;
+};
 
 /*
   Installability is browser state, not React state, so it is read through an
@@ -29,7 +32,9 @@ function isStandalone() {
 }
 
 function sameGuidance(a: Guidance, b: Guidance) {
-  return a.kind === b.kind && (a.kind !== "manual" || b.kind !== "manual" || a.platform === b.platform);
+  return (
+    a.kind === b.kind && (a.kind !== "manual" || b.kind !== "manual" || a.platform === b.platform)
+  );
 }
 
 // useSyncExternalStore compares snapshots by identity, so an unchanged result must keep its object.
@@ -83,9 +88,12 @@ export function InstallGuidance() {
     try {
       await prompt.prompt();
       const { outcome } = await prompt.userChoice;
-      if (outcome !== "accepted") setMessage("Install was dismissed. You can install Slipwell later from this screen.");
+      if (outcome !== "accepted")
+        setMessage("Install was dismissed. You can install Slipwell later from this screen.");
     } catch {
-      setMessage("Your browser did not open the install dialog. Use its own menu to install Slipwell.");
+      setMessage(
+        "Your browser did not open the install dialog. Use its own menu to install Slipwell.",
+      );
     } finally {
       // A deferred prompt can only be used once, so fall back to written steps afterwards.
       deferredPrompt = null;
@@ -100,8 +108,8 @@ export function InstallGuidance() {
         Install Slipwell
       </h2>
       <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">
-        Installing gives Slipwell its own window or home-screen icon so capture is one tap away. Slipwell works the same in a
-        normal browser tab; installing is optional.
+        Installing gives Slipwell its own window or home-screen icon so capture is one tap away.
+        Slipwell works the same in a normal browser tab; installing is optional.
       </p>
 
       {guidance === null ? (
@@ -124,8 +132,8 @@ export function InstallGuidance() {
       )}
 
       <p className="mt-4 text-sm leading-6 text-[var(--ink-muted)]">
-        Slipwell keeps your records on the server, so it needs a connection. Offline, it shows a clear offline screen instead of
-        stale data.
+        Slipwell keeps your records on the server, so it needs a connection. Offline, it shows a
+        clear offline screen instead of stale data.
       </p>
       {message && <StatusMessage tone="neutral">{message}</StatusMessage>}
     </section>

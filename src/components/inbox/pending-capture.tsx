@@ -12,10 +12,22 @@ import { ManualFile } from "@/components/inbox/manual-file";
 
 const noSubscription = () => () => {};
 
-export function PendingCapture({ capture, catalog, done }: { capture: DashboardData["captures"][number]; catalog: DestinationCatalog; done: () => void }) {
+export function PendingCapture({
+  capture,
+  catalog,
+  done,
+}: {
+  capture: DashboardData["captures"][number];
+  catalog: DestinationCatalog;
+  done: () => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const stranded = useSyncExternalStore(noSubscription, () => isStrandedCapture(capture), () => false);
+  const stranded = useSyncExternalStore(
+    noSubscription,
+    () => isStrandedCapture(capture),
+    () => false,
+  );
 
   async function interpret() {
     setBusy(true);
@@ -29,24 +41,32 @@ export function PendingCapture({ capture, catalog, done }: { capture: DashboardD
     }
   }
 
-  return <article className="review-card">
-    <div className="review-head">
-      <CaptureOrigin capture={capture} />
-      <span className="tag">{stranded ? "Waiting to interpret" : "Interpreting"}</span>
-    </div>
-    <blockquote className="review-source">{capture.original_text}</blockquote>
-    <div className="review-panel">
-      <p className="review-reason">
-        {stranded
-          ? "Your words are stored. Interpretation did not finish, most likely because the tab closed or the connection dropped. Nothing was lost."
-          : "Stored. Slipwell is reading it now; refresh in a moment to review it."}
-      </p>
-    </div>
-    <div className="review-actions">
-      <Button className="button-primary" disabled={busy} onClick={interpret}><ArrowClockwise aria-hidden size={16} />{busy ? "Interpreting…" : stranded ? "Interpret it now" : "Check again"}</Button>
-      <ManualFile capture={capture} catalog={catalog} done={done} />
-    </div>
-    {message && <div className="px-[1.05rem] pb-[1.05rem]"><StatusMessage tone="error">{message}</StatusMessage></div>}
-  </article>;
+  return (
+    <article className="review-card">
+      <div className="review-head">
+        <CaptureOrigin capture={capture} />
+        <span className="tag">{stranded ? "Waiting to interpret" : "Interpreting"}</span>
+      </div>
+      <blockquote className="review-source">{capture.original_text}</blockquote>
+      <div className="review-panel">
+        <p className="review-reason">
+          {stranded
+            ? "Your words are stored. Interpretation did not finish, most likely because the tab closed or the connection dropped. Nothing was lost."
+            : "Stored. Slipwell is reading it now; refresh in a moment to review it."}
+        </p>
+      </div>
+      <div className="review-actions">
+        <Button className="button-primary" disabled={busy} onClick={interpret}>
+          <ArrowClockwise aria-hidden size={16} />
+          {busy ? "Interpreting…" : stranded ? "Interpret it now" : "Check again"}
+        </Button>
+        <ManualFile capture={capture} catalog={catalog} done={done} />
+      </div>
+      {message && (
+        <div className="px-[1.05rem] pb-[1.05rem]">
+          <StatusMessage tone="error">{message}</StatusMessage>
+        </div>
+      )}
+    </article>
+  );
 }
-

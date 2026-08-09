@@ -9,7 +9,10 @@ export type MenuAction = { label: string; onClick: () => void; tone?: "danger" }
 export function ActionsMenu({ actions }: { actions: MenuAction[] }) {
   return (
     <Menu.Root>
-      <Menu.Trigger aria-label="More actions" className="button-base button-quiet task-menu-trigger">
+      <Menu.Trigger
+        aria-label="More actions"
+        className="button-base button-quiet task-menu-trigger"
+      >
         <DotsThreeVertical aria-hidden size={18} weight="bold" />
       </Menu.Trigger>
       <Menu.Portal>
@@ -17,7 +20,10 @@ export function ActionsMenu({ actions }: { actions: MenuAction[] }) {
           <Menu.Popup className="task-menu-panel">
             {actions.map((action) => (
               <Menu.Item
-                className={clsx("task-menu-item", action.tone === "danger" && "task-menu-item--danger")}
+                className={clsx(
+                  "task-menu-item",
+                  action.tone === "danger" && "task-menu-item--danger",
+                )}
                 key={action.label}
                 onClick={action.onClick}
               >

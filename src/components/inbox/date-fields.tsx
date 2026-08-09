@@ -49,7 +49,10 @@ export function DateFields({
         {!isNote && (
           <label className="field-label">
             <span>Date means</span>
-            <SelectField onChange={(event) => onChange({ dateKind: event.target.value as DateKind })} value={draft.dateKind}>
+            <SelectField
+              onChange={(event) => onChange({ dateKind: event.target.value as DateKind })}
+              value={draft.dateKind}
+            >
               <option value="due">Due by</option>
               <option value="scheduled">Work on</option>
             </SelectField>
@@ -59,7 +62,12 @@ export function DateFields({
           <span>{isNote ? "Review on" : "Date"}</span>
           {/* Clearing the date clears the repeat with it: a repeat with no anchor cannot be filed. */}
           <TextField
-            onChange={(event) => onChange({ date: event.target.value, ...(event.target.value ? {} : { recurrenceRule: "none" as const }) })}
+            onChange={(event) =>
+              onChange({
+                date: event.target.value,
+                ...(event.target.value ? {} : { recurrenceRule: "none" as const }),
+              })
+            }
             type="date"
             value={draft.date}
           />
@@ -67,13 +75,23 @@ export function DateFields({
         {!isNote && (
           <label className="field-label">
             <span>Time (optional)</span>
-            <TextField onChange={(event) => onChange({ time: event.target.value })} type="time" value={draft.time} />
+            <TextField
+              onChange={(event) => onChange({ time: event.target.value })}
+              type="time"
+              value={draft.time}
+            />
           </label>
         )}
         {draft.recordType === "task" && (
           <label className="field-label">
             <span>Repeats</span>
-            <SelectField disabled={!draft.date} onChange={(event) => onChange({ recurrenceRule: event.target.value as DateDraft["recurrenceRule"] })} value={draft.recurrenceRule}>
+            <SelectField
+              disabled={!draft.date}
+              onChange={(event) =>
+                onChange({ recurrenceRule: event.target.value as DateDraft["recurrenceRule"] })
+              }
+              value={draft.recurrenceRule}
+            >
               <option value="none">Does not repeat</option>
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
@@ -82,8 +100,12 @@ export function DateFields({
           </label>
         )}
       </div>
-      {resolved.status === "confirmed" && resolved.phrase && <p className="form-help">Read from “{resolved.phrase}” in your capture.</p>}
-      {item.datePhrase && resolved.status === "none" && <p className="form-help">No date was filed from “{item.datePhrase}”.</p>}
+      {resolved.status === "confirmed" && resolved.phrase && (
+        <p className="form-help">Read from “{resolved.phrase}” in your capture.</p>
+      )}
+      {item.datePhrase && resolved.status === "none" && (
+        <p className="form-help">No date was filed from “{item.datePhrase}”.</p>
+      )}
       {notes.map((note) => (
         <p className="form-help" key={note}>
           {note}
@@ -92,13 +114,21 @@ export function DateFields({
       {!draft.date && options.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {options.map((option) => (
-            <Button className="button-secondary" key={option} onClick={() => onChange({ date: option })}>
+            <Button
+              className="button-secondary"
+              key={option}
+              onClick={() => onChange({ date: option })}
+            >
               Use {formatDateLabel(option, today)}
             </Button>
           ))}
         </div>
       )}
-      {!draft.date && draft.recordType === "task" && <p className="form-help">Filing without a date is fine. It stays in your task list and out of Today.</p>}
+      {!draft.date && draft.recordType === "task" && (
+        <p className="form-help">
+          Filing without a date is fine. It stays in your task list and out of Today.
+        </p>
+      )}
     </fieldset>
   );
 }

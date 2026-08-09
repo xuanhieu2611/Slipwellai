@@ -7,7 +7,12 @@ import type { WorkPageData } from "@/lib/workspace-page-data";
 import { Dialog } from "@/components/ui/primitives";
 import { DomainColorPicker } from "@/components/workspace/shared/selects";
 import { useWorkspaceCommand } from "@/components/workspace/shared/use-workspace-command";
-import { defaultProjectFilters, filterProjects, ProjectFilters, type ProjectFilterState } from "@/components/workspace/work/project-filters";
+import {
+  defaultProjectFilters,
+  filterProjects,
+  ProjectFilters,
+  type ProjectFilterState,
+} from "@/components/workspace/work/project-filters";
 import { NewProjectForm } from "@/components/workspace/work/project-forms";
 import { ProjectList } from "@/components/workspace/work/project-list";
 import { TemplateLibrary } from "@/components/workspace/work/template-library";
@@ -21,7 +26,9 @@ export function WorkPage({ data }: { data: WorkPageData }) {
   const [projectFilters, setProjectFilters] = useState<ProjectFilterState>(defaultProjectFilters);
   const filteredProjects = filterProjects(data.projects, projectFilters);
   const fullData = data as WorkspaceData;
-  const editingDomain = editingDomainId ? data.domains.find((domain) => domain.id === editingDomainId) : undefined;
+  const editingDomain = editingDomainId
+    ? data.domains.find((domain) => domain.id === editingDomainId)
+    : undefined;
 
   return (
     <main className="workspace-page">
@@ -29,10 +36,16 @@ export function WorkPage({ data }: { data: WorkPageData }) {
         <div className="page-intro-text">
           <p className="eyebrow">Work</p>
           <h1>Finite projects, durable domains.</h1>
-          <p>Projects have an ending. Domains provide ongoing context without demanding a complete taxonomy.</p>
+          <p>
+            Projects have an ending. Domains provide ongoing context without demanding a complete
+            taxonomy.
+          </p>
         </div>
         <div className="page-actions">
-          <button className="button-base button-secondary" onClick={() => setCreateDialog("domain")}>
+          <button
+            className="button-base button-secondary"
+            onClick={() => setCreateDialog("domain")}
+          >
             <Plus aria-hidden size={16} weight="bold" />
             New domain
           </button>
@@ -42,23 +55,53 @@ export function WorkPage({ data }: { data: WorkPageData }) {
           </button>
         </div>
       </header>
-      <Dialog open={createDialog === "domain"} title="New domain" onClose={() => setCreateDialog(null)}>
+      <Dialog
+        open={createDialog === "domain"}
+        title="New domain"
+        onClose={() => setCreateDialog(null)}
+      >
         {createDialog === "domain" ? (
-          <form className="form-grid" onSubmit={(event) => submit(event, "create_domain", { name: "name", description: "description", color: "color" }, "Domain created.", () => setCreateDialog(null))}>
+          <form
+            className="form-grid"
+            onSubmit={(event) =>
+              submit(
+                event,
+                "create_domain",
+                { name: "name", description: "description", color: "color" },
+                "Domain created.",
+                () => setCreateDialog(null),
+              )
+            }
+          >
             <label className="field-label form-span">
               <span>Name</span>
-              <input className="field-base" name="name" required maxLength={80} placeholder="Client work" />
+              <input
+                className="field-base"
+                name="name"
+                required
+                maxLength={80}
+                placeholder="Client work"
+              />
             </label>
             <label className="field-label form-span">
               <span>Description</span>
-              <input className="field-base" name="description" maxLength={1000} placeholder="Optional context" />
+              <input
+                className="field-base"
+                name="description"
+                maxLength={1000}
+                placeholder="Optional context"
+              />
             </label>
             <DomainColorPicker />
             <button className="button-base button-primary form-submit">Add domain</button>
           </form>
         ) : null}
       </Dialog>
-      <Dialog open={Boolean(editingDomain)} title="Edit domain" onClose={() => setEditingDomainId(null)}>
+      <Dialog
+        open={Boolean(editingDomain)}
+        title="Edit domain"
+        onClose={() => setEditingDomainId(null)}
+      >
         {editingDomain ? (
           <form
             className="form-grid"
@@ -75,19 +118,42 @@ export function WorkPage({ data }: { data: WorkPageData }) {
             <input type="hidden" name="domainId" value={editingDomain.id} />
             <label className="field-label form-span">
               <span>Name</span>
-              <input className="field-base" name="name" required maxLength={80} defaultValue={editingDomain.name} />
+              <input
+                className="field-base"
+                name="name"
+                required
+                maxLength={80}
+                defaultValue={editingDomain.name}
+              />
             </label>
             <label className="field-label form-span">
               <span>Description</span>
-              <input className="field-base" name="description" maxLength={1000} defaultValue={editingDomain.description ?? ""} placeholder="Optional context" />
+              <input
+                className="field-base"
+                name="description"
+                maxLength={1000}
+                defaultValue={editingDomain.description ?? ""}
+                placeholder="Optional context"
+              />
             </label>
             <DomainColorPicker defaultValue={editingDomain.color} />
             <button className="button-base button-primary form-submit">Save changes</button>
           </form>
         ) : null}
       </Dialog>
-      <Dialog open={createDialog === "project"} title="New project" size="lg" onClose={() => setCreateDialog(null)}>
-        {createDialog === "project" ? <NewProjectForm data={fullData} onCommand={command} onDone={() => setCreateDialog(null)} /> : null}
+      <Dialog
+        open={createDialog === "project"}
+        title="New project"
+        size="lg"
+        onClose={() => setCreateDialog(null)}
+      >
+        {createDialog === "project" ? (
+          <NewProjectForm
+            data={fullData}
+            onCommand={command}
+            onDone={() => setCreateDialog(null)}
+          />
+        ) : null}
       </Dialog>
       <section className="workspace-section">
         <div className="section-heading">
@@ -99,8 +165,14 @@ export function WorkPage({ data }: { data: WorkPageData }) {
         </div>
         <div className="space-y-2">
           {data.domains.map((domain) => {
-            const openTaskCount = data.tasks.filter((task) => task.domain_id === domain.id && task.status === "open" && !task.archived_at).length;
-            const activeProjectCount = data.projects.filter((project) => project.domain_id === domain.id && ["planned", "active", "paused"].includes(project.status)).length;
+            const openTaskCount = data.tasks.filter(
+              (task) => task.domain_id === domain.id && task.status === "open" && !task.archived_at,
+            ).length;
+            const activeProjectCount = data.projects.filter(
+              (project) =>
+                project.domain_id === domain.id &&
+                ["planned", "active", "paused"].includes(project.status),
+            ).length;
             return (
               <div className="compact-row" key={domain.id}>
                 <span>
@@ -111,17 +183,32 @@ export function WorkPage({ data }: { data: WorkPageData }) {
                   <span className="tag">
                     {openTaskCount} open, {activeProjectCount} active
                   </span>
-                  <button className="button-base button-quiet" type="button" onClick={() => setEditingDomainId(domain.id)}>
+                  <button
+                    className="button-base button-quiet"
+                    type="button"
+                    onClick={() => setEditingDomainId(domain.id)}
+                  >
                     Edit
                   </button>
-                  <button className="button-base button-quiet" type="button" onClick={() => safely(() => command({ action: "archive_domain", domainId: domain.id }), "Domain archived.")}>
+                  <button
+                    className="button-base button-quiet"
+                    type="button"
+                    onClick={() =>
+                      safely(
+                        () => command({ action: "archive_domain", domainId: domain.id }),
+                        "Domain archived.",
+                      )
+                    }
+                  >
                     Archive
                   </button>
                 </span>
               </div>
             );
           })}
-          {data.domains.length === 0 && <p className="empty-state">A few domains are enough. You can also skip them.</p>}
+          {data.domains.length === 0 && (
+            <p className="empty-state">A few domains are enough. You can also skip them.</p>
+          )}
         </div>
       </section>
       <section className="workspace-section">

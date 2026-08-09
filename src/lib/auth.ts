@@ -16,7 +16,8 @@ export function safeReturnPath(value: string | null | undefined, fallback = fall
 
   try {
     const decoded = decodeURIComponent(value);
-    if (!decoded.startsWith("/") || decoded.startsWith("//") || decoded.startsWith("/\\")) return fallback;
+    if (!decoded.startsWith("/") || decoded.startsWith("//") || decoded.startsWith("/\\"))
+      return fallback;
     const parsed = new URL(decoded, "https://slipwell.invalid");
     if (parsed.origin !== "https://slipwell.invalid") return fallback;
     return `${parsed.pathname}${parsed.search}${parsed.hash}`;

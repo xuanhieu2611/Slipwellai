@@ -10,7 +10,8 @@ const iosSafari =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Mobile/15E148 Safari/604.1";
 const macSafari =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Safari/605.1.15";
-const firefox = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:132.0) Gecko/20100101 Firefox/132.0";
+const firefox =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:132.0) Gecko/20100101 Firefox/132.0";
 
 describe("install platform detection", () => {
   it("does not mistake a Chromium browser for Safari", () => {
@@ -26,11 +27,15 @@ describe("install platform detection", () => {
 
 describe("install guidance", () => {
   it("prefers the browser's own prompt when one is available", () => {
-    expect(describeInstall({ standalone: false, promptAvailable: true, userAgent: chrome })).toEqual({ kind: "prompt" });
+    expect(
+      describeInstall({ standalone: false, promptAvailable: true, userAgent: chrome }),
+    ).toEqual({ kind: "prompt" });
   });
 
   it("reports an already-installed app before offering to install it again", () => {
-    expect(describeInstall({ standalone: true, promptAvailable: true, userAgent: chrome })).toEqual({ kind: "installed" });
+    expect(describeInstall({ standalone: true, promptAvailable: true, userAgent: chrome })).toEqual(
+      { kind: "installed" },
+    );
   });
 
   it("always returns actionable steps when no install prompt exists", () => {

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { describeDestination, normalizeDestinationName, resolveDestination, type DestinationCatalog } from "./destinations";
+import {
+  describeDestination,
+  normalizeDestinationName,
+  resolveDestination,
+  type DestinationCatalog,
+} from "./destinations";
 
 const clientWork = { id: "11111111-1111-4111-8111-111111111111", name: "Client work" };
 const personal = { id: "22222222-2222-4222-8222-222222222222", name: "Personal" };
@@ -7,7 +12,11 @@ const personal = { id: "22222222-2222-4222-8222-222222222222", name: "Personal" 
 const catalog: DestinationCatalog = {
   domains: [clientWork, personal],
   projects: [
-    { id: "33333333-3333-4333-8333-333333333333", name: "Rivera brand refresh", domain_id: clientWork.id },
+    {
+      id: "33333333-3333-4333-8333-333333333333",
+      name: "Rivera brand refresh",
+      domain_id: clientWork.id,
+    },
     { id: "44444444-4444-4444-8444-444444444444", name: "Kitchen renovation", domain_id: null },
   ],
   people: [
@@ -32,7 +41,11 @@ describe("resolveDestination", () => {
 
   it("matches an owned record regardless of case and spacing", () => {
     const resolved = resolveDestination({ personName: "dana  rivera" }, catalog);
-    expect(resolved.person).toEqual({ status: "matched", id: catalog.people[0].id, name: "Dana Rivera" });
+    expect(resolved.person).toEqual({
+      status: "matched",
+      id: catalog.people[0].id,
+      name: "Dana Rivera",
+    });
   });
 
   /* The whole point of matching server-side: a name nobody owns must not become a record. */
@@ -44,7 +57,10 @@ describe("resolveDestination", () => {
   it("does not settle an ambiguous name on the user's behalf", () => {
     const twoDanas: DestinationCatalog = {
       ...catalog,
-      people: [...catalog.people, { id: "77777777-7777-4777-8777-777777777777", name: "dana rivera", domain_id: null }],
+      people: [
+        ...catalog.people,
+        { id: "77777777-7777-4777-8777-777777777777", name: "dana rivera", domain_id: null },
+      ],
     };
     const resolved = resolveDestination({ personName: "Dana Rivera" }, twoDanas);
     expect(resolved.person.status).toBe("ambiguous");
@@ -68,7 +84,10 @@ describe("resolveDestination", () => {
       ...catalog,
       people: [{ id: catalog.people[0].id, name: "Dana Rivera", domain_id: personal.id }],
     };
-    const resolved = resolveDestination({ projectName: "Rivera brand refresh", personName: "Dana Rivera" }, crossDomain);
+    const resolved = resolveDestination(
+      { projectName: "Rivera brand refresh", personName: "Dana Rivera" },
+      crossDomain,
+    );
     expect(resolved.domain).toEqual({ status: "matched", id: clientWork.id, name: "Client work" });
     expect(resolved.domainInheritedFrom).toBe("project");
   });
@@ -76,7 +95,10 @@ describe("resolveDestination", () => {
   /* An unmatched domain name is a question. Filling it in from the project would hide the
      fact that the capture asked for a domain the account does not have. */
   it("does not inherit over a domain name that matched nothing", () => {
-    const resolved = resolveDestination({ domainName: "Studio", projectName: "Rivera brand refresh" }, catalog);
+    const resolved = resolveDestination(
+      { domainName: "Studio", projectName: "Rivera brand refresh" },
+      catalog,
+    );
     expect(resolved.domain).toEqual({ status: "unmatched", name: "Studio" });
     expect(resolved.domainInheritedFrom).toBeUndefined();
   });
@@ -88,7 +110,10 @@ describe("resolveDestination", () => {
   });
 
   it("keeps an explicit domain name that does match", () => {
-    const resolved = resolveDestination({ domainName: "personal", projectName: "Rivera brand refresh" }, catalog);
+    const resolved = resolveDestination(
+      { domainName: "personal", projectName: "Rivera brand refresh" },
+      catalog,
+    );
     expect(resolved.domain).toEqual({ status: "matched", id: personal.id, name: "Personal" });
     expect(resolved.domainInheritedFrom).toBeUndefined();
   });
@@ -100,18 +125,25 @@ describe("resolveDestination", () => {
 
 describe("describeDestination", () => {
   it("names where the record is going", () => {
-    expect(describeDestination(resolveDestination({ projectName: "Rivera brand refresh" }, catalog), catalog)).toBe(
-      "Client work (from its project) · Rivera brand refresh",
-    );
+    expect(
+      describeDestination(
+        resolveDestination({ projectName: "Rivera brand refresh" }, catalog),
+        catalog,
+      ),
+    ).toBe("Client work (from its project) · Rivera brand refresh");
   });
 
   it("says a name matched nothing instead of implying it was filed", () => {
-    expect(describeDestination(resolveDestination({ personName: "Nobody" }, catalog), catalog)).toBe("Nobody: no match in your records");
+    expect(
+      describeDestination(resolveDestination({ personName: "Nobody" }, catalog), catalog),
+    ).toBe("Nobody: no match in your records");
   });
 
   it("explains an empty account differently from a miss", () => {
     const empty: DestinationCatalog = { domains: [], projects: [], people: [] };
-    expect(describeDestination(resolveDestination({ personName: "Dana" }, empty), empty)).toBe("Dana: nothing to file into yet");
+    expect(describeDestination(resolveDestination({ personName: "Dana" }, empty), empty)).toBe(
+      "Dana: nothing to file into yet",
+    );
   });
 
   it("calls an unrouted record unfiled", () => {
