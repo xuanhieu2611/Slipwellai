@@ -8,7 +8,10 @@ const personId = "33333333-3333-4333-8333-333333333333";
 /* Stands in for PostgREST under row-level security: a select only ever returns rows the
    caller owns, so `owned` is the set of identifiers this account can see. Anything else
    reads as absent, exactly as another account's row would. */
-function stubClient({ owned = [] as string[], namedRows = {} as Record<string, { id: string } | null> } = {}) {
+function stubClient({
+  owned = [] as string[],
+  namedRows = {} as Record<string, { id: string } | null>,
+} = {}) {
   const inserts: Array<{ table: string; value: unknown }> = [];
   let nextId = 0;
   const supabase = {
@@ -28,7 +31,8 @@ function stubClient({ owned = [] as string[], namedRows = {} as Record<string, {
             is: () => chain,
             limit: () => chain,
             maybeSingle: () => {
-              if (state.name !== undefined) return { data: namedRows[`${table}:${state.name.toLowerCase()}`] ?? null };
+              if (state.name !== undefined)
+                return { data: namedRows[`${table}:${state.name.toLowerCase()}`] ?? null };
               return { data: state.id && owned.includes(state.id) ? { id: state.id } : null };
             },
           };
@@ -49,7 +53,9 @@ function stubClient({ owned = [] as string[], namedRows = {} as Record<string, {
 describe("verifyOwnedDestination", () => {
   it("accepts identifiers the caller owns", async () => {
     const { supabase } = stubClient({ owned: [domainId, projectId, personId] });
-    await expect(verifyOwnedDestination(supabase as never, { domainId, projectId, personId })).resolves.toEqual({ ok: true });
+    await expect(
+      verifyOwnedDestination(supabase as never, { domainId, projectId, personId }),
+    ).resolves.toEqual({ ok: true });
   });
 
   /* The foreign keys on tasks and notes do not check who owns the row they point at, and
@@ -71,50 +77,84 @@ describe("applyDestinationSelection", () => {
   it("files without a destination when none was chosen", async () => {
     const { supabase, inserts } = stubClient();
     const result = await applyDestinationSelection(supabase as never, undefined);
-    expect(result).toEqual({ ok: true, destination: { domainId: null, projectId: null, personId: null } });
+    expect(result).toEqual({
+      ok: true,
+      destination: { domainId: null, projectId: null, personId: null },
+    });
     expect(inserts).toEqual([]);
   });
 
   it("passes chosen identifiers through once ownership is proved", async () => {
     const { supabase, inserts } = stubClient({ owned: [domainId, projectId, personId] });
-    const result = await applyDestinationSelection(supabase as never, { domainId, projectId, personId });
+    const result = await applyDestinationSelection(supabase as never, {
+      domainId,
+      projectId,
+      personId,
+    });
     expect(result).toEqual({ ok: true, destination: { domainId, projectId, personId } });
     expect(inserts).toEqual([]);
   });
 
   it("stops before creating anything when an identifier is not the caller's", async () => {
     const { supabase, inserts } = stubClient({ owned: [] });
-    const result = await applyDestinationSelection(supabase as never, { personId, createDomainName: "Client work" });
+    const result = await applyDestinationSelection(supabase as never, {
+      personId,
+      createDomainName: "Client work",
+    });
     expect(result).toEqual({ ok: false, message: "That person is not one of yours." });
     expect(inserts).toEqual([]);
   });
 
   it("creates a domain only when the user explicitly asked for one", async () => {
     const { supabase, inserts } = stubClient();
-    const result = await applyDestinationSelection(supabase as never, { createDomainName: "Client work" });
-    expect(result).toEqual({ ok: true, destination: { domainId: "created-domains-1", projectId: null, personId: null } });
+    const result = await applyDestinationSelection(supabase as never, {
+      createDomainName: "Client work",
+    });
+    expect(result).toEqual({
+      ok: true,
+      destination: { domainId: "created-domains-1", projectId: null, personId: null },
+    });
     expect(inserts).toEqual([{ table: "domains", value: { name: "Client work" } }]);
   });
 
   /* Accept is retried on a flaky connection and opened in two tabs. Reusing the record
      that already carries the name is what keeps a second attempt from duplicating it. */
   it("reuses an existing domain of the same name instead of duplicating it", async () => {
-    const { supabase, inserts } = stubClient({ namedRows: { "domains:client work": { id: domainId } } });
-    const result = await applyDestinationSelection(supabase as never, { createDomainName: "Client work" });
-    expect(result).toEqual({ ok: true, destination: { domainId, projectId: null, personId: null } });
+    const { supabase, inserts } = stubClient({
+      namedRows: { "domains:client work": { id: domainId } },
+    });
+    const result = await applyDestinationSelection(supabase as never, {
+      createDomainName: "Client work",
+    });
+    expect(result).toEqual({
+      ok: true,
+      destination: { domainId, projectId: null, personId: null },
+    });
     expect(inserts).toEqual([]);
   });
 
   it("puts a newly created person in the domain chosen alongside them", async () => {
     const { supabase, inserts } = stubClient({ owned: [domainId] });
-    const result = await applyDestinationSelection(supabase as never, { domainId, createPersonName: "Dana Rivera" });
-    expect(result).toEqual({ ok: true, destination: { domainId, projectId: null, personId: "created-people-1" } });
-    expect(inserts).toEqual([{ table: "people", value: { name: "Dana Rivera", domain_id: domainId } }]);
+    const result = await applyDestinationSelection(supabase as never, {
+      domainId,
+      createPersonName: "Dana Rivera",
+    });
+    expect(result).toEqual({
+      ok: true,
+      destination: { domainId, projectId: null, personId: "created-people-1" },
+    });
+    expect(inserts).toEqual([
+      { table: "people", value: { name: "Dana Rivera", domain_id: domainId } },
+    ]);
   });
 
   it("reuses an existing person of the same name", async () => {
-    const { supabase, inserts } = stubClient({ namedRows: { "people:dana rivera": { id: personId } } });
-    const result = await applyDestinationSelection(supabase as never, { createPersonName: "Dana Rivera" });
+    const { supabase, inserts } = stubClient({
+      namedRows: { "people:dana rivera": { id: personId } },
+    });
+    const result = await applyDestinationSelection(supabase as never, {
+      createPersonName: "Dana Rivera",
+    });
     expect(result.ok && result.destination.personId).toBe(personId);
     expect(inserts).toEqual([]);
   });

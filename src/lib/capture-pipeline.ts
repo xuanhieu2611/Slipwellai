@@ -33,7 +33,9 @@ export function isStrandedCapture(
   if (capture.status === "queued") return true;
   if (capture.status !== "interpreting") return false;
   if (!capture.interpretation_claimed_at) return true;
-  return now.getTime() - new Date(capture.interpretation_claimed_at).getTime() > INTERPRETATION_STALE_MS;
+  return (
+    now.getTime() - new Date(capture.interpretation_claimed_at).getTime() > INTERPRETATION_STALE_MS
+  );
 }
 
 /* A capture is only finished once every proposed item has an outcome. Filing one of
@@ -43,7 +45,9 @@ export function captureStatusAfterApplications(
   applications: ReadonlyArray<{ outcome: string }>,
 ) {
   if (applications.length < proposedItemCount) return "needs_review" as const;
-  return applications.some((application) => application.outcome === "filed") ? ("filed" as const) : ("discarded" as const);
+  return applications.some((application) => application.outcome === "filed")
+    ? ("filed" as const)
+    : ("discarded" as const);
 }
 
 type AttentionCapture = { status: string; interpretation_claimed_at?: string | null };

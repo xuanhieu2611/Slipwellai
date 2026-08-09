@@ -43,7 +43,9 @@ export function FilterSelect({
                   <Select.ItemIndicator className="filter-select-item-indicator">
                     <Check aria-hidden size={12} weight="bold" />
                   </Select.ItemIndicator>
-                  <Select.ItemText className="filter-select-item-text">{option.label}</Select.ItemText>
+                  <Select.ItemText className="filter-select-item-text">
+                    {option.label}
+                  </Select.ItemText>
                 </Select.Item>
               ))}
             </Select.List>

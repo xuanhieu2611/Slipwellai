@@ -15,8 +15,12 @@ describe("safeReturnPath", () => {
 
 describe("auth callback helpers", () => {
   it("creates a callback URL with only safe destinations", () => {
-    expect(authCallbackUrl("https://app.example", "/auth/reset")).toBe("https://app.example/auth/callback?next=%2Fauth%2Freset");
-    expect(authCallbackUrl("https://app.example", "https://attacker.example")).toBe("https://app.example/auth/callback");
+    expect(authCallbackUrl("https://app.example", "/auth/reset")).toBe(
+      "https://app.example/auth/callback?next=%2Fauth%2Freset",
+    );
+    expect(authCallbackUrl("https://app.example", "https://attacker.example")).toBe(
+      "https://app.example/auth/callback",
+    );
   });
 
   it("keeps callback errors generic", () => {

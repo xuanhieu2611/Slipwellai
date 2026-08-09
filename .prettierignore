@@ -1,0 +1,26 @@
+# Dependencies
+node_modules
+
+# Next.js build output
+.next
+out
+build
+
+# Test/coverage artifacts
+coverage
+playwright-report
+test-results
+.playwright-mcp
+
+# Auto-generated, not hand-authored
+package-lock.json
+next-env.d.ts
+*.tsbuildinfo
+
+# Product/process documentation: prose and hand-aligned tables, not code.
+# Reformatting these would rewrap prose and re-flow the Verification log
+# table's very long cells rather than fix meaningful style inconsistencies.
+*.md
+
+# Misc
+.DS_Store

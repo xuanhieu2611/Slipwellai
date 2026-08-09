@@ -10,8 +10,16 @@ type Screen = "sign_in" | "sign_up" | "recovery";
 
 const copy: Record<Screen, { eyebrow: string; title: string; submit: string }> = {
   sign_in: { eyebrow: "Welcome back", title: "Pick up what matters.", submit: "Sign in" },
-  sign_up: { eyebrow: "Start with a thought", title: "Give it a safe place to land.", submit: "Create account" },
-  recovery: { eyebrow: "Account recovery", title: "Set a new password from your inbox.", submit: "Send reset link" },
+  sign_up: {
+    eyebrow: "Start with a thought",
+    title: "Give it a safe place to land.",
+    submit: "Create account",
+  },
+  recovery: {
+    eyebrow: "Account recovery",
+    title: "Set a new password from your inbox.",
+    submit: "Send reset link",
+  },
 };
 
 const highlights: ReadonlyArray<readonly [Icon, string]> = [
@@ -24,10 +32,22 @@ const highlights: ReadonlyArray<readonly [Icon, string]> = [
 function GoogleMark() {
   return (
     <svg aria-hidden="true" height="16" viewBox="0 0 18 18" width="16">
-      <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z" fill="#4285F4" />
-      <path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18Z" fill="#34A853" />
-      <path d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33Z" fill="#FBBC05" />
-      <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58Z" fill="#EA4335" />
+      <path
+        d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z"
+        fill="#4285F4"
+      />
+      <path
+        d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18Z"
+        fill="#34A853"
+      />
+      <path
+        d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33Z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58Z"
+        fill="#EA4335"
+      />
     </svg>
   );
 }
@@ -37,7 +57,9 @@ export function SignIn({ initialError }: { initialError?: string }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState(initialError ?? "");
-  const [tone, setTone] = useState<"error" | "success" | "neutral">(initialError ? "error" : "neutral");
+  const [tone, setTone] = useState<"error" | "success" | "neutral">(
+    initialError ? "error" : "neutral",
+  );
   const [busy, setBusy] = useState(false);
 
   function changeScreen(next: Screen) {
@@ -58,18 +80,27 @@ export function SignIn({ initialError }: { initialError?: string }) {
       });
       setBusy(false);
       setTone(error ? "error" : "success");
-      setMessage(error ? "We could not send a reset link. Please try again shortly." : "If that address has an account, a reset link is on its way.");
+      setMessage(
+        error
+          ? "We could not send a reset link. Please try again shortly."
+          : "If that address has an account, a reset link is on its way.",
+      );
       return;
     }
 
-    const result = screen === "sign_up"
-      ? await supabase.auth.signUp({ email, password })
-      : await supabase.auth.signInWithPassword({ email, password });
+    const result =
+      screen === "sign_up"
+        ? await supabase.auth.signUp({ email, password })
+        : await supabase.auth.signInWithPassword({ email, password });
 
     setBusy(false);
     if (result.error || !result.data.session) {
       setTone("error");
-      setMessage(screen === "sign_up" ? "We could not create that account. Try a different email or sign in instead." : "That email or password did not work.");
+      setMessage(
+        screen === "sign_up"
+          ? "We could not create that account. Try a different email or sign in instead."
+          : "That email or password did not work.",
+      );
       return;
     }
     window.location.assign("/");
@@ -118,7 +149,11 @@ export function SignIn({ initialError }: { initialError?: string }) {
           <p>Capture what is on your mind first. Slipwell helps you bring order to it after.</p>
 
           {screen !== "recovery" && (
-            <Button className="button-secondary mt-6 w-full" disabled={busy} onClick={signInWithGoogle}>
+            <Button
+              className="button-secondary mt-6 w-full"
+              disabled={busy}
+              onClick={signInWithGoogle}
+            >
               <GoogleMark />
               Continue with Google
             </Button>
@@ -133,12 +168,27 @@ export function SignIn({ initialError }: { initialError?: string }) {
           <form className="grid gap-4" onSubmit={submit}>
             <label className="field-label" htmlFor="email">
               Email address
-              <TextField autoComplete="email" id="email" onChange={(event) => setEmail(event.target.value)} placeholder="you@studio.com" required type="email" value={email} />
+              <TextField
+                autoComplete="email"
+                id="email"
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="you@studio.com"
+                required
+                type="email"
+                value={email}
+              />
             </label>
             {screen !== "recovery" && (
               <label className="field-label" htmlFor="password">
                 Password
-                <TextField autoComplete={screen === "sign_up" ? "new-password" : "current-password"} id="password" onChange={(event) => setPassword(event.target.value)} required type="password" value={password} />
+                <TextField
+                  autoComplete={screen === "sign_up" ? "new-password" : "current-password"}
+                  id="password"
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                  type="password"
+                  value={password}
+                />
               </label>
             )}
             <Button className="button-primary mt-1 w-full" disabled={busy} type="submit">
@@ -152,12 +202,18 @@ export function SignIn({ initialError }: { initialError?: string }) {
           <div className="auth-alt-actions">
             {screen === "sign_in" && (
               <>
-                <button disabled={busy} onClick={() => changeScreen("sign_up")} type="button">Create an account</button>
-                <button disabled={busy} onClick={() => changeScreen("recovery")} type="button">Forgot password?</button>
+                <button disabled={busy} onClick={() => changeScreen("sign_up")} type="button">
+                  Create an account
+                </button>
+                <button disabled={busy} onClick={() => changeScreen("recovery")} type="button">
+                  Forgot password?
+                </button>
               </>
             )}
             {screen !== "sign_in" && (
-              <button disabled={busy} onClick={() => changeScreen("sign_in")} type="button">Back to sign in</button>
+              <button disabled={busy} onClick={() => changeScreen("sign_in")} type="button">
+                Back to sign in
+              </button>
             )}
           </div>
         </section>

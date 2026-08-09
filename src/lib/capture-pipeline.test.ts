@@ -15,7 +15,9 @@ describe("interpretationClaimFilter", () => {
   it("lets a queued capture be claimed and leaves a fresh claim alone", () => {
     const filter = interpretationClaimFilter("queued", now);
     expect(filter).toContain("status.eq.queued");
-    expect(filter).toContain(`interpretation_claimed_at.lt.${new Date(now.getTime() - INTERPRETATION_STALE_MS).toISOString()}`);
+    expect(filter).toContain(
+      `interpretation_claimed_at.lt.${new Date(now.getTime() - INTERPRETATION_STALE_MS).toISOString()}`,
+    );
     // A reviewable capture is only reclaimed when the user explicitly asks for a retry.
     expect(filter).not.toContain("status.eq.needs_review");
   });
@@ -29,36 +31,64 @@ describe("interpretationClaimFilter", () => {
 
 describe("isStrandedCapture", () => {
   it("treats a stored but unclaimed capture as recoverable work", () => {
-    expect(isStrandedCapture({ status: "queued", interpretation_claimed_at: null }, now)).toBe(true);
+    expect(isStrandedCapture({ status: "queued", interpretation_claimed_at: null }, now)).toBe(
+      true,
+    );
   });
 
   it("leaves an interpretation that is still running alone", () => {
-    expect(isStrandedCapture({ status: "interpreting", interpretation_claimed_at: claimedAt(30_000) }, now)).toBe(false);
+    expect(
+      isStrandedCapture(
+        { status: "interpreting", interpretation_claimed_at: claimedAt(30_000) },
+        now,
+      ),
+    ).toBe(false);
   });
 
   it("reclaims an interpretation whose request never came back", () => {
-    expect(isStrandedCapture({ status: "interpreting", interpretation_claimed_at: claimedAt(INTERPRETATION_STALE_MS + 1000) }, now)).toBe(true);
+    expect(
+      isStrandedCapture(
+        {
+          status: "interpreting",
+          interpretation_claimed_at: claimedAt(INTERPRETATION_STALE_MS + 1000),
+        },
+        now,
+      ),
+    ).toBe(true);
   });
 
   it("does not treat a resolved capture as stranded", () => {
-    expect(isStrandedCapture({ status: "needs_review", interpretation_claimed_at: claimedAt(600_000) }, now)).toBe(false);
-    expect(isStrandedCapture({ status: "filed", interpretation_claimed_at: null }, now)).toBe(false);
+    expect(
+      isStrandedCapture(
+        { status: "needs_review", interpretation_claimed_at: claimedAt(600_000) },
+        now,
+      ),
+    ).toBe(false);
+    expect(isStrandedCapture({ status: "filed", interpretation_claimed_at: null }, now)).toBe(
+      false,
+    );
   });
 });
 
 describe("captureStatusAfterApplications", () => {
   it("keeps a multi-intent capture in review until every proposed record is decided", () => {
     expect(captureStatusAfterApplications(3, [{ outcome: "filed" }])).toBe("needs_review");
-    expect(captureStatusAfterApplications(3, [{ outcome: "filed" }, { outcome: "dismissed" }])).toBe("needs_review");
+    expect(
+      captureStatusAfterApplications(3, [{ outcome: "filed" }, { outcome: "dismissed" }]),
+    ).toBe("needs_review");
   });
 
   it("files the capture once every item has an outcome and at least one was filed", () => {
-    expect(captureStatusAfterApplications(2, [{ outcome: "filed" }, { outcome: "dismissed" }])).toBe("filed");
+    expect(
+      captureStatusAfterApplications(2, [{ outcome: "filed" }, { outcome: "dismissed" }]),
+    ).toBe("filed");
     expect(captureStatusAfterApplications(1, [{ outcome: "filed" }])).toBe("filed");
   });
 
   it("discards the capture only when every proposed record was dismissed", () => {
-    expect(captureStatusAfterApplications(2, [{ outcome: "dismissed" }, { outcome: "dismissed" }])).toBe("discarded");
+    expect(
+      captureStatusAfterApplications(2, [{ outcome: "dismissed" }, { outcome: "dismissed" }]),
+    ).toBe("discarded");
   });
 });
 

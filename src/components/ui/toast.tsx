@@ -39,9 +39,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 export function useToast() {
   return (text: string, tone: ToastTone = "neutral") => {
     const icon =
-      tone === "success" ? <CheckCircle aria-hidden size={18} weight="fill" />
-      : tone === "error" ? <WarningCircle aria-hidden size={18} weight="fill" />
-      : <Info aria-hidden size={18} weight="fill" />;
+      tone === "success" ? (
+        <CheckCircle aria-hidden size={18} weight="fill" />
+      ) : tone === "error" ? (
+        <WarningCircle aria-hidden size={18} weight="fill" />
+      ) : (
+        <Info aria-hidden size={18} weight="fill" />
+      );
 
     if (tone === "success") {
       toast.success(text, { duration: toneDuration.success, icon });

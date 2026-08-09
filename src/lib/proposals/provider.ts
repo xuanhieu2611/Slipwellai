@@ -14,7 +14,8 @@ export interface ProposalProvider {
   propose(input: ProposeInput): Promise<ProposalEnvelope>;
 }
 
-export type ProposalFailureCode = "proposal_timeout" | "proposal_provider_error" | "proposal_invalid_output";
+export type ProposalFailureCode =
+  "proposal_timeout" | "proposal_provider_error" | "proposal_invalid_output";
 
 export class ProposalProviderError extends Error {
   constructor(
@@ -51,7 +52,13 @@ function stripCodeFence(content: string): string {
 }
 
 export class OpenRouterProposalProvider implements ProposalProvider {
-  async propose({ captureId, originalText, now = new Date(), timezone = "America/Vancouver", catalog = emptyCatalog }: ProposeInput) {
+  async propose({
+    captureId,
+    originalText,
+    now = new Date(),
+    timezone = "America/Vancouver",
+    catalog = emptyCatalog,
+  }: ProposeInput) {
     const models = [env.openRouterModel(), ...env.openRouterFallbackModels()];
     /* Names only, and only the taxonomy needed to route this capture. No descriptions, no
        note bodies, no other account data. */
@@ -60,8 +67,18 @@ export class OpenRouterProposalProvider implements ProposalProvider {
       projects: catalog.projects.map((project) => project.name),
       people: catalog.people.map((person) => person.name),
     };
-    const nowDate = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-    const nowTime = new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
+    const nowDate = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now);
+    const nowTime = new Intl.DateTimeFormat("en-GB", {
+      timeZone: timezone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).format(now);
     try {
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -80,7 +97,17 @@ export class OpenRouterProposalProvider implements ProposalProvider {
           },
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: JSON.stringify({ sourceCaptureId: captureId, capture: originalText, now: nowDate, time: nowTime, timezone, destinations }) },
+            {
+              role: "user",
+              content: JSON.stringify({
+                sourceCaptureId: captureId,
+                capture: originalText,
+                now: nowDate,
+                time: nowTime,
+                timezone,
+                destinations,
+              }),
+            },
           ],
         }),
         cache: "no-store",
@@ -89,29 +116,46 @@ export class OpenRouterProposalProvider implements ProposalProvider {
 
       // Do not persist or log provider response bodies: they can echo private capture text.
       if (!response.ok) {
-        throw new ProposalProviderError("proposal_provider_error", `OpenRouter request failed (${response.status}).`);
+        throw new ProposalProviderError(
+          "proposal_provider_error",
+          `OpenRouter request failed (${response.status}).`,
+        );
       }
       const payload: unknown = await response.json();
-      const content = (
-        payload as { choices?: Array<{ message?: { content?: string } }> }
-      ).choices?.[0]?.message?.content;
-      if (!content) throw new ProposalProviderError("proposal_invalid_output", "OpenRouter returned no proposal content.");
+      const content = (payload as { choices?: Array<{ message?: { content?: string } }> })
+        .choices?.[0]?.message?.content;
+      if (!content)
+        throw new ProposalProviderError(
+          "proposal_invalid_output",
+          "OpenRouter returned no proposal content.",
+        );
 
       let parsedJson: unknown;
       try {
         parsedJson = JSON.parse(stripCodeFence(content));
       } catch {
-        throw new ProposalProviderError("proposal_invalid_output", "OpenRouter response was not valid JSON.");
+        throw new ProposalProviderError(
+          "proposal_invalid_output",
+          "OpenRouter response was not valid JSON.",
+        );
       }
       const parsed = currentProposalEnvelopeSchema.safeParse(parsedJson);
       if (!parsed.success) {
         // Field paths and error codes only - never the offending values, which can echo capture text.
-        const issues = parsed.error.issues.map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.code}`);
+        const issues = parsed.error.issues.map(
+          (issue) => `${issue.path.join(".") || "(root)"}: ${issue.code}`,
+        );
         console.error("proposal_invalid_output", { captureId, model: models[0], issues });
-        throw new ProposalProviderError("proposal_invalid_output", "OpenRouter response did not match the proposal schema.");
+        throw new ProposalProviderError(
+          "proposal_invalid_output",
+          "OpenRouter response did not match the proposal schema.",
+        );
       }
       if (parsed.data.sourceCaptureId !== captureId) {
-        throw new ProposalProviderError("proposal_invalid_output", "Proposal was linked to the wrong capture.");
+        throw new ProposalProviderError(
+          "proposal_invalid_output",
+          "Proposal was linked to the wrong capture.",
+        );
       }
       return parsed.data;
     } catch (error) {
@@ -119,7 +163,10 @@ export class OpenRouterProposalProvider implements ProposalProvider {
       if (error instanceof DOMException && error.name === "TimeoutError") {
         throw new ProposalProviderError("proposal_timeout", "OpenRouter request timed out.");
       }
-      throw new ProposalProviderError("proposal_provider_error", "OpenRouter request could not be completed.");
+      throw new ProposalProviderError(
+        "proposal_provider_error",
+        "OpenRouter request could not be completed.",
+      );
     }
   }
 }
