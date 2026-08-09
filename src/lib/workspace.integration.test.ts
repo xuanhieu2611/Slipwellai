@@ -39,6 +39,7 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_KEY)("workspace integration (hosted p
   const createdDomainIds: string[] = [];
   const createdPersonIds: string[] = [];
   const createdNoteIds: string[] = [];
+  const createdRoutineIds: string[] = [];
 
   beforeAll(async () => {
     userA = await signedInClient(USER_A);
@@ -54,7 +55,10 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_KEY)("workspace integration (hosted p
     if (createdTaskIds.length) await userA.from("tasks").delete().in("id", createdTaskIds);
     if (createdDomainIds.length) await userA.from("domains").delete().in("id", createdDomainIds);
     if (createdNoteIds.length) await userA.from("notes").delete().in("id", createdNoteIds);
+    /* person_interactions and project_milestones cascade away with their parent person/project,
+       so no separate cleanup array is needed for either. */
     if (createdPersonIds.length) await userA.from("people").delete().in("id", createdPersonIds);
+    if (createdRoutineIds.length) await userA.from("routines").delete().in("id", createdRoutineIds);
     /* Deleting the project first cascades away its checklist instances and items (both
        on-delete-cascade), which clears the on-delete-restrict references those rows hold on the
        template and its items, so the template cleanup below no longer conflicts with them. */
@@ -339,6 +343,88 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_KEY)("workspace integration (hosted p
     expect(deletedNote.data?.archived_at).not.toBeNull();
     const restoredNote = await userA.from("notes").update({ archived_at: null }).eq("id", noteId).select("archived_at").single();
     expect(restoredNote.data?.archived_at).toBeNull();
+  });
+
+  it("keeps a second account from reading, updating, or deleting another user's routine, and blocks a duplicate completion at the (routine_id, local_date) constraint", async () => {
+    const routine = await userA.from("routines").insert({ name: "[integration-test] owned by user A routine" }).select("id").single();
+    expect(routine.error).toBeNull();
+    const routineId = routine.data!.id;
+    createdRoutineIds.push(routineId);
+
+    const read = await userB.from("routines").select("id").eq("id", routineId).maybeSingle();
+    expect(read.error).toBeNull();
+    expect(read.data).toBeNull();
+
+    const update = await userB.from("routines").update({ name: "hijacked" }).eq("id", routineId).select();
+    expect(update.error).toBeNull();
+    expect(update.data).toEqual([]);
+
+    const remove = await userB.from("routines").delete().eq("id", routineId).select();
+    expect(remove.error).toBeNull();
+    expect(remove.data).toEqual([]);
+
+    // The (routine_id, local_date) unique key is what makes resolve_routine's upsert idempotent:
+    // a second resolution for the same local date must converge, never duplicate.
+    const first = await userA.from("routine_completions").insert({ routine_id: routineId, local_date: "2026-09-01", outcome: "completed" }).select("id").single();
+    expect(first.error).toBeNull();
+    const second = await userA.from("routine_completions").insert({ routine_id: routineId, local_date: "2026-09-01", outcome: "skipped" });
+    expect(second.error?.code).toBe("23505");
+
+    // A second account cannot read this account's completion history for the routine either.
+    const completionRead = await userB.from("routine_completions").select("id").eq("routine_id", routineId);
+    expect(completionRead.data).toEqual([]);
+  });
+
+  it("keeps a second account from reading, updating, or deleting another user's project milestone", async () => {
+    const project = await userA.from("projects").insert({ name: "[integration-test] milestone owner project" }).select("id").single();
+    expect(project.error).toBeNull();
+    const projectId = project.data!.id;
+    createdProjectIds.push(projectId);
+
+    const milestone = await userA.from("project_milestones").insert({ project_id: projectId, title: "[integration-test] owned by user A milestone", position: 1 }).select("id").single();
+    expect(milestone.error).toBeNull();
+    const milestoneId = milestone.data!.id;
+
+    const read = await userB.from("project_milestones").select("id").eq("id", milestoneId).maybeSingle();
+    expect(read.error).toBeNull();
+    expect(read.data).toBeNull();
+
+    const update = await userB.from("project_milestones").update({ title: "hijacked" }).eq("id", milestoneId).select();
+    expect(update.error).toBeNull();
+    expect(update.data).toEqual([]);
+
+    const remove = await userB.from("project_milestones").delete().eq("id", milestoneId).select();
+    expect(remove.error).toBeNull();
+    expect(remove.data).toEqual([]);
+
+    const confirm = await userA.from("project_milestones").select("title").eq("id", milestoneId).single();
+    expect(confirm.data?.title).toBe("[integration-test] owned by user A milestone");
+  });
+
+  it("keeps a second account from reading, updating, or deleting another user's person interaction", async () => {
+    const person = await userA.from("people").insert({ name: "[integration-test] interaction owner person" }).select("id").single();
+    expect(person.error).toBeNull();
+    const personId = person.data!.id;
+    createdPersonIds.push(personId);
+
+    const interaction = await userA.from("person_interactions").insert({ person_id: personId, summary: "[integration-test] owned by user A interaction" }).select("id").single();
+    expect(interaction.error).toBeNull();
+    const interactionId = interaction.data!.id;
+
+    const read = await userB.from("person_interactions").select("id").eq("id", interactionId).maybeSingle();
+    expect(read.error).toBeNull();
+    expect(read.data).toBeNull();
+
+    const update = await userB.from("person_interactions").update({ summary: "hijacked" }).eq("id", interactionId).select();
+    expect(update.error).toBeNull();
+    expect(update.data).toEqual([]);
+
+    const remove = await userB.from("person_interactions").delete().eq("id", interactionId).select();
+    expect(remove.error).toBeNull();
+    expect(remove.data).toEqual([]);
+
+    const confirm = await userA.from("person_interactions").select("summary").eq("id", interactionId).single();
+    expect(confirm.data?.summary).toBe("[integration-test] owned by user A interaction");
   });
 
   it("blocks a hard delete of an applied checklist template item at the on-delete-restrict constraint, and confirms the soft-delete (archived_at) path leaves applied checklists intact", async () => {
