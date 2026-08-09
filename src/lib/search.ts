@@ -203,12 +203,19 @@ function buildEntries(data: SearchPageData): SearchEntry[] {
   return [...tasks, ...projects, ...people, ...notes, ...domains, ...captures];
 }
 
-const RESULT_LIMIT = 30;
+/* Matches the "search.result_limit" default in src/lib/config.ts. Kept here too, rather
+   than importing that module, so this stays a pure function callers can use without a
+   config lookup; callers that want the remotely configurable value pass it explicitly
+   (see src/app/(authenticated)/search/page.tsx). If the two numbers drift, the config
+   system's value wins for real requests — this is only the fallback for direct callers
+   (tests, any future non-web caller) that don't pass one. */
+const DEFAULT_RESULT_LIMIT = 30;
 
 export function searchRecords(
   data: SearchPageData,
   query: string,
   filters: SearchFilterState,
+  resultLimit: number = DEFAULT_RESULT_LIMIT,
 ): SearchResult[] {
   const q = query.trim().toLowerCase();
   const entries = buildEntries(data).filter((entry) => {
@@ -228,6 +235,6 @@ export function searchRecords(
     return true;
   });
   return entries
-    .slice(0, RESULT_LIMIT)
+    .slice(0, resultLimit)
     .map(({ type, typeLabel, id, title, context }) => ({ type, typeLabel, id, title, context }));
 }

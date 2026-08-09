@@ -1,0 +1,12 @@
+-- Follow-up to 20260809100000_app_config.sql: the previous migration assumed a newly
+-- created table gets no anon/authenticated grants unless a migration adds them, matching
+-- every other table in this project. That assumption was wrong for this project's default
+-- privileges specifically — public.app_config actually inherited full CRUD grants for
+-- anon and authenticated from this project's ALTER DEFAULT PRIVILEGES (confirmed via
+-- pg_default_acl: role postgres grants anon/authenticated/service_role arwdDxtm on every
+-- new table in schema public). RLS with zero policies already denied every row to those
+-- roles regardless, so this was not a live data-exposure gap, but it left the table's
+-- actual grants silently contradicting this project's stated model ("readable only through
+-- the service-role client"). Revoking explicitly here makes the two agree and matches the
+-- revoke-from-anon convention every other migration in this repo already follows.
+revoke all on public.app_config from anon, authenticated;
