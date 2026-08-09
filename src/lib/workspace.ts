@@ -21,6 +21,7 @@ export const workspaceCommandSchema = z.discriminatedUnion("action", [
       .string()
       .regex(/^#[0-9A-Fa-f]{6}$/)
       .default("#C47B5B"),
+    slippingCadenceDays: z.coerce.number().int().min(1).max(365).optional().nullable(),
   }),
   z.object({
     action: z.literal("update_domain"),
@@ -28,6 +29,7 @@ export const workspaceCommandSchema = z.discriminatedUnion("action", [
     name: shortText(80),
     description: optionalText(1_000),
     color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+    slippingCadenceDays: z.coerce.number().int().min(1).max(365).optional().nullable(),
   }),
   z
     .object({
@@ -283,6 +285,7 @@ export type WorkspaceData = {
     name: string;
     description: string | null;
     color: string;
+    slipping_cadence_days: number | null;
     archived_at: string | null;
   }>;
   tasks: Array<{

@@ -87,7 +87,13 @@ describe("working-prototype workspace commands", () => {
      schema has to accept that exact shape. Omitted-field tests alone let this regression through. */
   it("accepts the null-for-blank payloads the creation forms actually post", () => {
     const posted = [
-      { action: "create_domain", name: "Client work", description: null, color: "#2348c8" },
+      {
+        action: "create_domain",
+        name: "Client work",
+        description: null,
+        color: "#2348c8",
+        slippingCadenceDays: null,
+      },
       {
         action: "create_project",
         name: "Launch the September report",
@@ -498,6 +504,7 @@ describe("working-prototype workspace commands", () => {
       name: "Client work",
       description: null,
       color: "#C47B5B",
+      slippingCadenceDays: null,
     };
     expect(workspaceCommandSchema.safeParse(posted).success).toBe(true);
     expect(
@@ -506,6 +513,46 @@ describe("working-prototype workspace commands", () => {
     expect(workspaceCommandSchema.safeParse({ ...posted, name: "   " }).success).toBe(false);
     expect(workspaceCommandSchema.safeParse({ ...posted, color: "blue" }).success).toBe(false);
     expect(workspaceCommandSchema.safeParse({ ...posted, domainId: "not-an-id" }).success).toBe(
+      false,
+    );
+  });
+
+  /* Domains reuse the same optional 1-365 cadence field as tasks and projects (see the create_task/
+     create_project schemas above), so the acceptance range needs the same boundary coverage. */
+  it("accepts a domain's default attention cadence within 1-365 and rejects values outside that range", () => {
+    const create = { action: "create_domain", name: "Client work", color: "#C47B5B" };
+    expect(workspaceCommandSchema.safeParse({ ...create, slippingCadenceDays: 1 }).success).toBe(
+      true,
+    );
+    expect(workspaceCommandSchema.safeParse({ ...create, slippingCadenceDays: 365 }).success).toBe(
+      true,
+    );
+    expect(workspaceCommandSchema.safeParse({ ...create, slippingCadenceDays: 0 }).success).toBe(
+      false,
+    );
+    expect(workspaceCommandSchema.safeParse({ ...create, slippingCadenceDays: 366 }).success).toBe(
+      false,
+    );
+    expect(
+      workspaceCommandSchema.parse({ ...create, slippingCadenceDays: undefined }),
+    ).toMatchObject({ slippingCadenceDays: undefined });
+
+    const update = {
+      action: "update_domain",
+      domainId: "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98",
+      name: "Client work",
+      color: "#C47B5B",
+    };
+    expect(workspaceCommandSchema.safeParse({ ...update, slippingCadenceDays: 1 }).success).toBe(
+      true,
+    );
+    expect(workspaceCommandSchema.safeParse({ ...update, slippingCadenceDays: 365 }).success).toBe(
+      true,
+    );
+    expect(workspaceCommandSchema.safeParse({ ...update, slippingCadenceDays: 0 }).success).toBe(
+      false,
+    );
+    expect(workspaceCommandSchema.safeParse({ ...update, slippingCadenceDays: 366 }).success).toBe(
       false,
     );
   });

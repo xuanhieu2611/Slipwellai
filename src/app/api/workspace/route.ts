@@ -56,9 +56,12 @@ export async function POST(request: NextRequest) {
 
   try {
     if (command.action === "create_domain") {
-      const { error } = await supabase
-        .from("domains")
-        .insert({ name: command.name, description: command.description, color: command.color });
+      const { error } = await supabase.from("domains").insert({
+        name: command.name,
+        description: command.description,
+        color: command.color,
+        slipping_cadence_days: command.slippingCadenceDays ?? null,
+      });
       if (error?.code === "23505") return badRequest("A domain with that name already exists.");
       if (error) throw error;
     } else if (command.action === "update_domain") {
@@ -75,6 +78,7 @@ export async function POST(request: NextRequest) {
           name: command.name,
           description: command.description,
           color: command.color,
+          slipping_cadence_days: command.slippingCadenceDays ?? null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", command.domainId);
