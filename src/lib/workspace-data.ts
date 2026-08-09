@@ -274,5 +274,16 @@ export async function getSearchData(): Promise<SearchPageData> {
     loadDomains(supabase),
     loadCaptures(supabase),
   ]);
-  return { tasks, projects, people, notes, domains, captures };
+  /* loadTasks/loadProjects/loadPeople/loadNotes intentionally return archived rows too, so pages
+     with a Deleted/Restore section can render them; search is not one of those pages, so a
+     soft-deleted record must not resurface here just because it is still readable. domains is
+     already archived-filtered at the load function itself, and captures have no archive state. */
+  return {
+    tasks: tasks.filter((task) => !task.archived_at),
+    projects: projects.filter((project) => !project.archived_at),
+    people: people.filter((person) => !person.archived_at),
+    notes: notes.filter((note) => !note.archived_at),
+    domains,
+    captures,
+  };
 }
