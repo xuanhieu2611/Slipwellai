@@ -7,8 +7,8 @@ const optionalText = (max: number) => z.string().trim().max(max).nullish().trans
 const optionalId = id.optional().nullable();
 
 export const workspaceCommandSchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("create_domain"), name: shortText(80), description: optionalText(1_000), color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default("#C47B5B") }),
-  z.object({ action: z.literal("update_domain"), domainId: id, name: shortText(80), description: optionalText(1_000), color: z.string().regex(/^#[0-9A-Fa-f]{6}$/) }),
+  z.object({ action: z.literal("create_domain"), name: shortText(80), description: optionalText(1_000), color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default("#C47B5B"), slippingCadenceDays: z.coerce.number().int().min(1).max(365).optional().nullable() }),
+  z.object({ action: z.literal("update_domain"), domainId: id, name: shortText(80), description: optionalText(1_000), color: z.string().regex(/^#[0-9A-Fa-f]{6}$/), slippingCadenceDays: z.coerce.number().int().min(1).max(365).optional().nullable() }),
   z.object({ action: z.literal("create_task"), title: shortText(280), details: optionalText(10_000), dueOn: z.iso.date().optional().nullable(), scheduledFor: z.iso.date().optional().nullable(), priority: z.coerce.number().int().min(1).max(3).default(2), recurrenceRule: z.enum(["none", "daily", "weekly", "monthly", "yearly", "weekdays", "custom"]).default("none"), recurrenceInterval: z.coerce.number().int().min(1).max(30).optional().nullable(), recurrenceUnit: z.enum(["days", "weeks"]).optional().nullable(), tags: z.array(shortText(40)).max(20).default([]), domainId: optionalId, projectId: optionalId, personId: optionalId, retainerId: optionalId, slippingCadenceDays: z.coerce.number().int().min(1).max(365).optional().nullable(), idempotencyKey: z.string().uuid() })
     .refine((task) => task.recurrenceRule === "none" || Boolean(task.scheduledFor), { message: "Recurring tasks need a scheduled date.", path: ["scheduledFor"] })
     .refine((task) => task.recurrenceRule !== "custom" || (Boolean(task.recurrenceInterval) && Boolean(task.recurrenceUnit)), { message: "A custom repeat needs an interval and a unit.", path: ["recurrenceInterval"] }),
@@ -97,7 +97,7 @@ export type WorkspaceCommand = z.infer<typeof workspaceCommandSchema>;
 
 export type WorkspaceData = {
   timezone: string;
-  domains: Array<{ id: string; name: string; description: string | null; color: string; archived_at: string | null }>;
+  domains: Array<{ id: string; name: string; description: string | null; color: string; slipping_cadence_days: number | null; archived_at: string | null }>;
   tasks: Array<{ id: string; title: string; details: string | null; status: "open" | "completed" | "canceled" | "archived"; priority: number; due_on: string | null; scheduled_for: string | null; deferred_until: string | null; recurrence_rule: "daily" | "weekly" | "monthly" | "yearly" | "weekdays" | "custom" | null; recurrence_interval: number | null; recurrence_unit: "days" | "weeks" | null; tags: string[]; domain_id: string | null; project_id: string | null; person_id: string | null; retainer_id: string | null; top_three_date: string | null; top_three_order: number | null; slipping_cadence_days: number | null; completed_at: string | null; archived_at: string | null; created_at: string }>;
   projects: Array<{ id: string; name: string; description: string | null; status: string; domain_id: string | null; person_id: string | null; start_on: string | null; target_on: string | null; slipping_cadence_days: number | null; archived_at: string | null; created_at: string }>;
   milestones: Array<{ id: string; project_id: string; title: string; position: number; status: "open" | "completed" }>;

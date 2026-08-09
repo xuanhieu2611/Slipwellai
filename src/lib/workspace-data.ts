@@ -39,7 +39,7 @@ async function loadTimezone(supabase: Awaited<ReturnType<typeof client>>) {
 }
 
 async function loadDomains(supabase: Awaited<ReturnType<typeof client>>) {
-  const domains = await supabase.from("domains").select("id, name, description, color, archived_at").is("archived_at", null).order("name");
+  const domains = await supabase.from("domains").select("id, name, description, color, slipping_cadence_days, archived_at").is("archived_at", null).order("name");
   return (domains.data ?? []) as WorkspaceData["domains"];
 }
 

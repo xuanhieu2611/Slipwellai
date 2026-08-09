@@ -44,7 +44,12 @@ export function WorkPage({ data }: { data: WorkPageData }) {
       </header>
       <Dialog open={createDialog === "domain"} title="New domain" onClose={() => setCreateDialog(null)}>
         {createDialog === "domain" ? (
-          <form className="form-grid" onSubmit={(event) => submit(event, "create_domain", { name: "name", description: "description", color: "color" }, "Domain created.", () => setCreateDialog(null))}>
+          <form
+            className="form-grid"
+            onSubmit={(event) =>
+              submit(event, "create_domain", { name: "name", description: "description", color: "color", slippingCadenceDays: "slippingCadenceDays" }, "Domain created.", () => setCreateDialog(null))
+            }
+          >
             <label className="field-label form-span">
               <span>Name</span>
               <input className="field-base" name="name" required maxLength={80} placeholder="Client work" />
@@ -54,6 +59,11 @@ export function WorkPage({ data }: { data: WorkPageData }) {
               <input className="field-base" name="description" maxLength={1000} placeholder="Optional context" />
             </label>
             <DomainColorPicker />
+            <label className="field-label">
+              <span>Default attention cadence (days)</span>
+              <input className="field-base" type="number" name="slippingCadenceDays" min={1} max={365} placeholder="Optional" />
+              <span className="form-help">A reference cadence for work in this domain. It is not yet applied automatically to new tasks or projects.</span>
+            </label>
             <button className="button-base button-primary form-submit">Add domain</button>
           </form>
         ) : null}
@@ -66,7 +76,7 @@ export function WorkPage({ data }: { data: WorkPageData }) {
               submit(
                 event,
                 "update_domain",
-                { domainId: "domainId", name: "name", description: "description", color: "color" },
+                { domainId: "domainId", name: "name", description: "description", color: "color", slippingCadenceDays: "slippingCadenceDays" },
                 "Domain updated.",
                 () => setEditingDomainId(null),
               )
@@ -82,6 +92,11 @@ export function WorkPage({ data }: { data: WorkPageData }) {
               <input className="field-base" name="description" maxLength={1000} defaultValue={editingDomain.description ?? ""} placeholder="Optional context" />
             </label>
             <DomainColorPicker defaultValue={editingDomain.color} />
+            <label className="field-label">
+              <span>Default attention cadence (days)</span>
+              <input className="field-base" type="number" name="slippingCadenceDays" min={1} max={365} placeholder="Optional" defaultValue={editingDomain.slipping_cadence_days ?? ""} />
+              <span className="form-help">A reference cadence for work in this domain. It is not yet applied automatically to new tasks or projects.</span>
+            </label>
             <button className="button-base button-primary form-submit">Save changes</button>
           </form>
         ) : null}
