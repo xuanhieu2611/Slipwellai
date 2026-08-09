@@ -2,7 +2,11 @@
 
 import { isTaskOnDay, type WorkspaceData } from "@/lib/workspace";
 import type { TodayPageData } from "@/lib/workspace-page-data";
+import { capturesNeedingAttention } from "@/lib/capture-pipeline";
+import { isTodayAllCaughtUp } from "@/lib/today-summary";
+import { StatusMessage } from "@/components/ui/primitives";
 import { dateInZone } from "@/components/workspace/shared/form-utils";
+import { useLocalMidnightRollover } from "@/components/workspace/shared/use-local-midnight-rollover";
 import { useWorkspaceCommand } from "@/components/workspace/shared/use-workspace-command";
 import { NeedsAttention } from "@/components/workspace/today/needs-attention";
 import { NotesToReview } from "@/components/workspace/today/notes-to-review";
@@ -11,6 +15,7 @@ import { TodayBoard } from "@/components/workspace/today/today-board";
 
 export function TodayPage({ data }: { data: TodayPageData }) {
   const { command, safely, refreshAttention, resolveSignal } = useWorkspaceCommand();
+  const { isStale, refreshNow } = useLocalMidnightRollover(data.timezone, data);
   const today = dateInZone(data.timezone);
   const openTasks = data.tasks.filter((task) => task.status === "open" && !task.archived_at);
   const topThree = openTasks
@@ -24,7 +29,22 @@ export function TodayPage({ data }: { data: TodayPageData }) {
       .filter((item) => item.local_date === today)
       .map((item) => [item.routine_id, item]),
   );
+  const unresolvedRoutines = data.routines.filter((routine) => !routineById.has(routine.id));
   const coreSignals = data.signals.filter((signal) => signal.entity_type !== "retainer_cycle_item");
+  // Mirrors NotesToReview's own filter (kept there so that component stays self-contained); this
+  // copy exists only to decide whether the whole page counts as "all caught up" below.
+  const reviewNoteCount = data.notes.filter(
+    (note) => note.review_on && note.review_on <= today,
+  ).length;
+  const attentionCaptureCount = capturesNeedingAttention(data.captureAttention).length;
+  const isAllCaughtUp = isTodayAllCaughtUp({
+    topThreeCount: topThree.length,
+    dueTodayCount: dueToday.length,
+    unresolvedRoutineCount: unresolvedRoutines.length,
+    reviewNoteCount,
+    openSignalCount: coreSignals.length,
+    attentionCaptureCount,
+  });
 
   return (
     <main className="workspace-page">
@@ -36,6 +56,27 @@ export function TodayPage({ data }: { data: TodayPageData }) {
           never quietly carries yesterday’s priorities into today.
         </p>
       </header>
+      {isStale && (
+        <div className="flex items-center justify-between gap-3">
+          <StatusMessage tone="attention">
+            It’s a new day locally and this page hasn’t refreshed yet. It should update on its own
+            shortly — refresh it yourself if it doesn’t.
+          </StatusMessage>
+          <button
+            className="button-base button-secondary shrink-0"
+            onClick={refreshNow}
+            type="button"
+          >
+            Refresh now
+          </button>
+        </div>
+      )}
+      {isAllCaughtUp && (
+        <StatusMessage tone="success">
+          You’re all caught up. Nothing is due today, no signals are open, and no captures are
+          waiting.
+        </StatusMessage>
+      )}
       <TodayBoard
         data={data as WorkspaceData}
         dueToday={dueToday}
