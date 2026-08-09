@@ -7,7 +7,7 @@ export function DomainSelect({ domains, name = "domainId", defaultValue = "" }: 
 }
 
 export function PersonSelect({ people, name = "personId", defaultValue = "" }: { people: WorkspaceData["people"]; name?: string; defaultValue?: string }) {
-  return <label className="field-label"><span>Person</span><select className="field-base" defaultValue={defaultValue} name={name}><option value="">No person</option>{people.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label>;
+  return <label className="field-label"><span>Person</span><select className="field-base" defaultValue={defaultValue} name={name}><option value="">No person</option>{people.filter((person) => !person.archived_at).map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label>;
 }
 
 /* Soft midtones spaced around the hue wheel (Okabe–Ito-inspired). Pastels looked calm but

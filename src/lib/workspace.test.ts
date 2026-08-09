@@ -69,6 +69,24 @@ describe("working-prototype workspace commands", () => {
     expect(workspaceCommandSchema.safeParse({ action: "update_task", taskId: "847a0e15-63ef-4a68-98f7-51fdbe09f29d", title: "x", domainId: "not-an-id" }).success).toBe(false);
   });
 
+  it("accepts update/delete/restore for people and notes with the null-for-blank shape the edit forms post, and rejects a missing name/title", () => {
+    const personId = "847a0e15-63ef-4a68-98f7-51fdbe09f29d";
+    const noteId = "6f1d9b6d-7a94-4de2-bf85-14da8b7c6b98";
+    const postedPerson = { action: "update_person", personId, name: "Priya", context: null, domainId: null };
+    expect(workspaceCommandSchema.safeParse(postedPerson)).toMatchObject({ success: true });
+    expect(workspaceCommandSchema.safeParse({ ...postedPerson, name: "   " }).success).toBe(false);
+    expect(workspaceCommandSchema.safeParse({ ...postedPerson, personId: "not-an-id" }).success).toBe(false);
+    expect(workspaceCommandSchema.safeParse({ action: "delete_person", personId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "restore_person", personId }).success).toBe(true);
+
+    const postedNote = { action: "update_note", noteId, title: "Call notes", body: null, domainId: null, projectId: null, personId: null, reviewOn: null };
+    expect(workspaceCommandSchema.safeParse(postedNote)).toMatchObject({ success: true });
+    expect(workspaceCommandSchema.safeParse({ ...postedNote, title: "   " }).success).toBe(false);
+    expect(workspaceCommandSchema.safeParse({ ...postedNote, noteId: "not-an-id" }).success).toBe(false);
+    expect(workspaceCommandSchema.safeParse({ action: "delete_note", noteId }).success).toBe(true);
+    expect(workspaceCommandSchema.safeParse({ action: "restore_note", noteId }).success).toBe(true);
+  });
+
   it("prioritizes a deferred date over due/scheduled dates when deciding what belongs on a given day, matching taskDateLabel's own priority", () => {
     expect(isTaskOnDay({ due_on: "2026-08-06", scheduled_for: null, deferred_until: "2026-08-10" }, "2026-08-06")).toBe(false);
     expect(isTaskOnDay({ due_on: "2026-08-06", scheduled_for: null, deferred_until: "2026-08-10" }, "2026-08-10")).toBe(true);
