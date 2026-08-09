@@ -87,8 +87,26 @@ async function loadSignals(supabase: Awaited<ReturnType<typeof client>>) {
 }
 
 async function loadCaptures(supabase: Awaited<ReturnType<typeof client>>) {
-  const captures = await supabase.from("captures").select("id, original_text, status, created_at").order("created_at", { ascending: false }).limit(8);
+  /* interpretation_claimed_at is included so Today can tell a fresh interpretation claim
+     apart from a stranded one (see isStrandedCapture) without a second query. */
+  const captures = await supabase.from("captures").select("id, original_text, status, created_at, interpretation_claimed_at").order("created_at", { ascending: false }).limit(8);
   return (captures.data ?? []) as WorkspaceData["captures"];
+}
+
+async function loadCaptureAttention(supabase: Awaited<ReturnType<typeof client>>) {
+  /* Deliberately a separate query from loadCaptures rather than a client-side filter over
+     its 8-most-recent-of-any-status feed: a handful of quickly filed captures would otherwise
+     crowd an older stuck one out of the recency cap, making it invisible on Today even though
+     it is still sitting unresolved in Inbox. This is scoped to the non-terminal statuses
+     instead, so an older needs_review/failed/queued capture always surfaces. capturesNeedingAttention
+     (capture-pipeline.ts) still runs over the result to drop a still-fresh interpreting claim. */
+  const attention = await supabase
+    .from("captures")
+    .select("id, original_text, status, created_at, interpretation_claimed_at")
+    .in("status", ["queued", "interpreting", "needs_review", "failed"])
+    .order("created_at", { ascending: false })
+    .limit(20);
+  return (attention.data ?? []) as WorkspaceData["captureAttention"];
 }
 
 async function loadRoutines(supabase: Awaited<ReturnType<typeof client>>) {
@@ -121,6 +139,7 @@ export async function getWorkspaceData(): Promise<WorkspaceData> {
     routineCompletions,
     signals,
     captures,
+    captureAttention,
     projectActivity,
     retainers,
     retainerTemplateItems,
@@ -144,6 +163,7 @@ export async function getWorkspaceData(): Promise<WorkspaceData> {
     loadRoutineCompletions(supabase),
     loadSignals(supabase),
     loadCaptures(supabase),
+    loadCaptureAttention(supabase),
     supabase.from("activity_events").select("id, entity_id, event_type, metadata, occurred_at").eq("entity_type", "project").order("occurred_at", { ascending: false }).limit(300).then((r) => (r.data ?? []) as WorkspaceData["projectActivity"]),
     /* Unlike most other tables here, retainers intentionally omits the archived_at filter,
        matching tasks/projects: a soft-deleted retainer must still be readable so the workspace
@@ -172,6 +192,7 @@ export async function getWorkspaceData(): Promise<WorkspaceData> {
     routineCompletions,
     signals,
     captures,
+    captureAttention,
     projectActivity,
     retainers,
     retainerTemplateItems,
@@ -183,7 +204,7 @@ export async function getWorkspaceData(): Promise<WorkspaceData> {
 
 export async function getTodayData(): Promise<TodayPageData> {
   const supabase = await client();
-  const [timezone, domains, tasks, projects, people, notes, routines, routineCompletions, signals, captures] = await Promise.all([
+  const [timezone, domains, tasks, projects, people, notes, routines, routineCompletions, signals, captures, captureAttention] = await Promise.all([
     loadTimezone(supabase),
     loadDomains(supabase),
     loadTasks(supabase),
@@ -194,8 +215,9 @@ export async function getTodayData(): Promise<TodayPageData> {
     loadRoutineCompletions(supabase),
     loadSignals(supabase),
     loadCaptures(supabase),
+    loadCaptureAttention(supabase),
   ]);
-  return { timezone, domains, tasks, projects, people, notes, routines, routineCompletions, signals, captures };
+  return { timezone, domains, tasks, projects, people, notes, routines, routineCompletions, signals, captures, captureAttention };
 }
 
 export async function getTasksData(): Promise<TasksPageData> {

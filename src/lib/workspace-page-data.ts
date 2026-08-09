@@ -2,7 +2,7 @@ import type { WorkspaceData } from "@/lib/workspace";
 
 export type TodayPageData = Pick<
   WorkspaceData,
-  "timezone" | "domains" | "tasks" | "projects" | "people" | "notes" | "routines" | "routineCompletions" | "signals" | "captures"
+  "timezone" | "domains" | "tasks" | "projects" | "people" | "notes" | "routines" | "routineCompletions" | "signals" | "captures" | "captureAttention"
 >;
 
 export type TasksPageData = Pick<WorkspaceData, "timezone" | "domains" | "tasks" | "projects" | "people" | "notes" | "signals">;

@@ -111,7 +111,11 @@ export type WorkspaceData = {
   routines: Array<{ id: string; name: string; period: "morning" | "afternoon" | "evening" | "anytime" }>;
   routineCompletions: Array<{ routine_id: string; local_date: string; outcome: "completed" | "skipped" }>;
   signals: Array<{ id: string; entity_type: "task" | "project" | "retainer_cycle_item"; entity_id: string; reason: string; severity: "attention" | "urgent" | "informational"; outcome: string }>;
-  captures: Array<{ id: string; original_text: string; status: string; created_at: string }>;
+  captures: Array<{ id: string; original_text: string; status: string; created_at: string; interpretation_claimed_at: string | null }>;
+  /* Every capture Today needs to flag, regardless of how it ranks in the recency-capped
+     `captures` feed above — see loadCaptureAttention in workspace-data.ts for why this is a
+     separate query rather than a filter over `captures`. */
+  captureAttention: Array<{ id: string; original_text: string; status: string; created_at: string; interpretation_claimed_at: string | null }>;
   projectActivity: Array<{ id: string; entity_id: string; event_type: string; metadata: Record<string, string>; occurred_at: string }>;
   retainers: Array<{ id: string; name: string; timezone: string; cycle_day: number; status: "active" | "paused" | "ended"; client_person_id: string | null; domain_id: string | null; archived_at: string | null; created_at: string }>;
   retainerTemplateItems: Array<{ id: string; retainer_id: string; title: string; expected_day: number; version: number; position: number; archived_at: string | null }>;

@@ -62,7 +62,7 @@ export function Review({ capture, catalog, today, done }: { capture: DashboardDa
     </div>}
 
     {confirmingDiscard ? <div className="review-confirm" role="group" aria-label="Confirm discard">
-      <p>Discard this capture? It leaves your inbox. The original words stay in Capture recovery on Today.</p>
+      <p>Discard this capture? It leaves your inbox and Today’s attention list. Your original words are kept, never deleted.</p>
       <Button autoFocus className="button-danger" disabled={busy} onClick={() => action("discard")}>{busy ? "Discarding…" : "Discard it"}</Button>
       <Button className="button-secondary" disabled={busy} onClick={() => setConfirmingDiscard(false)}>Keep it</Button>
     </div> : <div className="review-actions">
