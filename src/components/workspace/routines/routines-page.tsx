@@ -2,7 +2,12 @@
 
 import { type FormEvent, useState } from "react";
 import { Flame, Plus } from "@phosphor-icons/react";
-import { routineCurrentStreak, routineHeatmapWeeks, type RoutineHeatmapWeek, type WorkspaceData } from "@/lib/workspace";
+import {
+  routineCurrentStreak,
+  routineHeatmapWeeks,
+  type RoutineHeatmapWeek,
+  type WorkspaceData,
+} from "@/lib/workspace";
 import type { RoutinesPageData } from "@/lib/workspace-page-data";
 import { useToast } from "@/components/ui/toast";
 import { Dialog } from "@/components/ui/primitives";
@@ -32,7 +37,7 @@ function RoutineHeatmap({ weeks }: { weeks: RoutineHeatmapWeek[] }) {
             {cells.map((cell) => (
               <span
                 className="routine-heatmap-cell"
-                data-outcome={cell.isFuture ? "future" : cell.outcome ?? "none"}
+                data-outcome={cell.isFuture ? "future" : (cell.outcome ?? "none")}
                 data-today={cell.isToday ? "true" : undefined}
                 key={cell.date}
                 title={`${cell.date} · ${cell.outcome ?? (cell.isFuture ? "upcoming" : "no record")}`}
@@ -77,10 +82,16 @@ function RoutineCard({
           )}
           {!resolvedToday && (
             <div className="record-actions">
-              <button className="button-base button-primary" onClick={() => onResolve(routine.id, "completed")}>
+              <button
+                className="button-base button-primary"
+                onClick={() => onResolve(routine.id, "completed")}
+              >
                 Complete
               </button>
-              <button className="button-base button-secondary" onClick={() => onResolve(routine.id, "skipped")}>
+              <button
+                className="button-base button-secondary"
+                onClick={() => onResolve(routine.id, "skipped")}
+              >
                 Skip
               </button>
             </div>
@@ -102,7 +113,11 @@ export function RoutinesPage({ data }: { data: RoutinesPageData }) {
     event.preventDefault();
     const form = event.currentTarget;
     try {
-      await command({ action: "create_routine", name: formValue(form, "name"), period: formValue(form, "period") });
+      await command({
+        action: "create_routine",
+        name: formValue(form, "name"),
+        period: formValue(form, "period"),
+      });
       form.reset();
       notify("Routine added.", "success");
       setCreateOpen(false);
@@ -126,7 +141,10 @@ export function RoutinesPage({ data }: { data: RoutinesPageData }) {
         <div className="page-intro-text">
           <p className="eyebrow">Routines</p>
           <h1>Habits worth keeping, tracked like it matters.</h1>
-          <p>Repeated behaviors stay separate from tasks: mark each one off as you go and watch the streak and history build.</p>
+          <p>
+            Repeated behaviors stay separate from tasks: mark each one off as you go and watch the
+            streak and history build.
+          </p>
         </div>
         <button className="button-base button-primary" onClick={() => setCreateOpen(true)}>
           <Plus aria-hidden size={16} weight="bold" />
@@ -138,7 +156,13 @@ export function RoutinesPage({ data }: { data: RoutinesPageData }) {
           <form className="form-grid" onSubmit={submitRoutine}>
             <label className="field-label">
               <span>Routine</span>
-              <input className="field-base" name="name" required maxLength={160} placeholder="Plan the day" />
+              <input
+                className="field-base"
+                name="name"
+                required
+                maxLength={160}
+                placeholder="Plan the day"
+              />
             </label>
             <label className="field-label">
               <span>Time of day</span>
@@ -158,13 +182,18 @@ export function RoutinesPage({ data }: { data: RoutinesPageData }) {
           <RoutineCard
             key={routine.id}
             routine={routine}
-            completions={data.routineCompletions.filter((completion) => completion.routine_id === routine.id)}
+            completions={data.routineCompletions.filter(
+              (completion) => completion.routine_id === routine.id,
+            )}
             today={today}
             onResolve={resolve}
           />
         ))}
         {data.routines.length === 0 && (
-          <p className="empty-state">Add a routine for a repeated behavior you want to keep an eye on - a workout, drinking water, anything that isn’t a one-off task.</p>
+          <p className="empty-state">
+            Add a routine for a repeated behavior you want to keep an eye on - a workout, drinking
+            water, anything that isn’t a one-off task.
+          </p>
         )}
       </div>
     </main>

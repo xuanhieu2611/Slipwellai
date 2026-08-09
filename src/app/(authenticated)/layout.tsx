@@ -4,7 +4,9 @@ import { getOnboardingState } from "@/lib/onboarding-service";
 import { createSupabaseOnboardingRepository } from "@/lib/supabase/onboarding-repository";
 import { requireUser } from "@/lib/supabase/server";
 
-export default async function AuthenticatedLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function AuthenticatedLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   const { supabase, user } = await requireUser();
   if (!user) redirect("/");
   const state = await getOnboardingState(createSupabaseOnboardingRepository(supabase), user.id);

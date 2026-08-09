@@ -9,14 +9,46 @@ export function SearchPage({ data }: { data: SearchPageData }) {
     const q = query.trim().toLowerCase();
     if (!q) return [];
     const entries = [
-      ...data.tasks.map((item) => ({ type: "Task", title: item.title, context: item.details ?? "", id: item.id })),
-      ...data.projects.map((item) => ({ type: "Project", title: item.name, context: item.description ?? "", id: item.id })),
-      ...data.people.map((item) => ({ type: "Person", title: item.name, context: item.context ?? "", id: item.id })),
-      ...data.notes.map((item) => ({ type: "Note", title: item.title, context: item.body ?? "", id: item.id })),
-      ...data.domains.map((item) => ({ type: "Domain", title: item.name, context: "", id: item.id })),
-      ...data.captures.map((item) => ({ type: "Capture", title: item.original_text, context: item.status, id: item.id })),
+      ...data.tasks.map((item) => ({
+        type: "Task",
+        title: item.title,
+        context: item.details ?? "",
+        id: item.id,
+      })),
+      ...data.projects.map((item) => ({
+        type: "Project",
+        title: item.name,
+        context: item.description ?? "",
+        id: item.id,
+      })),
+      ...data.people.map((item) => ({
+        type: "Person",
+        title: item.name,
+        context: item.context ?? "",
+        id: item.id,
+      })),
+      ...data.notes.map((item) => ({
+        type: "Note",
+        title: item.title,
+        context: item.body ?? "",
+        id: item.id,
+      })),
+      ...data.domains.map((item) => ({
+        type: "Domain",
+        title: item.name,
+        context: "",
+        id: item.id,
+      })),
+      ...data.captures.map((item) => ({
+        type: "Capture",
+        title: item.original_text,
+        context: item.status,
+        id: item.id,
+      })),
     ];
-    return entries.filter((item) => `${item.title} ${item.context}`.toLowerCase().includes(q)).slice(0, 30);
+    return entries
+      .filter((item) => `${item.title} ${item.context}`.toLowerCase().includes(q))
+      .slice(0, 30);
   }, [data, query]);
 
   return (
@@ -24,11 +56,19 @@ export function SearchPage({ data }: { data: SearchPageData }) {
       <header className="page-intro">
         <p className="eyebrow">Search</p>
         <h1>Find the thing you meant to keep.</h1>
-        <p>This working-prototype search only queries records already authorized for your account.</p>
+        <p>
+          This working-prototype search only queries records already authorized for your account.
+        </p>
       </header>
       <label className="field-label">
         <span>Search all current records</span>
-        <input autoFocus className="field-base search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try a client, project, task, or phrase" />
+        <input
+          autoFocus
+          className="field-base search-input"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Try a client, project, task, or phrase"
+        />
       </label>
       <section className="workspace-section mt-6">
         <div className="section-heading">
@@ -45,9 +85,14 @@ export function SearchPage({ data }: { data: SearchPageData }) {
               </div>
             </article>
           ))}
-          {query && results.length === 0 && <p className="empty-state">Nothing matched. Search stays inside your own records.</p>}
+          {query && results.length === 0 && (
+            <p className="empty-state">Nothing matched. Search stays inside your own records.</p>
+          )}
           {!query && (
-            <p className="empty-state">Start with a word or phrase. Full-text indexing is the next hardening step; this prototype view demonstrates the unified search experience.</p>
+            <p className="empty-state">
+              Start with a word or phrase. Full-text indexing is the next hardening step; this
+              prototype view demonstrates the unified search experience.
+            </p>
           )}
         </div>
       </section>

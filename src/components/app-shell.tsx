@@ -78,96 +78,108 @@ function AppShellFrame({ children, email }: { children: React.ReactNode; email: 
   }, [openCapture]);
 
   return (
-      <div className="app-frame">
-        <a className="skip-link" href="#main-content">Skip to content</a>
+    <div className="app-frame">
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
 
-        <aside className="app-sidebar">
-          <Link className="brand-mark" href="/today">
-            <Waves aria-hidden size={22} weight="bold" />
-            Slipwell
-          </Link>
+      <aside className="app-sidebar">
+        <Link className="brand-mark" href="/today">
+          <Waves aria-hidden size={22} weight="bold" />
+          Slipwell
+        </Link>
 
-          <nav aria-label="Primary navigation" className="app-nav">
-            {primaryNav.map(([href, label, IconGlyph]) => (
-              <Link
-                aria-current={isCurrent(pathname, href) ? "page" : undefined}
-                className={`app-nav-link ${isCurrent(pathname, href) ? "is-current" : ""}`}
-                href={href}
-                key={href}
-              >
-                <IconGlyph aria-hidden size={18} weight={ICON_WEIGHT} />
-                {label}
-              </Link>
-            ))}
-          </nav>
-
-          <nav aria-label="Secondary navigation" className="app-nav app-nav-secondary">
-            {secondaryNav.map(([href, label, IconGlyph]) => (
-              <Link
-                aria-current={isCurrent(pathname, href) ? "page" : undefined}
-                className={`app-nav-link ${isCurrent(pathname, href) ? "is-current" : ""}`}
-                href={href}
-                key={href}
-              >
-                <IconGlyph aria-hidden size={18} weight={ICON_WEIGHT} />
-                {label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="mt-auto grid gap-2.5">
-            <Button className="button-primary w-full" onClick={openCapture}>
-              <Plus aria-hidden size={16} weight="bold" />
-              Capture
-              <kbd>⌘J</kbd>
-            </Button>
-            <ThemeToggle />
-            <p className="sidebar-account">
-              <UserCircle aria-hidden size={15} weight={ICON_WEIGHT} />
-              <span>{email}</span>
-            </p>
-          </div>
-        </aside>
-
-        <header className="app-mobile-header">
-          <Link className="brand-mark" href="/today">
-            <Waves aria-hidden size={20} weight="bold" />
-            Slipwell
-          </Link>
-          <nav aria-label="Secondary navigation" className="app-mobile-header-links">
-            {mobileHeaderNav.map(([href, label, IconGlyph]) => (
-              <Link
-                aria-current={isCurrent(pathname, href) ? "page" : undefined}
-                aria-label={label}
-                className={`app-mobile-header-link ${isCurrent(pathname, href) ? "is-current" : ""}`}
-                href={href}
-                key={href}
-              >
-                <IconGlyph aria-hidden size={19} weight={isCurrent(pathname, href) ? "fill" : ICON_WEIGHT} />
-              </Link>
-            ))}
-            <ThemeToggle compact />
-          </nav>
-        </header>
-
-        <main className="app-content" id="main-content">{children}</main>
-
-        <nav aria-label="Mobile primary navigation" className="mobile-nav">
-          {mobilePrimaryNav.map(([href, label, IconGlyph]) => (
+        <nav aria-label="Primary navigation" className="app-nav">
+          {primaryNav.map(([href, label, IconGlyph]) => (
             <Link
               aria-current={isCurrent(pathname, href) ? "page" : undefined}
-              className={`mobile-nav-link ${isCurrent(pathname, href) ? "is-current" : ""}`}
+              className={`app-nav-link ${isCurrent(pathname, href) ? "is-current" : ""}`}
               href={href}
               key={href}
             >
-              <IconGlyph aria-hidden size={19} weight={isCurrent(pathname, href) ? "fill" : ICON_WEIGHT} />
+              <IconGlyph aria-hidden size={18} weight={ICON_WEIGHT} />
               {label}
             </Link>
           ))}
         </nav>
-        <Button aria-label="Capture" className="mobile-capture" onClick={openCapture}>
-          <Plus aria-hidden size={22} weight="bold" />
-        </Button>
-      </div>
+
+        <nav aria-label="Secondary navigation" className="app-nav app-nav-secondary">
+          {secondaryNav.map(([href, label, IconGlyph]) => (
+            <Link
+              aria-current={isCurrent(pathname, href) ? "page" : undefined}
+              className={`app-nav-link ${isCurrent(pathname, href) ? "is-current" : ""}`}
+              href={href}
+              key={href}
+            >
+              <IconGlyph aria-hidden size={18} weight={ICON_WEIGHT} />
+              {label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="mt-auto grid gap-2.5">
+          <Button className="button-primary w-full" onClick={openCapture}>
+            <Plus aria-hidden size={16} weight="bold" />
+            Capture
+            <kbd>⌘J</kbd>
+          </Button>
+          <ThemeToggle />
+          <p className="sidebar-account">
+            <UserCircle aria-hidden size={15} weight={ICON_WEIGHT} />
+            <span>{email}</span>
+          </p>
+        </div>
+      </aside>
+
+      <header className="app-mobile-header">
+        <Link className="brand-mark" href="/today">
+          <Waves aria-hidden size={20} weight="bold" />
+          Slipwell
+        </Link>
+        <nav aria-label="Secondary navigation" className="app-mobile-header-links">
+          {mobileHeaderNav.map(([href, label, IconGlyph]) => (
+            <Link
+              aria-current={isCurrent(pathname, href) ? "page" : undefined}
+              aria-label={label}
+              className={`app-mobile-header-link ${isCurrent(pathname, href) ? "is-current" : ""}`}
+              href={href}
+              key={href}
+            >
+              <IconGlyph
+                aria-hidden
+                size={19}
+                weight={isCurrent(pathname, href) ? "fill" : ICON_WEIGHT}
+              />
+            </Link>
+          ))}
+          <ThemeToggle compact />
+        </nav>
+      </header>
+
+      <main className="app-content" id="main-content">
+        {children}
+      </main>
+
+      <nav aria-label="Mobile primary navigation" className="mobile-nav">
+        {mobilePrimaryNav.map(([href, label, IconGlyph]) => (
+          <Link
+            aria-current={isCurrent(pathname, href) ? "page" : undefined}
+            className={`mobile-nav-link ${isCurrent(pathname, href) ? "is-current" : ""}`}
+            href={href}
+            key={href}
+          >
+            <IconGlyph
+              aria-hidden
+              size={19}
+              weight={isCurrent(pathname, href) ? "fill" : ICON_WEIGHT}
+            />
+            {label}
+          </Link>
+        ))}
+      </nav>
+      <Button aria-label="Capture" className="mobile-capture" onClick={openCapture}>
+        <Plus aria-hidden size={22} weight="bold" />
+      </Button>
+    </div>
   );
 }

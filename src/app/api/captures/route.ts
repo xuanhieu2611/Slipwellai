@@ -16,7 +16,11 @@ export async function POST(request: NextRequest) {
 
   const { data: capture, error } = await supabase
     .from("captures")
-    .insert({ original_text: parsed.data.text, status: "queued", idempotency_key: parsed.data.idempotencyKey })
+    .insert({
+      original_text: parsed.data.text,
+      status: "queued",
+      idempotency_key: parsed.data.idempotencyKey,
+    })
     .select("id, status")
     .single();
 
@@ -28,7 +32,12 @@ export async function POST(request: NextRequest) {
       .select("id, status")
       .eq("idempotency_key", parsed.data.idempotencyKey)
       .maybeSingle();
-    if (existing) return NextResponse.json({ captureId: existing.id, status: existing.status, duplicate: true });
+    if (existing)
+      return NextResponse.json({
+        captureId: existing.id,
+        status: existing.status,
+        duplicate: true,
+      });
   }
   if (error || !capture) return serverError();
 

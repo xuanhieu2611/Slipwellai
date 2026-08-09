@@ -14,7 +14,10 @@ export async function POST(request: NextRequest) {
     byteSize: audio instanceof File ? audio.size : 0,
     durationMs: Number(formData.get("durationMs")),
   });
-  if (!parsed.success) return badRequest("That recording is too large, too long, or uses an unsupported audio format.");
+  if (!parsed.success)
+    return badRequest(
+      "That recording is too large, too long, or uses an unsupported audio format.",
+    );
   if (!(audio instanceof File)) return badRequest("Choose a voice recording to transcribe.");
   const validated = validateVoiceCapture(parsed.data);
   if (!validated.ok) return badRequest(validated.error);
@@ -34,12 +37,16 @@ export async function POST(request: NextRequest) {
   try {
     transcript = await transcribeAudio({ audio, mimeType: validated.mimeType });
   } catch (error) {
-    const message = error instanceof TranscriptionError && error.code === "transcription_not_configured"
-      ? "Voice transcription is not configured. Please use text capture instead."
-      : "Voice transcription failed and the recording was discarded. Please use text capture instead.";
+    const message =
+      error instanceof TranscriptionError && error.code === "transcription_not_configured"
+        ? "Voice transcription is not configured. Please use text capture instead."
+        : "Voice transcription failed and the recording was discarded. Please use text capture instead.";
     return NextResponse.json({ error: message }, { status: 502 });
   }
-  if (transcript.length > 10_000) return badRequest("The transcript is too long to capture safely. Please use text capture instead.");
+  if (transcript.length > 10_000)
+    return badRequest(
+      "The transcript is too long to capture safely. Please use text capture instead.",
+    );
 
   const { data: capture, error } = await supabase
     .from("captures")
@@ -55,8 +62,17 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error?.code === "23505") {
-    const { data: duplicate } = await supabase.from("captures").select("id, status").eq("idempotency_key", idempotencyKey).single();
-    if (duplicate) return NextResponse.json({ captureId: duplicate.id, status: duplicate.status, duplicate: true });
+    const { data: duplicate } = await supabase
+      .from("captures")
+      .select("id, status")
+      .eq("idempotency_key", idempotencyKey)
+      .single();
+    if (duplicate)
+      return NextResponse.json({
+        captureId: duplicate.id,
+        status: duplicate.status,
+        duplicate: true,
+      });
   }
   if (error || !capture) return serverError();
 
