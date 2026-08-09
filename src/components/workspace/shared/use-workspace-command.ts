@@ -3,9 +3,14 @@
 import { type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
-import { formValue } from "@/components/workspace/shared/form-utils";
+import { formValue, tagsValue } from "@/components/workspace/shared/form-utils";
 
 export type WorkspaceCommandFn = (body: Record<string, unknown>) => Promise<void>;
+
+/* A plain string names the form field to read as trimmed text (the common case). Pass
+   { source, array: true } instead when the field is a comma-separated tags input that needs
+   tagsValue's split/trim/cap handling rather than a single text value. */
+export type SubmitFieldSpec = string | { source: string; array: true };
 
 export function useWorkspaceCommand() {
   const router = useRouter();
@@ -52,12 +57,12 @@ export function useWorkspaceCommand() {
     router.refresh();
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>, action: string, fields: Record<string, string>, success: string, onSuccess?: () => void) {
+  async function submit(event: FormEvent<HTMLFormElement>, action: string, fields: Record<string, SubmitFieldSpec>, success: string, onSuccess?: () => void) {
     event.preventDefault();
     try {
       const form = event.currentTarget;
       const payload: Record<string, unknown> = { action };
-      for (const [key, source] of Object.entries(fields)) payload[key] = formValue(form, source);
+      for (const [key, spec] of Object.entries(fields)) payload[key] = typeof spec === "string" ? formValue(form, spec) : tagsValue(form, spec.source);
       await command(payload);
       form.reset();
       notify(success, "success");

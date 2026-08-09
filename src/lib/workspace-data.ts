@@ -69,7 +69,7 @@ async function loadPeople(supabase: Awaited<ReturnType<typeof client>>) {
   /* Unlike its earlier version, this intentionally omits the archived_at filter: a soft-deleted
      person must still be readable so the workspace can render a Deleted section with a Restore
      action, matching the tasks/projects delete/restore recovery promise. */
-  const people = await supabase.from("people").select("id, name, context, domain_id, archived_at, created_at").order("name");
+  const people = await supabase.from("people").select("id, name, context, pronouns, tags, domain_id, archived_at, created_at").order("name");
   return (people.data ?? []) as WorkspaceData["people"];
 }
 
@@ -77,7 +77,7 @@ async function loadNotes(supabase: Awaited<ReturnType<typeof client>>) {
   /* Unlike its earlier version, this intentionally omits the archived_at filter: a soft-deleted
      note must still be readable so the workspace can render a Deleted section with a Restore
      action, matching the tasks/projects delete/restore recovery promise. */
-  const notes = await supabase.from("notes").select("id, title, body, domain_id, project_id, person_id, review_on, archived_at, created_at").order("created_at", { ascending: false });
+  const notes = await supabase.from("notes").select("id, title, body, tags, domain_id, project_id, person_id, review_on, archived_at, created_at").order("created_at", { ascending: false });
   return (notes.data ?? []) as WorkspaceData["notes"];
 }
 

@@ -47,7 +47,7 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
       </header>
       <Dialog open={createDialog === "person"} title="New person" onClose={() => setCreateDialog(null)}>
         {createDialog === "person" ? (
-          <form className="form-grid" onSubmit={(event) => submit(event, "create_person", { name: "name", context: "context", domainId: "domainId" }, "Person added.", () => setCreateDialog(null))}>
+          <form className="form-grid" onSubmit={(event) => submit(event, "create_person", { name: "name", context: "context", pronouns: "pronouns", tags: { source: "tags", array: true }, domainId: "domainId" }, "Person added.", () => setCreateDialog(null))}>
             <label className="field-label form-span">
               <span>Name</span>
               <input className="field-base" name="name" required maxLength={160} placeholder="Priya from Rivera Studio" />
@@ -55,6 +55,14 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
             <label className="field-label form-span">
               <span>Context</span>
               <input className="field-base" name="context" maxLength={1000} placeholder="Client lead, collaborator, or someone important" />
+            </label>
+            <label className="field-label">
+              <span>Pronouns</span>
+              <input className="field-base" name="pronouns" maxLength={60} placeholder="she/her" />
+            </label>
+            <label className="field-label form-span">
+              <span>Tags</span>
+              <input className="field-base" name="tags" placeholder="client, collaborator (comma separated)" />
             </label>
             <DomainSelect domains={data.domains} />
             <button className="button-base button-primary form-submit">Add person</button>
@@ -69,7 +77,7 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
               submit(
                 event,
                 "update_person",
-                { personId: "personId", name: "name", context: "context", domainId: "domainId" },
+                { personId: "personId", name: "name", context: "context", pronouns: "pronouns", tags: { source: "tags", array: true }, domainId: "domainId" },
                 "Person updated.",
                 () => setEditingPersonId(null),
               )
@@ -84,6 +92,14 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
               <span>Context</span>
               <input className="field-base" name="context" maxLength={1000} defaultValue={editingPerson.context ?? ""} />
             </label>
+            <label className="field-label">
+              <span>Pronouns</span>
+              <input className="field-base" name="pronouns" maxLength={60} defaultValue={editingPerson.pronouns ?? ""} placeholder="she/her" />
+            </label>
+            <label className="field-label form-span">
+              <span>Tags</span>
+              <input className="field-base" name="tags" placeholder="client, collaborator (comma separated)" defaultValue={editingPerson.tags.join(", ")} />
+            </label>
             <DomainSelect domains={data.domains} defaultValue={editingPerson.domain_id ?? ""} />
             <div className="record-actions form-span">
               <button className="button-base button-primary" type="submit">Save changes</button>
@@ -94,7 +110,7 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
       ) : null}
       <Dialog open={createDialog === "note"} title="New note" size="lg" onClose={() => setCreateDialog(null)}>
         {createDialog === "note" ? (
-          <form className="form-grid" onSubmit={(event) => submit(event, "create_note", { title: "title", body: "body", domainId: "domainId", projectId: "projectId", personId: "personId", reviewOn: "reviewOn" }, "Note saved.", () => setCreateDialog(null))}>
+          <form className="form-grid" onSubmit={(event) => submit(event, "create_note", { title: "title", body: "body", tags: { source: "tags", array: true }, domainId: "domainId", projectId: "projectId", personId: "personId", reviewOn: "reviewOn" }, "Note saved.", () => setCreateDialog(null))}>
             <label className="field-label form-span">
               <span>Title</span>
               <input className="field-base" name="title" required maxLength={280} placeholder="Rivera Studio call notes" />
@@ -102,6 +118,10 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
             <label className="field-label form-span">
               <span>Note</span>
               <textarea className="field-base min-h-32" name="body" maxLength={20000} placeholder="Keep the reflective content intact." />
+            </label>
+            <label className="field-label form-span">
+              <span>Tags</span>
+              <input className="field-base" name="tags" placeholder="client, ideas (comma separated)" />
             </label>
             <DomainSelect domains={data.domains} />
             <label className="field-label">
@@ -142,7 +162,7 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
               submit(
                 event,
                 "update_note",
-                { noteId: "noteId", title: "title", body: "body", domainId: "domainId", projectId: "projectId", personId: "personId", reviewOn: "reviewOn" },
+                { noteId: "noteId", title: "title", body: "body", tags: { source: "tags", array: true }, domainId: "domainId", projectId: "projectId", personId: "personId", reviewOn: "reviewOn" },
                 "Note updated.",
                 () => setEditingNoteId(null),
               )
@@ -156,6 +176,10 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
             <label className="field-label form-span">
               <span>Note</span>
               <textarea className="field-base min-h-32" name="body" maxLength={20000} defaultValue={editingNote.body ?? ""} />
+            </label>
+            <label className="field-label form-span">
+              <span>Tags</span>
+              <input className="field-base" name="tags" placeholder="client, ideas (comma separated)" defaultValue={editingNote.tags.join(", ")} />
             </label>
             <DomainSelect domains={data.domains} defaultValue={editingNote.domain_id ?? ""} />
             <label className="field-label">
@@ -211,7 +235,17 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
                   <div className="record-card">
                     <div className="min-w-0">
                       <h3>{person.name}</h3>
+                      {person.pronouns && <p className="record-meta">{person.pronouns}</p>}
                       {person.context && <p className="record-copy">{person.context}</p>}
+                      {person.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {person.tags.map((tag) => (
+                            <span className="tag" key={tag}>
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="record-actions">
                       <ActionsMenu actions={menuActions} />
@@ -263,6 +297,15 @@ export function PeopleNotesPage({ data }: { data: PeopleNotesPageData }) {
                     <h3>{note.title}</h3>
                     {note.body && <p className="record-copy whitespace-pre-wrap">{note.body}</p>}
                     <p className="record-meta">{note.review_on ? `Review ${note.review_on}` : "No review date"}</p>
+                    {note.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {note.tags.map((tag) => (
+                          <span className="tag" key={tag}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="record-actions">
                     <ActionsMenu actions={menuActions} />

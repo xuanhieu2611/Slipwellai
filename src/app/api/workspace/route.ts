@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
       await recordActivity("project", projectResult.data.id, "checklist_applied");
     } else if (command.action === "create_person") {
       await verifyRelations(command);
-      const { error } = await supabase.from("people").insert({ name: command.name, context: command.context, domain_id: command.domainId ?? null });
+      const { error } = await supabase.from("people").insert({ name: command.name, context: command.context, pronouns: command.pronouns, tags: command.tags, domain_id: command.domainId ?? null });
       if (error) throw error;
     } else if (command.action === "update_person") {
       const { data: person } = await supabase.from("people").select("id").eq("id", command.personId).maybeSingle();
@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
          edited, not a link, so passing the whole command would collide with relationTables'
          unrelated "personId" key (a task/note's person link) — same reasoning as update_project. */
       await verifyRelations({ domainId: command.domainId });
-      const { error } = await supabase.from("people").update({ name: command.name, context: command.context, domain_id: command.domainId ?? null, updated_at: new Date().toISOString() }).eq("id", command.personId);
+      const { error } = await supabase.from("people").update({ name: command.name, context: command.context, pronouns: command.pronouns, tags: command.tags, domain_id: command.domainId ?? null, updated_at: new Date().toISOString() }).eq("id", command.personId);
       if (error) throw error;
     } else if (command.action === "delete_person" || command.action === "restore_person") {
       /* Mirrors delete_task/restore_task: toggle the existing archived_at column. This is the
@@ -245,7 +245,7 @@ export async function POST(request: NextRequest) {
       if (error) throw error;
     } else if (command.action === "create_note") {
       await verifyRelations(command);
-      const { error } = await supabase.from("notes").insert({ title: command.title, body: command.body, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null, review_on: command.reviewOn ?? null });
+      const { error } = await supabase.from("notes").insert({ title: command.title, body: command.body, tags: command.tags, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null, review_on: command.reviewOn ?? null });
       if (error) throw error;
     } else if (command.action === "update_note") {
       const { data: note } = await supabase.from("notes").select("id").eq("id", command.noteId).maybeSingle();
@@ -253,7 +253,7 @@ export async function POST(request: NextRequest) {
       await verifyRelations({ domainId: command.domainId, projectId: command.projectId, personId: command.personId });
       const { error } = await supabase
         .from("notes")
-        .update({ title: command.title, body: command.body, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null, review_on: command.reviewOn ?? null, updated_at: new Date().toISOString() })
+        .update({ title: command.title, body: command.body, tags: command.tags, domain_id: command.domainId ?? null, project_id: command.projectId ?? null, person_id: command.personId ?? null, review_on: command.reviewOn ?? null, updated_at: new Date().toISOString() })
         .eq("id", command.noteId);
       if (error) throw error;
     } else if (command.action === "delete_note" || command.action === "restore_note") {
