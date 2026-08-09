@@ -10,7 +10,15 @@ import {
 } from "@/lib/search";
 import type { SearchPageData } from "@/lib/workspace-page-data";
 
-export function SearchPage({ data }: { data: SearchPageData }) {
+export function SearchPage({
+  data,
+  resultLimit,
+}: {
+  data: SearchPageData;
+  /** Remotely configurable via app_config ("search.result_limit"); see
+   * src/app/(authenticated)/search/page.tsx for where it is read. */
+  resultLimit: number;
+}) {
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<SearchFilterState>(defaultSearchFilters);
 
@@ -19,8 +27,8 @@ export function SearchPage({ data }: { data: SearchPageData }) {
   const shouldSearch = hasQuery || filtersActive;
 
   const results = useMemo(
-    () => (shouldSearch ? searchRecords(data, query, filters) : []),
-    [data, query, filters, shouldSearch],
+    () => (shouldSearch ? searchRecords(data, query, filters, resultLimit) : []),
+    [data, query, filters, shouldSearch, resultLimit],
   );
 
   return (

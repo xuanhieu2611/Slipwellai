@@ -20,4 +20,9 @@ export const env = {
       .filter(Boolean),
   openRouterTranscriptionModel: () =>
     process.env.OPENROUTER_TRANSCRIPTION_MODEL ?? "openai/gpt-4o-transcribe",
+  // Server-only, bypasses row-level security. Optional by design: callers that need it
+  // (src/lib/supabase/admin.ts) must fall back to a safe default rather than crash when
+  // it is unset, since not every environment configures it. Never prefix NEXT_PUBLIC_ or
+  // send this to the browser.
+  supabaseServiceRoleKey: () => process.env.SUPABASE_SERVICE_ROLE_KEY,
 };
