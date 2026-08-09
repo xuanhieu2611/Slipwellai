@@ -40,6 +40,7 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_KEY)("workspace integration (hosted p
   const createdPersonIds: string[] = [];
   const createdNoteIds: string[] = [];
   const createdRoutineIds: string[] = [];
+  const createdCaptureIds: string[] = [];
 
   beforeAll(async () => {
     userA = await signedInClient(USER_A);
@@ -59,6 +60,8 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_KEY)("workspace integration (hosted p
        so no separate cleanup array is needed for either. */
     if (createdPersonIds.length) await userA.from("people").delete().in("id", createdPersonIds);
     if (createdRoutineIds.length) await userA.from("routines").delete().in("id", createdRoutineIds);
+    // proposals cascade away with their parent capture, so no separate cleanup array is needed.
+    if (createdCaptureIds.length) await userA.from("captures").delete().in("id", createdCaptureIds);
     /* Deleting the project first cascades away its checklist instances and items (both
        on-delete-cascade), which clears the on-delete-restrict references those rows hold on the
        template and its items, so the template cleanup below no longer conflicts with them. */
@@ -425,6 +428,74 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_KEY)("workspace integration (hosted p
 
     const confirm = await userA.from("person_interactions").select("summary").eq("id", interactionId).single();
     expect(confirm.data?.summary).toBe("[integration-test] owned by user A interaction");
+  });
+
+  it("keeps a second account from reading, updating, or deleting another user's capture", async () => {
+    const originalText = "[integration-test] owned by user A capture, never readable by user B";
+    const created = await userA.from("captures").insert({ original_text: originalText, idempotency_key: crypto.randomUUID() }).select("id").single();
+    expect(created.error).toBeNull();
+    const captureId = created.data!.id;
+    createdCaptureIds.push(captureId);
+
+    const read = await userB.from("captures").select("id, original_text").eq("id", captureId).maybeSingle();
+    expect(read.error).toBeNull();
+    expect(read.data).toBeNull();
+
+    const update = await userB.from("captures").update({ original_text: "hijacked" }).eq("id", captureId).select();
+    expect(update.error).toBeNull();
+    expect(update.data).toEqual([]);
+
+    const remove = await userB.from("captures").delete().eq("id", captureId).select();
+    expect(remove.error).toBeNull();
+    expect(remove.data).toEqual([]);
+
+    const confirm = await userA.from("captures").select("original_text").eq("id", captureId).single();
+    expect(confirm.data?.original_text).toBe(originalText);
+  });
+
+  it("keeps a second account from reading, updating, or deleting another user's proposal, and confirms the proposal's private capture text stays unreadable too", async () => {
+    const capture = await userA.from("captures").insert({ original_text: "[integration-test] proposal owner capture", idempotency_key: crypto.randomUUID() }).select("id").single();
+    expect(capture.error).toBeNull();
+    const captureId = capture.data!.id;
+    createdCaptureIds.push(captureId);
+
+    const proposal = await userA.from("proposals").insert({ capture_id: captureId, proposal_json: { schemaVersion: 3, items: [] } }).select("id").single();
+    expect(proposal.error).toBeNull();
+    const proposalId = proposal.data!.id;
+
+    const read = await userB.from("proposals").select("id, proposal_json").eq("id", proposalId).maybeSingle();
+    expect(read.error).toBeNull();
+    expect(read.data).toBeNull();
+
+    const update = await userB.from("proposals").update({ status: "discarded" }).eq("id", proposalId).select();
+    expect(update.error).toBeNull();
+    expect(update.data).toEqual([]);
+
+    const remove = await userB.from("proposals").delete().eq("id", proposalId).select();
+    expect(remove.error).toBeNull();
+    expect(remove.data).toEqual([]);
+
+    // Joining through to the parent capture must not leak its private text either.
+    const joinAttempt = await userB.from("proposals").select("id, captures(original_text)").eq("capture_id", captureId);
+    expect(joinAttempt.data).toEqual([]);
+
+    const confirm = await userA.from("proposals").select("status").eq("id", proposalId).single();
+    expect(confirm.data?.status).toBe("ready");
+  });
+
+  it("keeps a second account from reading or updating another user's preferences row", async () => {
+    // user_preferences is keyed by owner_id itself (one row per account), so isolation is proven
+    // by reading/updating userA's own row as userB rather than by creating a separate row.
+    const read = await userB.from("user_preferences").select("owner_id, timezone").eq("owner_id", ownerAId).maybeSingle();
+    expect(read.error).toBeNull();
+    expect(read.data).toBeNull();
+
+    const update = await userB.from("user_preferences").update({ timezone: "hijacked/timezone" }).eq("owner_id", ownerAId).select();
+    expect(update.error).toBeNull();
+    expect(update.data).toEqual([]);
+
+    const confirm = await userA.from("user_preferences").select("timezone").eq("owner_id", ownerAId).single();
+    expect(confirm.data?.timezone).not.toBe("hijacked/timezone");
   });
 
   it("blocks a hard delete of an applied checklist template item at the on-delete-restrict constraint, and confirms the soft-delete (archived_at) path leaves applied checklists intact", async () => {
