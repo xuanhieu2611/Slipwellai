@@ -36,6 +36,7 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_KEY)("workspace integration (hosted p
   const createdTemplateIds: string[] = [];
   const createdRetainerIds: string[] = [];
   const createdSignalIds: string[] = [];
+  const createdDomainIds: string[] = [];
 
   beforeAll(async () => {
     userA = await signedInClient(USER_A);
@@ -49,6 +50,7 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_KEY)("workspace integration (hosted p
   afterAll(async () => {
     if (createdSignalIds.length) await userA.from("slipping_signals").delete().in("id", createdSignalIds);
     if (createdTaskIds.length) await userA.from("tasks").delete().in("id", createdTaskIds);
+    if (createdDomainIds.length) await userA.from("domains").delete().in("id", createdDomainIds);
     /* Deleting the project first cascades away its checklist instances and items (both
        on-delete-cascade), which clears the on-delete-restrict references those rows hold on the
        template and its items, so the template cleanup below no longer conflicts with them. */
@@ -212,6 +214,57 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_KEY)("workspace integration (hosted p
     expect(confirm.data?.archived_at).toBeNull();
   });
 
+  it("keeps a second account from reading, updating, or deleting another user's domain", async () => {
+    const name = "[integration-test] owned by user A domain";
+    const created = await userA.from("domains").insert({ name }).select("id").single();
+    expect(created.error).toBeNull();
+    const domainId = created.data!.id;
+    createdDomainIds.push(domainId);
+
+    const read = await userB.from("domains").select("id").eq("id", domainId).maybeSingle();
+    expect(read.error).toBeNull();
+    expect(read.data).toBeNull();
+
+    const update = await userB.from("domains").update({ name: "hijacked" }).eq("id", domainId).select();
+    expect(update.error).toBeNull();
+    expect(update.data).toEqual([]);
+
+    const remove = await userB.from("domains").delete().eq("id", domainId).select();
+    expect(remove.error).toBeNull();
+    expect(remove.data).toEqual([]);
+
+    const confirm = await userA.from("domains").select("name, archived_at").eq("id", domainId).single();
+    expect(confirm.data?.name).toBe(name);
+    expect(confirm.data?.archived_at).toBeNull();
+  });
+
+  it("mirrors archive_domain's blocking counts: an open task keeps the guard condition true, and it clears once the task is resolved", async () => {
+    const domain = await userA.from("domains").insert({ name: "[integration-test] domain with open task" }).select("id").single();
+    expect(domain.error).toBeNull();
+    const domainId = domain.data!.id;
+    createdDomainIds.push(domainId);
+
+    const task = await userA.from("tasks").insert({ title: "[integration-test] domain-blocking task", domain_id: domainId }).select("id").single();
+    expect(task.error).toBeNull();
+    const taskId = task.data!.id;
+    createdTaskIds.push(taskId);
+
+    // The exact query archive_domain runs to decide whether to block archiving.
+    const blockedCount = await userA.from("tasks").select("id", { count: "exact", head: true }).eq("domain_id", domainId).eq("status", "open").is("archived_at", null);
+    expect(blockedCount.count).toBe(1);
+
+    // Resolving the task (mirroring what a user would do before retrying archive) clears the guard.
+    const cancel = await userA.from("tasks").update({ status: "canceled" }).eq("id", taskId).select("status").single();
+    expect(cancel.data?.status).toBe("canceled");
+
+    const clearedCount = await userA.from("tasks").select("id", { count: "exact", head: true }).eq("domain_id", domainId).eq("status", "open").is("archived_at", null);
+    expect(clearedCount.count).toBe(0);
+
+    const archived = await userA.from("domains").update({ archived_at: new Date().toISOString() }).eq("id", domainId).select("archived_at").single();
+    expect(archived.error).toBeNull();
+    expect(archived.data?.archived_at).not.toBeNull();
+  });
+
   it("blocks a hard delete of an applied checklist template item at the on-delete-restrict constraint, and confirms the soft-delete (archived_at) path leaves applied checklists intact", async () => {
     const template = await userA.from("project_checklist_templates").insert({ name: "[integration-test] template" }).select("id, version").single();
     expect(template.error).toBeNull();
@@ -245,6 +298,62 @@ describe.skipIf(!SUPABASE_URL || !SUPABASE_KEY)("workspace integration (hosted p
 
     const confirmChecklistItem = await userA.from("project_checklist_items").select("title").eq("id", checklistItem.data!.id).single();
     expect(confirmChecklistItem.data?.title).toBe("Draft the report");
+  });
+
+  it("mirrors the complete_project guard at the database layer: an open task and an open checklist item each block completion until resolved", async () => {
+    const project = await userA.from("projects").insert({ name: "[integration-test] guarded completion project" }).select("id").single();
+    expect(project.error).toBeNull();
+    const projectId = project.data!.id;
+    createdProjectIds.push(projectId);
+
+    const task = await userA.from("tasks").insert({ title: "[integration-test] guard-blocking task", project_id: projectId }).select("id, status").single();
+    expect(task.error).toBeNull();
+    const taskId = task.data!.id;
+    createdTaskIds.push(taskId);
+    expect(task.data?.status).toBe("open");
+
+    // The exact query complete_project runs to check for open tasks.
+    const openTaskGuard = await userA.from("tasks").select("id", { count: "exact", head: true }).eq("project_id", projectId).eq("status", "open");
+    expect(openTaskGuard.count).toBe(1);
+
+    const template = await userA.from("project_checklist_templates").insert({ name: "[integration-test] guard template" }).select("id, version").single();
+    expect(template.error).toBeNull();
+    const templateId = template.data!.id;
+    createdTemplateIds.push(templateId);
+
+    const templateItem = await userA.from("project_checklist_template_items").insert({ template_id: templateId, title: "Sign off", position: 1 }).select("id").single();
+    expect(templateItem.error).toBeNull();
+
+    const instance = await userA.from("project_checklist_instances").insert({ project_id: projectId, template_id: templateId, template_version: template.data!.version }).select("id").single();
+    expect(instance.error).toBeNull();
+    const instanceId = instance.data!.id;
+
+    const checklistItem = await userA.from("project_checklist_items").insert({ instance_id: instanceId, source_template_item_id: templateItem.data!.id, title: "Sign off", position: 1 }).select("id, status").single();
+    expect(checklistItem.error).toBeNull();
+    expect(checklistItem.data?.status).toBe("open");
+
+    // Resolve the task first: the guard's task check clears, but the checklist check still blocks.
+    const completedTask = await userA.from("tasks").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", taskId).select("status").single();
+    expect(completedTask.data?.status).toBe("completed");
+
+    const openTaskGuardAfter = await userA.from("tasks").select("id", { count: "exact", head: true }).eq("project_id", projectId).eq("status", "open");
+    expect(openTaskGuardAfter.count).toBe(0);
+
+    // The exact query complete_project runs against the project's checklist instances to check for open items.
+    const openChecklistGuard = await userA.from("project_checklist_items").select("id", { count: "exact", head: true }).in("instance_id", [instanceId]).eq("status", "open");
+    expect(openChecklistGuard.count).toBe(1);
+
+    // Resolve the checklist item too: now both guard conditions are clear.
+    const completedItem = await userA.from("project_checklist_items").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", checklistItem.data!.id).select("status").single();
+    expect(completedItem.data?.status).toBe("completed");
+
+    const openChecklistGuardAfter = await userA.from("project_checklist_items").select("id", { count: "exact", head: true }).in("instance_id", [instanceId]).eq("status", "open");
+    expect(openChecklistGuardAfter.count).toBe(0);
+
+    // With both guard conditions clear, the completion update complete_project performs succeeds.
+    const completedProject = await userA.from("projects").update({ status: "completed" }).eq("id", projectId).select("status").single();
+    expect(completedProject.error).toBeNull();
+    expect(completedProject.data?.status).toBe("completed");
   });
 
   it("converges a retried retainer cycle generation double-submit on one cycle and one set of items, then carries a still-open item forward into the next cycle", async () => {
