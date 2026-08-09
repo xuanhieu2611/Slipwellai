@@ -4,7 +4,13 @@ import { ThemeProvider as NextThemesProvider } from "next-themes";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
-    <NextThemesProvider attribute="data-theme" defaultTheme="system" disableTransitionOnChange enableSystem storageKey="slipwell-theme">
+    <NextThemesProvider
+      attribute="data-theme"
+      defaultTheme="system"
+      disableTransitionOnChange
+      enableSystem
+      storageKey="slipwell-theme"
+    >
       {children}
     </NextThemesProvider>
   );

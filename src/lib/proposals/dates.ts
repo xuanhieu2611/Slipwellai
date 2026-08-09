@@ -29,38 +29,76 @@ export const DEFAULT_TIMEZONE = "America/Vancouver";
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const WEEKDAYS: Record<string, number> = {
-  sunday: 0, sun: 0,
-  monday: 1, mon: 1,
-  tuesday: 2, tue: 2, tues: 2,
-  wednesday: 3, wed: 3, weds: 3,
-  thursday: 4, thu: 4, thur: 4, thurs: 4,
-  friday: 5, fri: 5,
-  saturday: 6, sat: 6,
+  sunday: 0,
+  sun: 0,
+  monday: 1,
+  mon: 1,
+  tuesday: 2,
+  tue: 2,
+  tues: 2,
+  wednesday: 3,
+  wed: 3,
+  weds: 3,
+  thursday: 4,
+  thu: 4,
+  thur: 4,
+  thurs: 4,
+  friday: 5,
+  fri: 5,
+  saturday: 6,
+  sat: 6,
 };
 
 const MONTHS: Record<string, number> = {
-  january: 1, jan: 1,
-  february: 2, feb: 2,
-  march: 3, mar: 3,
-  april: 4, apr: 4,
+  january: 1,
+  jan: 1,
+  february: 2,
+  feb: 2,
+  march: 3,
+  mar: 3,
+  april: 4,
+  apr: 4,
   may: 5,
-  june: 6, jun: 6,
-  july: 7, jul: 7,
-  august: 8, aug: 8,
-  september: 9, sep: 9, sept: 9,
-  october: 10, oct: 10,
-  november: 11, nov: 11,
-  december: 12, dec: 12,
+  june: 6,
+  jun: 6,
+  july: 7,
+  jul: 7,
+  august: 8,
+  aug: 8,
+  september: 9,
+  sep: 9,
+  sept: 9,
+  october: 10,
+  oct: 10,
+  november: 11,
+  nov: 11,
+  december: 12,
+  dec: 12,
 };
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTH_LABELS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 export function isCalendarDate(value: string): boolean {
   if (!DATE_PATTERN.test(value)) return false;
   const [year, month, day] = value.split("-").map(Number);
   const utc = new Date(Date.UTC(year, month - 1, day));
-  return utc.getUTCFullYear() === year && utc.getUTCMonth() === month - 1 && utc.getUTCDate() === day;
+  return (
+    utc.getUTCFullYear() === year && utc.getUTCMonth() === month - 1 && utc.getUTCDate() === day
+  );
 }
 
 function parts(date: string) {
@@ -99,9 +137,19 @@ export function weekdayOf(date: string): number {
    its anchor, which keeps timezone handling in one place. */
 export function localToday(now: Date, timezone: string): string {
   try {
-    return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now);
   } catch {
-    return new Intl.DateTimeFormat("en-CA", { timeZone: "UTC", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "UTC",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now);
   }
 }
 
@@ -158,7 +206,8 @@ export type PhraseReading =
   /* Words this grammar does not cover. The model's date, if any, stays a suggestion. */
   | { status: "unreadable" };
 
-const CLOCK_TIME = /\b(at\s+)?\d{1,2}(:\d{2})?\s*(am|pm)\b|\b(at\s+)\d{1,2}(:\d{2})\b|\b(at\s+)\d{1,2}\b/;
+const CLOCK_TIME =
+  /\b(at\s+)?\d{1,2}(:\d{2})?\s*(am|pm)\b|\b(at\s+)\d{1,2}(:\d{2})\b|\b(at\s+)\d{1,2}\b/;
 const DAYPART = /\b(first thing|early|late)?\s*(in the )?(morning|afternoon|evening|night)$/;
 
 /**
@@ -169,27 +218,43 @@ export function readDatePhrase(phrase: string, today: string): PhraseReading {
   let text = normalize(phrase);
   if (!text) return { status: "unreadable" };
 
-  if (DATE_PATTERN.test(text)) return isCalendarDate(text) ? { status: "exact", date: text } : { status: "unreadable" };
+  if (DATE_PATTERN.test(text))
+    return isCalendarDate(text) ? { status: "exact", date: text } : { status: "unreadable" };
 
   /* A phrase that is only a clock time ("at 2pm"), a part of the day, or "eod" is about
      today: the capture named an hour without giving it another day. Strip those markers
      first so "tomorrow morning" still reads as tomorrow. */
-  const stripped = [CLOCK_TIME, DAYPART, /\b(end of day|eod|by the end of the day)$/].reduce((value, pattern) => value.replace(pattern, " ").replace(/\s+/g, " ").trim(), text);
+  const stripped = [CLOCK_TIME, DAYPART, /\b(end of day|eod|by the end of the day)$/].reduce(
+    (value, pattern) => value.replace(pattern, " ").replace(/\s+/g, " ").trim(),
+    text,
+  );
   const impliesToday = stripped !== text;
   text = stripped;
 
-  text = text.replace(/^(by|on|due|due on|before|starting|start|starts|from|no later than|sometime|some time|this coming)\s+/, "").trim();
-  if (!text || text === "this") return impliesToday ? { status: "exact", date: today } : { status: "unreadable" };
+  text = text
+    .replace(
+      /^(by|on|due|due on|before|starting|start|starts|from|no later than|sometime|some time|this coming)\s+/,
+      "",
+    )
+    .trim();
+  if (!text || text === "this")
+    return impliesToday ? { status: "exact", date: today } : { status: "unreadable" };
 
-  if (/^(today|tonight|this (morning|afternoon|evening)|right now|now|asap)$/.test(text)) return { status: "exact", date: today };
+  if (/^(today|tonight|this (morning|afternoon|evening)|right now|now|asap)$/.test(text))
+    return { status: "exact", date: today };
   if (/^(tomorrow|tmrw|tmr)$/.test(text)) return { status: "exact", date: addDays(today, 1) };
   if (/^(the )?day after tomorrow$/.test(text)) return { status: "exact", date: addDays(today, 2) };
   if (/^(yesterday|last \w+)$/.test(text)) {
-    return { status: "ambiguous", options: [], note: `“${phrase.trim()}” points at a date that has already passed. Choose the date you meant.` };
+    return {
+      status: "ambiguous",
+      options: [],
+      note: `“${phrase.trim()}” points at a date that has already passed. Choose the date you meant.`,
+    };
   }
 
-  const relative = /^in (a|an|\d{1,3}) (day|days|week|weeks|month|months)$/.exec(text)
-    ?? /^(a|an|\d{1,3}) (day|days|week|weeks|month|months) from (today|now)$/.exec(text);
+  const relative =
+    /^in (a|an|\d{1,3}) (day|days|week|weeks|month|months)$/.exec(text) ??
+    /^(a|an|\d{1,3}) (day|days|week|weeks|month|months) from (today|now)$/.exec(text);
   if (relative) {
     const count = relative[1] === "a" || relative[1] === "an" ? 1 : Number(relative[1]);
     const unit = relative[2];
@@ -200,12 +265,21 @@ export function readDatePhrase(phrase: string, today: string): PhraseReading {
 
   /* Real spans with no day in them. Guessing Monday, or Friday, or the 1st is the kind of
      quiet decision that makes a date untrustworthy. */
-  if (/^(next|this|the) (week|month|quarter|year)$/.test(text) || /^(the )?(end|start|beginning|middle|mid) of (next |the |this )?(week|month|quarter|year)$/.test(text)) {
+  if (
+    /^(next|this|the) (week|month|quarter|year)$/.test(text) ||
+    /^(the )?(end|start|beginning|middle|mid) of (next |the |this )?(week|month|quarter|year)$/.test(
+      text,
+    )
+  ) {
     if (/end of (the |this )?month$/.test(text)) {
       const { year, month } = parts(today);
       return { status: "exact", date: fromParts(year, month, daysInMonth(year, month)) };
     }
-    return { status: "ambiguous", options: [], note: `“${phrase.trim()}” names a span, not a day. Pick the date you want.` };
+    return {
+      status: "ambiguous",
+      options: [],
+      note: `“${phrase.trim()}” names a span, not a day. Pick the date you want.`,
+    };
   }
 
   const weekday = /^(next|this|coming|every|each)?\s*([a-z]+)(\s+next week)?$/.exec(text);
@@ -239,12 +313,21 @@ export function readDatePhrase(phrase: string, today: string): PhraseReading {
   const monthFirst = /^([a-z]+) (\d{1,2})(st|nd|rd|th)?( (\d{4}))?$/.exec(text);
   const dayFirst = /^(\d{1,2})(st|nd|rd|th)? (of )?([a-z]+)( (\d{4}))?$/.exec(text);
   const named = monthFirst
-    ? { month: MONTHS[monthFirst[1]], day: Number(monthFirst[2]), year: monthFirst[5] ? Number(monthFirst[5]) : null }
+    ? {
+        month: MONTHS[monthFirst[1]],
+        day: Number(monthFirst[2]),
+        year: monthFirst[5] ? Number(monthFirst[5]) : null,
+      }
     : dayFirst
-      ? { month: MONTHS[dayFirst[4]], day: Number(dayFirst[1]), year: dayFirst[6] ? Number(dayFirst[6]) : null }
+      ? {
+          month: MONTHS[dayFirst[4]],
+          day: Number(dayFirst[1]),
+          year: dayFirst[6] ? Number(dayFirst[6]) : null,
+        }
       : null;
   if (named && named.month !== undefined) {
-    if (named.day < 1 || named.day > daysInMonth(named.year ?? parts(today).year, named.month)) return { status: "unreadable" };
+    if (named.day < 1 || named.day > daysInMonth(named.year ?? parts(today).year, named.month))
+      return { status: "unreadable" };
     if (named.year) {
       const date = fromParts(named.year, named.month, named.day);
       return isCalendarDate(date) ? { status: "exact", date } : { status: "unreadable" };
@@ -253,7 +336,14 @@ export function readDatePhrase(phrase: string, today: string): PhraseReading {
     const thisYear = fromParts(parts(today).year, named.month, named.day);
     if (thisYear >= today) return { status: "exact", date: thisYear };
     const nextYear = parts(today).year + 1;
-    return { status: "exact", date: fromParts(nextYear, named.month, Math.min(named.day, daysInMonth(nextYear, named.month))) };
+    return {
+      status: "exact",
+      date: fromParts(
+        nextYear,
+        named.month,
+        Math.min(named.day, daysInMonth(nextYear, named.month)),
+      ),
+    };
   }
 
   const ordinal = /^(the )?(\d{1,2})(st|nd|rd|th)$/.exec(text);
@@ -268,9 +358,15 @@ export function readDatePhrase(phrase: string, today: string): PhraseReading {
   if (numeric) {
     const first = Number(numeric[1]);
     const second = Number(numeric[2]);
-    const year = numeric[4] ? (numeric[4].length === 2 ? 2000 + Number(numeric[4]) : Number(numeric[4])) : parts(today).year;
+    const year = numeric[4]
+      ? numeric[4].length === 2
+        ? 2000 + Number(numeric[4])
+        : Number(numeric[4])
+      : parts(today).year;
     const resolve = (month: number, day: number) =>
-      month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth(year, month) ? fromParts(year, month, day) : null;
+      month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth(year, month)
+        ? fromParts(year, month, day)
+        : null;
     const monthFirstDate = resolve(first, second);
     const dayFirstDate = resolve(second, first);
     if (monthFirstDate && dayFirstDate && monthFirstDate !== dayFirstDate) {
@@ -324,9 +420,10 @@ export function resolveProposalDate(item: ProposedDateInput, today: string): Res
       status: "unconfirmed",
       kind,
       options: [proposed],
-      note: proposed < today
-        ? `This date is not stated in your capture, and ${formatDateLabel(proposed, today)} has already passed. Choose the date you meant, or clear it.`
-        : "This date is not stated in your capture, so Slipwell could not check it. Confirm it or clear it.",
+      note:
+        proposed < today
+          ? `This date is not stated in your capture, and ${formatDateLabel(proposed, today)} has already passed. Choose the date you meant, or clear it.`
+          : "This date is not stated in your capture, so Slipwell could not check it. Confirm it or clear it.",
     };
   }
 
@@ -339,7 +436,12 @@ export function resolveProposalDate(item: ProposedDateInput, today: string): Res
 
   if (reading.status === "unreadable") {
     if (!proposed) {
-      return { status: "unconfirmed", kind, options: [], note: `Slipwell could not turn “${phrase}” into a date. Set one if this needs a date.` };
+      return {
+        status: "unconfirmed",
+        kind,
+        options: [],
+        note: `Slipwell could not turn “${phrase}” into a date. Set one if this needs a date.`,
+      };
     }
     return {
       status: "unconfirmed",
@@ -358,7 +460,8 @@ export function resolveProposalDate(item: ProposedDateInput, today: string): Res
     };
   }
 
-  if (!proposed || proposed === reading.date) return { status: "confirmed", kind, date: reading.date, phrase };
+  if (!proposed || proposed === reading.date)
+    return { status: "confirmed", kind, date: reading.date, phrase };
 
   return {
     status: "corrected",
@@ -381,22 +484,37 @@ export function readRecurrencePhrase(phrase: string): RecurrenceReading {
 
   const interval = /\bevery (\d{1,3}) (day|days|week|weeks|month|months)\b/.exec(text);
   if (interval && Number(interval[1]) !== 1) {
-    return { status: "unsupported", note: `Slipwell repeats daily, weekly, or monthly. “${phrase.trim()}” is not one of those yet, so this was filed without a repeat.` };
+    return {
+      status: "unsupported",
+      note: `Slipwell repeats daily, weekly, or monthly. “${phrase.trim()}” is not one of those yet, so this was filed without a repeat.`,
+    };
   }
-  if (/\b(every other|alternate|bi-?weekly|bi-?monthly|fortnight|quarterly|every quarter|yearly|annually|every year|twice|semi-?monthly|every weekday|weekdays)\b/.test(text)) {
-    return { status: "unsupported", note: `Slipwell repeats daily, weekly, or monthly. “${phrase.trim()}” is not one of those yet, so this was filed without a repeat.` };
+  if (
+    /\b(every other|alternate|bi-?weekly|bi-?monthly|fortnight|quarterly|every quarter|yearly|annually|every year|twice|semi-?monthly|every weekday|weekdays)\b/.test(
+      text,
+    )
+  ) {
+    return {
+      status: "unsupported",
+      note: `Slipwell repeats daily, weekly, or monthly. “${phrase.trim()}” is not one of those yet, so this was filed without a repeat.`,
+    };
   }
 
   if (interval) {
     const unit = interval[2];
-    return { status: "rule", rule: unit.startsWith("day") ? "daily" : unit.startsWith("week") ? "weekly" : "monthly" };
+    return {
+      status: "rule",
+      rule: unit.startsWith("day") ? "daily" : unit.startsWith("week") ? "weekly" : "monthly",
+    };
   }
-  if (/\b(daily|every ?day|each day|every morning|every evening|every night)\b/.test(text)) return { status: "rule", rule: "daily" };
+  if (/\b(daily|every ?day|each day|every morning|every evening|every night)\b/.test(text))
+    return { status: "rule", rule: "daily" };
   if (/\b(weekly|every week|each week)\b/.test(text)) return { status: "rule", rule: "weekly" };
   if (/\b(monthly|every month|each month)\b/.test(text)) return { status: "rule", rule: "monthly" };
 
   const weekdayRepeat = /\b(every|each) ([a-z]+)s?\b/.exec(text);
-  if (weekdayRepeat && WEEKDAYS[weekdayRepeat[2].replace(/s$/, "")] !== undefined) return { status: "rule", rule: "weekly" };
+  if (weekdayRepeat && WEEKDAYS[weekdayRepeat[2].replace(/s$/, "")] !== undefined)
+    return { status: "rule", rule: "weekly" };
 
   const monthDayRepeat = /\b(every|each) (the )?(\d{1,2})(st|nd|rd|th)\b/.exec(text);
   if (monthDayRepeat) return { status: "rule", rule: "monthly" };
@@ -426,13 +544,19 @@ export function resolveProposalRecurrence(
 
   const phrase = recurrence.phrase?.trim();
   if (!phrase) {
-    return { status: "dropped", note: "A repeat was suggested but your capture does not say it repeats, so it was left off. Set it yourself if it should repeat." };
+    return {
+      status: "dropped",
+      note: "A repeat was suggested but your capture does not say it repeats, so it was left off. Set it yourself if it should repeat.",
+    };
   }
 
   const reading = readRecurrencePhrase(phrase);
   if (reading.status === "unsupported") return { status: "dropped", note: reading.note };
   if (reading.status === "unreadable") {
-    return { status: "dropped", note: `Slipwell could not confirm “${phrase}” as a repeat, so this was filed without one.` };
+    return {
+      status: "dropped",
+      note: `Slipwell could not confirm “${phrase}” as a repeat, so this was filed without one.`,
+    };
   }
 
   const anchored = acceptedDate(date);
@@ -461,6 +585,11 @@ export function resolveProposalRecurrence(
 export function dateNotes(date: ResolvedProposalDate, recurrence: ResolvedRecurrence): string[] {
   const notes: string[] = [];
   if (date.status === "corrected" || date.status === "unconfirmed") notes.push(date.note);
-  if (recurrence.status === "corrected" || recurrence.status === "dropped" || recurrence.status === "needs_date") notes.push(recurrence.note);
+  if (
+    recurrence.status === "corrected" ||
+    recurrence.status === "dropped" ||
+    recurrence.status === "needs_date"
+  )
+    notes.push(recurrence.note);
   return notes;
 }

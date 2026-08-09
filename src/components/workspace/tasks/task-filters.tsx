@@ -15,17 +15,32 @@ export type TaskFilterState = {
   sort: "created" | "date" | "priority";
 };
 
-export const defaultTaskFilters: TaskFilterState = { status: "open", hasDate: "any", priority: "any", domainId: "", projectId: "", personId: "", slipping: "any", sort: "created" };
+export const defaultTaskFilters: TaskFilterState = {
+  status: "open",
+  hasDate: "any",
+  priority: "any",
+  domainId: "",
+  projectId: "",
+  personId: "",
+  slipping: "any",
+  sort: "created",
+};
 
 export function taskHasDate(task: WorkspaceData["tasks"][number]) {
   return Boolean(task.due_on || task.scheduled_for || task.deferred_until);
 }
 
-export function filterAndSortTasks(tasks: WorkspaceData["tasks"], filters: TaskFilterState, slippingTaskIds: Set<string>) {
+export function filterAndSortTasks(
+  tasks: WorkspaceData["tasks"],
+  filters: TaskFilterState,
+  slippingTaskIds: Set<string>,
+) {
   const filtered = tasks.filter((task) => {
     if (filters.status === "open" && (task.status !== "open" || task.archived_at)) return false;
-    if (filters.status === "completed" && (task.status !== "completed" || task.archived_at)) return false;
-    if (filters.status === "canceled" && (task.status !== "canceled" || task.archived_at)) return false;
+    if (filters.status === "completed" && (task.status !== "completed" || task.archived_at))
+      return false;
+    if (filters.status === "canceled" && (task.status !== "canceled" || task.archived_at))
+      return false;
     if (filters.status === "deleted" && !task.archived_at) return false;
     if (filters.hasDate === "has" && !taskHasDate(task)) return false;
     if (filters.hasDate === "none" && taskHasDate(task)) return false;
@@ -37,18 +52,27 @@ export function filterAndSortTasks(tasks: WorkspaceData["tasks"], filters: TaskF
     return true;
   });
   if (filters.sort === "priority") return [...filtered].sort((a, b) => b.priority - a.priority);
-  if (filters.sort === "date") return [...filtered].sort((a, b) => {
-    const dateA = a.deferred_until ?? a.due_on ?? a.scheduled_for;
-    const dateB = b.deferred_until ?? b.due_on ?? b.scheduled_for;
-    if (!dateA && !dateB) return 0;
-    if (!dateA) return 1;
-    if (!dateB) return -1;
-    return dateA.localeCompare(dateB);
-  });
+  if (filters.sort === "date")
+    return [...filtered].sort((a, b) => {
+      const dateA = a.deferred_until ?? a.due_on ?? a.scheduled_for;
+      const dateB = b.deferred_until ?? b.due_on ?? b.scheduled_for;
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+      return dateA.localeCompare(dateB);
+    });
   return filtered; // "created": data.tasks already arrives ordered by created_at desc.
 }
 
-export function TaskFilters({ data, filters, onChange }: { data: WorkspaceData; filters: TaskFilterState; onChange: (next: TaskFilterState) => void }) {
+export function TaskFilters({
+  data,
+  filters,
+  onChange,
+}: {
+  data: WorkspaceData;
+  filters: TaskFilterState;
+  onChange: (next: TaskFilterState) => void;
+}) {
   function set<K extends keyof TaskFilterState>(key: K, value: TaskFilterState[K]) {
     onChange({ ...filters, [key]: value });
   }
@@ -96,21 +120,30 @@ export function TaskFilters({ data, filters, onChange }: { data: WorkspaceData; 
         value={filters.domainId}
         active={filters.domainId !== ""}
         onChange={(value) => set("domainId", value)}
-        options={[{ value: "", label: "Any domain" }, ...data.domains.map((domain) => ({ value: domain.id, label: domain.name }))]}
+        options={[
+          { value: "", label: "Any domain" },
+          ...data.domains.map((domain) => ({ value: domain.id, label: domain.name })),
+        ]}
       />
       <FilterSelect
         label="Project"
         value={filters.projectId}
         active={filters.projectId !== ""}
         onChange={(value) => set("projectId", value)}
-        options={[{ value: "", label: "Any project" }, ...data.projects.map((project) => ({ value: project.id, label: project.name }))]}
+        options={[
+          { value: "", label: "Any project" },
+          ...data.projects.map((project) => ({ value: project.id, label: project.name })),
+        ]}
       />
       <FilterSelect
         label="Person"
         value={filters.personId}
         active={filters.personId !== ""}
         onChange={(value) => set("personId", value)}
-        options={[{ value: "", label: "Any person" }, ...data.people.map((person) => ({ value: person.id, label: person.name }))]}
+        options={[
+          { value: "", label: "Any person" },
+          ...data.people.map((person) => ({ value: person.id, label: person.name })),
+        ]}
       />
       <FilterSelect
         label="Slipping"
@@ -137,7 +170,11 @@ export function TaskFilters({ data, filters, onChange }: { data: WorkspaceData; 
         />
       </span>
       {!isDefault && (
-        <button className="task-filter-reset" type="button" onClick={() => onChange(defaultTaskFilters)}>
+        <button
+          className="task-filter-reset"
+          type="button"
+          onClick={() => onChange(defaultTaskFilters)}
+        >
           <ArrowCounterClockwise aria-hidden size={13} weight="bold" />
           Reset
         </button>

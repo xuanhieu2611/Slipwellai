@@ -23,7 +23,11 @@ describe("nextRecurrenceDate", () => {
   });
 
   it("advances by the custom interval and unit", () => {
-    expect(nextRecurrenceDate("2026-08-03", "custom", { interval: 3, unit: "days" })).toBe("2026-08-06");
-    expect(nextRecurrenceDate("2026-08-03", "custom", { interval: 2, unit: "weeks" })).toBe("2026-08-17");
+    expect(nextRecurrenceDate("2026-08-03", "custom", { interval: 3, unit: "days" })).toBe(
+      "2026-08-06",
+    );
+    expect(nextRecurrenceDate("2026-08-03", "custom", { interval: 2, unit: "weeks" })).toBe(
+      "2026-08-17",
+    );
   });
 });

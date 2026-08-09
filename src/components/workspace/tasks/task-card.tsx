@@ -47,9 +47,15 @@ export function TaskCard({
     if (!ok) setConfirming(false);
   }
 
-  const domain = task.domain_id ? data.domains.find((item) => item.id === task.domain_id) : undefined;
-  const project = task.project_id ? data.projects.find((item) => item.id === task.project_id) : undefined;
-  const person = task.person_id ? data.people.find((item) => item.id === task.person_id) : undefined;
+  const domain = task.domain_id
+    ? data.domains.find((item) => item.id === task.domain_id)
+    : undefined;
+  const project = task.project_id
+    ? data.projects.find((item) => item.id === task.project_id)
+    : undefined;
+  const person = task.person_id
+    ? data.people.find((item) => item.id === task.person_id)
+    : undefined;
   const relatedNotes = data.notes
     .filter(
       (note) =>
@@ -62,17 +68,42 @@ export function TaskCard({
     ...(showTopThree
       ? [
           task.top_three_date === today
-            ? { label: "Remove priority", onClick: () => act({ action: "clear_top_three", taskId: task.id }, "Removed from today’s priorities.") }
-            : { label: "Make priority", onClick: () => act({ action: "set_top_three", taskId: task.id, localDate: today }, "Added to today’s priorities.") },
+            ? {
+                label: "Remove priority",
+                onClick: () =>
+                  act(
+                    { action: "clear_top_three", taskId: task.id },
+                    "Removed from today’s priorities.",
+                  ),
+              }
+            : {
+                label: "Make priority",
+                onClick: () =>
+                  act(
+                    { action: "set_top_three", taskId: task.id, localDate: today },
+                    "Added to today’s priorities.",
+                  ),
+              },
         ]
       : []),
     { label: "Edit", onClick: () => setEditing(true) },
-    { label: "Cancel", onClick: () => act({ action: "cancel_task", taskId: task.id }, "Task canceled.") },
-    { label: "Delete", onClick: () => act({ action: "delete_task", taskId: task.id }, "Task deleted."), tone: "danger" },
+    {
+      label: "Cancel",
+      onClick: () => act({ action: "cancel_task", taskId: task.id }, "Task canceled."),
+    },
+    {
+      label: "Delete",
+      onClick: () => act({ action: "delete_task", taskId: task.id }, "Task deleted."),
+      tone: "danger",
+    },
   ];
   const closedMenuActions: MenuAction[] = [
     { label: "Edit", onClick: () => setEditing(true) },
-    { label: "Delete", onClick: () => act({ action: "delete_task", taskId: task.id }, "Task deleted."), tone: "danger" },
+    {
+      label: "Delete",
+      onClick: () => act({ action: "delete_task", taskId: task.id }, "Task deleted."),
+      tone: "danger",
+    },
   ];
 
   return (
@@ -112,20 +143,41 @@ export function TaskCard({
             ))}
           </div>
         )}
-        {relatedNotes.length > 0 && <p className="record-meta">Related notes: {relatedNotes.map((note) => note.title).join(", ")}</p>}
-        {deferring && <DeferControl task={task} onCommand={onCommand} onDone={() => setDeferring(false)} />}
+        {relatedNotes.length > 0 && (
+          <p className="record-meta">
+            Related notes: {relatedNotes.map((note) => note.title).join(", ")}
+          </p>
+        )}
+        {deferring && (
+          <DeferControl task={task} onCommand={onCommand} onDone={() => setDeferring(false)} />
+        )}
       </div>
       <div className="record-actions">
         {task.archived_at ? (
           <>
-            <button className="button-base button-primary" onClick={() => act({ action: "restore_task", taskId: task.id }, "Task restored.")}>
+            <button
+              className="button-base button-primary"
+              onClick={() => act({ action: "restore_task", taskId: task.id }, "Task restored.")}
+            >
               Restore
             </button>
-            <ActionsMenu actions={[{ label: "Delete", onClick: () => act({ action: "delete_task", taskId: task.id }, "Task deleted."), tone: "danger" }]} />
+            <ActionsMenu
+              actions={[
+                {
+                  label: "Delete",
+                  onClick: () => act({ action: "delete_task", taskId: task.id }, "Task deleted."),
+                  tone: "danger",
+                },
+              ]}
+            />
           </>
         ) : task.status === "open" ? (
           <>
-            <button className={`button-base button-primary${confirming ? " is-task-confirming" : ""}`} disabled={confirming} onClick={completeTask}>
+            <button
+              className={`button-base button-primary${confirming ? " is-task-confirming" : ""}`}
+              disabled={confirming}
+              onClick={completeTask}
+            >
               {confirming ? (
                 <>
                   <Check aria-hidden className="task-complete-check" size={16} weight="bold" />
@@ -135,14 +187,20 @@ export function TaskCard({
                 "Complete"
               )}
             </button>
-            <button className="button-base button-secondary" onClick={() => setDeferring((value) => !value)}>
+            <button
+              className="button-base button-secondary"
+              onClick={() => setDeferring((value) => !value)}
+            >
               Defer
             </button>
             <ActionsMenu actions={openMenuActions} />
           </>
         ) : (
           <>
-            <button className="button-base button-secondary" onClick={() => act({ action: "reopen_task", taskId: task.id }, "Task reopened.")}>
+            <button
+              className="button-base button-secondary"
+              onClick={() => act({ action: "reopen_task", taskId: task.id }, "Task reopened.")}
+            >
               Reopen
             </button>
             <ActionsMenu actions={closedMenuActions} />
@@ -150,7 +208,12 @@ export function TaskCard({
         )}
       </div>
       <Dialog open={editing} title="Edit task" size="lg" onClose={() => setEditing(false)}>
-        <TaskEditForm task={task} data={data} onCommand={onCommand} onDone={() => setEditing(false)} />
+        <TaskEditForm
+          task={task}
+          data={data}
+          onCommand={onCommand}
+          onDone={() => setEditing(false)}
+        />
       </Dialog>
     </article>
   );
@@ -174,7 +237,14 @@ export function TaskList({
   return (
     <div className="space-y-3">
       {tasks.map((task) => (
-        <TaskCard key={task.id} task={task} onCommand={onCommand} today={today} data={data} showTopThree={showTopThree} />
+        <TaskCard
+          key={task.id}
+          task={task}
+          onCommand={onCommand}
+          today={today}
+          data={data}
+          showTopThree={showTopThree}
+        />
       ))}
       {tasks.length === 0 && <p className="empty-state">{emptyText}</p>}
     </div>

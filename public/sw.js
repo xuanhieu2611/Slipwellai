@@ -13,7 +13,12 @@ const CACHE_VERSION = "slipwell-shell-v1";
 const OFFLINE_URL = "/offline";
 
 /* Public, non-personal, and small. Everything else is fetched on demand. */
-const PRECACHE_URLS = [OFFLINE_URL, "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon-maskable-512.png"];
+const PRECACHE_URLS = [
+  OFFLINE_URL,
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+  "/icons/icon-maskable-512.png",
+];
 
 /* Immutable, content-hashed, or static public assets: safe to serve from cache first. */
 const CACHE_FIRST_PREFIXES = ["/_next/static/", "/icons/"];
@@ -36,7 +41,8 @@ function strategyFor(request, scopeOrigin) {
     return "network-only";
   }
   if (url.origin !== scopeOrigin) return "network-only";
-  if (NETWORK_ONLY_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) return "network-only";
+  if (NETWORK_ONLY_PREFIXES.some((prefix) => url.pathname.startsWith(prefix)))
+    return "network-only";
   if (CACHE_FIRST_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) return "cache-first";
   // A navigation may render private records, so the response is used but never stored.
   if (request.mode === "navigate") return "network-with-offline-fallback";
@@ -83,7 +89,9 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_VERSION).map((key) => caches.delete(key))))
+      .then((keys) =>
+        Promise.all(keys.filter((key) => key !== CACHE_VERSION).map((key) => caches.delete(key))),
+      )
       .then(() => self.clients.claim()),
   );
 });

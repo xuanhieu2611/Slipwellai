@@ -2,17 +2,34 @@
 
 import { type CSSProperties, useState } from "react";
 import { ArrowCounterClockwise, CaretLeft, CaretRight, Check } from "@phosphor-icons/react";
-import { centeredWeekDays, shiftCalendarWeek, taskPlanningDate, type WorkspaceData } from "@/lib/workspace";
+import {
+  centeredWeekDays,
+  shiftCalendarWeek,
+  taskPlanningDate,
+  type WorkspaceData,
+} from "@/lib/workspace";
 import { useToast } from "@/components/ui/toast";
 import { Dialog } from "@/components/ui/primitives";
 import type { WorkspaceCommandFn } from "@/components/workspace/shared/use-workspace-command";
 import { TaskEditForm } from "@/components/workspace/tasks/task-forms";
 import { calendarLabel } from "@/components/workspace/tasks/task-planner";
 
-export function TaskWeekRow({ task, data, onCommand, onEdit }: { task: WorkspaceData["tasks"][number]; data: WorkspaceData; onCommand: WorkspaceCommandFn; onEdit: () => void }) {
+export function TaskWeekRow({
+  task,
+  data,
+  onCommand,
+  onEdit,
+}: {
+  task: WorkspaceData["tasks"][number];
+  data: WorkspaceData;
+  onCommand: WorkspaceCommandFn;
+  onEdit: () => void;
+}) {
   const notify = useToast();
   const [confirming, setConfirming] = useState(false);
-  const domain = task.domain_id ? data.domains.find((item) => item.id === task.domain_id) : undefined;
+  const domain = task.domain_id
+    ? data.domains.find((item) => item.id === task.domain_id)
+    : undefined;
   const isOpen = task.status === "open" && !task.archived_at;
   async function toggle() {
     if (confirming) return;
@@ -26,7 +43,9 @@ export function TaskWeekRow({ task, data, onCommand, onEdit }: { task: Workspace
     }
   }
   const isHighPriority = task.priority === 3 && isOpen;
-  const hint = [isHighPriority ? "High priority" : null, domain?.name].filter(Boolean).join(" · ") || undefined;
+  const hint =
+    [isHighPriority ? "High priority" : null, domain?.name].filter(Boolean).join(" · ") ||
+    undefined;
   return (
     <div
       className={`task-week-task${domain ? " task-week-task--domain" : ""}${!isOpen || confirming ? " is-done" : ""}${isHighPriority ? " is-high" : ""}${confirming ? " is-confirming" : ""}`}
@@ -55,7 +74,17 @@ export function TaskWeekRow({ task, data, onCommand, onEdit }: { task: Workspace
 }
 
 /** A seven-day agenda centered on today so upcoming work stays in view, not a Mon–Sun calendar week. */
-export function TaskWeekView({ tasks, onCommand, today, data }: { tasks: WorkspaceData["tasks"]; onCommand: WorkspaceCommandFn; today: string; data: WorkspaceData }) {
+export function TaskWeekView({
+  tasks,
+  onCommand,
+  today,
+  data,
+}: {
+  tasks: WorkspaceData["tasks"];
+  onCommand: WorkspaceCommandFn;
+  today: string;
+  data: WorkspaceData;
+}) {
   const [anchor, setAnchor] = useState(today);
   const [editingId, setEditingId] = useState<string | null>(null);
   const days = centeredWeekDays(anchor);
@@ -67,60 +96,96 @@ export function TaskWeekView({ tasks, onCommand, today, data }: { tasks: Workspa
     setAnchor(shiftCalendarWeek(anchor, amount));
   }
 
-  return <section className="task-week" aria-label="Task week view">
-    <div className="task-week-head">
-      <div>
-        <h2>{rangeLabel}</h2>
-        <p>Today in the middle so you can see what is coming.</p>
-      </div>
-      <div className="task-calendar-actions">
-        {anchor !== today && (
-          <button className="button-base button-quiet" type="button" onClick={() => setAnchor(today)}>
-            Today
+  return (
+    <section className="task-week" aria-label="Task week view">
+      <div className="task-week-head">
+        <div>
+          <h2>{rangeLabel}</h2>
+          <p>Today in the middle so you can see what is coming.</p>
+        </div>
+        <div className="task-calendar-actions">
+          {anchor !== today && (
+            <button
+              className="button-base button-quiet"
+              type="button"
+              onClick={() => setAnchor(today)}
+            >
+              Today
+            </button>
+          )}
+          <button
+            className="button-base button-quiet task-calendar-arrow"
+            type="button"
+            aria-label="Previous week"
+            onClick={() => moveWeek(-1)}
+          >
+            <CaretLeft aria-hidden size={16} weight="bold" />
           </button>
-        )}
-        <button className="button-base button-quiet task-calendar-arrow" type="button" aria-label="Previous week" onClick={() => moveWeek(-1)}>
-          <CaretLeft aria-hidden size={16} weight="bold" />
-        </button>
-        <button className="button-base button-quiet task-calendar-arrow" type="button" aria-label="Next week" onClick={() => moveWeek(1)}>
-          <CaretRight aria-hidden size={16} weight="bold" />
-        </button>
+          <button
+            className="button-base button-quiet task-calendar-arrow"
+            type="button"
+            aria-label="Next week"
+            onClick={() => moveWeek(1)}
+          >
+            <CaretRight aria-hidden size={16} weight="bold" />
+          </button>
+        </div>
       </div>
-    </div>
-    <div className="task-week-grid">
-      {days.map((day) => {
-        const dayTasks = datedTasks
-          .filter((task) => taskPlanningDate(task) === day)
-          .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0) || a.title.localeCompare(b.title));
-        const weekday = calendarLabel(day, { weekday: "short" });
-        const dayNumber = Number(day.slice(-2));
-        const isToday = day === today;
-        const isPast = day < today;
-        const isEmpty = dayTasks.length === 0;
-        return (
-          <div className={`task-week-day${isToday ? " is-today" : ""}${isPast ? " is-past" : ""}${isEmpty ? " is-empty" : ""}`} key={day}>
-            <div className="task-week-day-head">
-              <div className="task-week-day-label">
-                <span className="task-week-weekday">{weekday}</span>
-                <span className="task-week-day-number">{dayNumber}</span>
-                {isToday ? <span className="task-week-today-mark">Today</span> : null}
+      <div className="task-week-grid">
+        {days.map((day) => {
+          const dayTasks = datedTasks
+            .filter((task) => taskPlanningDate(task) === day)
+            .sort(
+              (a, b) => (b.priority ?? 0) - (a.priority ?? 0) || a.title.localeCompare(b.title),
+            );
+          const weekday = calendarLabel(day, { weekday: "short" });
+          const dayNumber = Number(day.slice(-2));
+          const isToday = day === today;
+          const isPast = day < today;
+          const isEmpty = dayTasks.length === 0;
+          return (
+            <div
+              className={`task-week-day${isToday ? " is-today" : ""}${isPast ? " is-past" : ""}${isEmpty ? " is-empty" : ""}`}
+              key={day}
+            >
+              <div className="task-week-day-head">
+                <div className="task-week-day-label">
+                  <span className="task-week-weekday">{weekday}</span>
+                  <span className="task-week-day-number">{dayNumber}</span>
+                  {isToday ? <span className="task-week-today-mark">Today</span> : null}
+                </div>
+                {isEmpty ? null : <span className="task-count">{dayTasks.length}</span>}
               </div>
-              {isEmpty ? null : <span className="task-count">{dayTasks.length}</span>}
+              <div className="task-week-day-list">
+                {dayTasks.map((task) => (
+                  <TaskWeekRow
+                    task={task}
+                    data={data}
+                    onCommand={onCommand}
+                    onEdit={() => setEditingId(task.id)}
+                    key={task.id}
+                  />
+                ))}
+                {isEmpty ? (
+                  <p className="task-week-day-empty">
+                    <span className="sr-only">No tasks</span>
+                  </p>
+                ) : null}
+              </div>
             </div>
-            <div className="task-week-day-list">
-              {dayTasks.map((task) => (
-                <TaskWeekRow task={task} data={data} onCommand={onCommand} onEdit={() => setEditingId(task.id)} key={task.id} />
-              ))}
-              {isEmpty ? <p className="task-week-day-empty"><span className="sr-only">No tasks</span></p> : null}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-    {editingTask ? (
-      <Dialog open title="Edit task" size="lg" onClose={() => setEditingId(null)}>
-        <TaskEditForm task={editingTask} data={data} onCommand={onCommand} onDone={() => setEditingId(null)} />
-      </Dialog>
-    ) : null}
-  </section>;
+          );
+        })}
+      </div>
+      {editingTask ? (
+        <Dialog open title="Edit task" size="lg" onClose={() => setEditingId(null)}>
+          <TaskEditForm
+            task={editingTask}
+            data={data}
+            onCommand={onCommand}
+            onDone={() => setEditingId(null)}
+          />
+        </Dialog>
+      ) : null}
+    </section>
+  );
 }

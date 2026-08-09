@@ -1,10 +1,16 @@
 import { interpretationClaimFilter, type ClaimReason } from "@/lib/capture-pipeline";
 import { loadDestinationCatalog } from "@/lib/proposals/catalog";
 import { DEFAULT_TIMEZONE } from "@/lib/proposals/dates";
-import { ProposalProviderError, proposalProvider, type ProposalFailureCode } from "@/lib/proposals/provider";
+import {
+  ProposalProviderError,
+  proposalProvider,
+  type ProposalFailureCode,
+} from "@/lib/proposals/provider";
 import type { ProposalEnvelope } from "@/lib/proposals/schema";
 
-type SupabaseClient = Awaited<ReturnType<typeof import("@/lib/supabase/server").createSupabaseServerClient>>;
+type SupabaseClient = Awaited<
+  ReturnType<typeof import("@/lib/supabase/server").createSupabaseServerClient>
+>;
 
 export type ClaimedCapture = { id: string; original_text: string };
 
@@ -23,7 +29,11 @@ export async function claimCaptureForInterpretation({
 }): Promise<ClaimedCapture | null> {
   const { data } = await supabase
     .from("captures")
-    .update({ status: "interpreting", failure_code: null, interpretation_claimed_at: now.toISOString() })
+    .update({
+      status: "interpreting",
+      failure_code: null,
+      interpretation_claimed_at: now.toISOString(),
+    })
     .eq("id", captureId)
     .or(interpretationClaimFilter(reason, now))
     .select("id, original_text")
@@ -32,7 +42,10 @@ export async function claimCaptureForInterpretation({
 }
 
 // Malformed JSON from the model is usually a one-off blip, so retry once before surfacing a failure.
-async function proposeWithRetry(provider: typeof proposalProvider, input: Parameters<typeof proposalProvider.propose>[0]): ReturnType<typeof proposalProvider.propose> {
+async function proposeWithRetry(
+  provider: typeof proposalProvider,
+  input: Parameters<typeof proposalProvider.propose>[0],
+): ReturnType<typeof proposalProvider.propose> {
   try {
     return await provider.propose(input);
   } catch (error) {
@@ -62,7 +75,13 @@ export async function interpretCapture({
   const timezone = preferences?.timezone ?? DEFAULT_TIMEZONE;
 
   try {
-    const proposal = await proposeWithRetry(provider, { captureId: capture.id, originalText: capture.original_text, now: new Date(), timezone, catalog });
+    const proposal = await proposeWithRetry(provider, {
+      captureId: capture.id,
+      originalText: capture.original_text,
+      now: new Date(),
+      timezone,
+      catalog,
+    });
     const { error: proposalError } = await supabase.from("proposals").insert({
       capture_id: capture.id,
       schema_version: proposal.schemaVersion,
@@ -89,6 +108,8 @@ export async function interpretCapture({
       .from("captures")
       .update({ status: "needs_review", failure_code: failureCode })
       .eq("id", capture.id);
-    return { error: "The proposal service is unavailable. Your original capture is ready for retry." };
+    return {
+      error: "The proposal service is unavailable. Your original capture is ready for retry.",
+    };
   }
 }

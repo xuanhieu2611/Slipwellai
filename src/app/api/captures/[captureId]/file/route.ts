@@ -1,20 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { badRequest, serverError, unauthorized } from "@/lib/http";
 import { applyDestinationSelection } from "@/lib/proposals/catalog";
-import { filedDateColumns, fileManuallySchema, parseProposalEnvelope } from "@/lib/proposals/schema";
+import {
+  filedDateColumns,
+  fileManuallySchema,
+  parseProposalEnvelope,
+} from "@/lib/proposals/schema";
 import { requireUser } from "@/lib/supabase/server";
 
 /* Filing without AI. A capture must never depend on the proposal service to become a
    usable record, so this route files the stored words directly when interpretation is
    unavailable, has failed, or simply is not wanted. */
-export async function POST(request: NextRequest, context: { params: Promise<{ captureId: string }> }) {
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ captureId: string }> },
+) {
   const { captureId } = await context.params;
   const parsed = fileManuallySchema.safeParse(await request.json());
   if (!parsed.success) return badRequest("Give the record a title of up to 280 characters.");
   const { supabase, user } = await requireUser();
   if (!user) return unauthorized();
 
-  const { data: capture } = await supabase.from("captures").select("id, status").eq("id", captureId).maybeSingle();
+  const { data: capture } = await supabase
+    .from("captures")
+    .select("id, status")
+    .eq("id", captureId)
+    .maybeSingle();
   if (!capture) return badRequest("That capture was not found.");
 
   const { data: proposal } = await supabase
@@ -28,7 +39,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ca
   /* A live proposal may hold several intents. Filing over it would close the capture and
      take the unreviewed ones with it, so route the user back to review instead. */
   if (proposal?.status === "ready" && parseProposalEnvelope(proposal.proposal_json)) {
-    return badRequest("This capture already has a proposal. Accept, edit, or dismiss it in review instead.");
+    return badRequest(
+      "This capture already has a proposal. Accept, edit, or dismiss it in review instead.",
+    );
   }
 
   /* Resolved before the capture is claimed so a rejected destination leaves the capture
@@ -52,9 +65,34 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ca
      but they go through the same column mapping as an accepted proposal so a manually
      filed record is indistinguishable from a proposed one afterwards. */
   const dateColumns = filedDateColumns(item);
-  const insert = item.recordType === "task"
-    ? supabase.from("tasks").insert({ source_capture_id: captureId, title: item.title, details: item.body ?? null, ...dateColumns, domain_id: destination.domainId, project_id: destination.projectId, person_id: destination.personId }).select("id").single()
-    : supabase.from("notes").insert({ source_capture_id: captureId, title: item.title, body: item.body ?? null, review_on: dateColumns.due_on ?? dateColumns.scheduled_for, domain_id: destination.domainId, project_id: destination.projectId, person_id: destination.personId }).select("id").single();
+  const insert =
+    item.recordType === "task"
+      ? supabase
+          .from("tasks")
+          .insert({
+            source_capture_id: captureId,
+            title: item.title,
+            details: item.body ?? null,
+            ...dateColumns,
+            domain_id: destination.domainId,
+            project_id: destination.projectId,
+            person_id: destination.personId,
+          })
+          .select("id")
+          .single()
+      : supabase
+          .from("notes")
+          .insert({
+            source_capture_id: captureId,
+            title: item.title,
+            body: item.body ?? null,
+            review_on: dateColumns.due_on ?? dateColumns.scheduled_for,
+            domain_id: destination.domainId,
+            project_id: destination.projectId,
+            person_id: destination.personId,
+          })
+          .select("id")
+          .single();
   const { data: record, error: recordError } = await insert;
   if (recordError || !record) {
     // Give the capture back so it stays actionable rather than looking filed with nothing behind it.

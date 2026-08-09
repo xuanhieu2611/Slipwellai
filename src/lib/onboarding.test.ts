@@ -11,7 +11,12 @@ function createRepository(): OnboardingRepository {
   let profile: {
     display_name: string | null;
     company_name: string | null;
-    work_type: "creator_consultant" | "freelancer_with_recurring_clients" | "solo_founder_or_fractional_leader" | "other_independent_professional" | null;
+    work_type:
+      | "creator_consultant"
+      | "freelancer_with_recurring_clients"
+      | "solo_founder_or_fractional_leader"
+      | "other_independent_professional"
+      | null;
     onboarding_completed_at: string | null;
   } | null = null;
   let preferences: { timezone: string | null; locale: string | null } | null = null;
@@ -36,13 +41,14 @@ function createRepository(): OnboardingRepository {
   };
 }
 
-const validProfile = () => onboardingProfileSchema.parse({
-  displayName: "Nora Chen",
-  companyName: "Field Notes Studio",
-  workType: "creator_consultant",
-  timezone: "America/Vancouver",
-  locale: "en-ca",
-});
+const validProfile = () =>
+  onboardingProfileSchema.parse({
+    displayName: "Nora Chen",
+    companyName: "Field Notes Studio",
+    workType: "creator_consultant",
+    timezone: "America/Vancouver",
+    locale: "en-ca",
+  });
 
 describe("onboarding profile validation", () => {
   it("normalizes locale and preserves a valid IANA timezone", () => {
@@ -50,8 +56,12 @@ describe("onboarding profile validation", () => {
   });
 
   it("rejects malformed timezone and locale values", () => {
-    expect(onboardingProfileSchema.safeParse({ ...validProfile(), timezone: "Mars/Olympus" }).success).toBe(false);
-    expect(onboardingProfileSchema.safeParse({ ...validProfile(), locale: "not a locale" }).success).toBe(false);
+    expect(
+      onboardingProfileSchema.safeParse({ ...validProfile(), timezone: "Mars/Olympus" }).success,
+    ).toBe(false);
+    expect(
+      onboardingProfileSchema.safeParse({ ...validProfile(), locale: "not a locale" }).success,
+    ).toBe(false);
   });
 });
 
@@ -59,7 +69,9 @@ describe("onboarding service", () => {
   it("forces legacy accounts with no completed profile through setup", async () => {
     const state = await getOnboardingState(createRepository(), "legacy-user");
     expect(state.completed).toBe(false);
-    await expect(completeOnboarding(createRepository(), "legacy-user")).rejects.toThrow("Complete your profile");
+    await expect(completeOnboarding(createRepository(), "legacy-user")).rejects.toThrow(
+      "Complete your profile",
+    );
   });
 
   it("persists profile progress before it is marked complete", async () => {
