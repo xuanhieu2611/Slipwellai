@@ -99,13 +99,27 @@ describe("capturesNeedingAttention", () => {
       { id: "b", status: "needs_review", interpretation_claimed_at: null },
       { id: "c", status: "failed", interpretation_claimed_at: null },
     ];
-    expect(capturesNeedingAttention(captures, now).map((capture) => capture.id)).toEqual(["a", "b", "c"]);
+    expect(capturesNeedingAttention(captures, now).map((capture) => capture.id)).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
   });
 
   it("leaves a fresh interpretation claim off the list but flags a stranded one", () => {
-    const fresh = { id: "fresh", status: "interpreting", interpretation_claimed_at: claimedAt(30_000) };
-    const stranded = { id: "stranded", status: "interpreting", interpretation_claimed_at: claimedAt(INTERPRETATION_STALE_MS + 1000) };
-    expect(capturesNeedingAttention([fresh, stranded], now).map((capture) => capture.id)).toEqual(["stranded"]);
+    const fresh = {
+      id: "fresh",
+      status: "interpreting",
+      interpretation_claimed_at: claimedAt(30_000),
+    };
+    const stranded = {
+      id: "stranded",
+      status: "interpreting",
+      interpretation_claimed_at: claimedAt(INTERPRETATION_STALE_MS + 1000),
+    };
+    expect(capturesNeedingAttention([fresh, stranded], now).map((capture) => capture.id)).toEqual([
+      "stranded",
+    ]);
   });
 
   it("excludes resolved captures", () => {
@@ -121,11 +135,26 @@ describe("captureAttentionLabel", () => {
   it("uses plain, calm language that matches the Inbox's own tags for the same states", () => {
     expect(captureAttentionLabel({ status: "needs_review" }, now)).toBe("Needs review");
     expect(captureAttentionLabel({ status: "failed" }, now)).toBe("Interpretation failed");
-    expect(captureAttentionLabel({ status: "queued", interpretation_claimed_at: null }, now)).toBe("Waiting to interpret");
+    expect(captureAttentionLabel({ status: "queued", interpretation_claimed_at: null }, now)).toBe(
+      "Waiting to interpret",
+    );
   });
 
   it("distinguishes a fresh interpretation claim from a stranded one", () => {
-    expect(captureAttentionLabel({ status: "interpreting", interpretation_claimed_at: claimedAt(30_000) }, now)).toBe("Interpreting");
-    expect(captureAttentionLabel({ status: "interpreting", interpretation_claimed_at: claimedAt(INTERPRETATION_STALE_MS + 1000) }, now)).toBe("Waiting to interpret");
+    expect(
+      captureAttentionLabel(
+        { status: "interpreting", interpretation_claimed_at: claimedAt(30_000) },
+        now,
+      ),
+    ).toBe("Interpreting");
+    expect(
+      captureAttentionLabel(
+        {
+          status: "interpreting",
+          interpretation_claimed_at: claimedAt(INTERPRETATION_STALE_MS + 1000),
+        },
+        now,
+      ),
+    ).toBe("Waiting to interpret");
   });
 });

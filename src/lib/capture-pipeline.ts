@@ -69,7 +69,10 @@ export function captureNeedsAttention(capture: AttentionCapture, now: Date = new
 }
 
 /** Today's recovery list: the subset of a capture feed still waiting on the user. */
-export function capturesNeedingAttention<T extends AttentionCapture>(captures: readonly T[], now: Date = new Date()): T[] {
+export function capturesNeedingAttention<T extends AttentionCapture>(
+  captures: readonly T[],
+  now: Date = new Date(),
+): T[] {
   return captures.filter((capture) => captureNeedsAttention(capture, now));
 }
 
