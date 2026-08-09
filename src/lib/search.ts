@@ -211,11 +211,32 @@ function buildEntries(data: SearchPageData): SearchEntry[] {
    (tests, any future non-web caller) that don't pass one. */
 const DEFAULT_RESULT_LIMIT = 30;
 
+/** IDs of matching rows per record type from a real Postgres full-text query (see
+ * src/lib/supabase/search-repository.ts and src/app/api/search/route.ts). Structurally the same
+ * shape as `FullTextMatches` there; redeclared here (rather than imported) so this module — the
+ * one piece of search with unit test coverage — stays a pure function with no dependency on a
+ * server-only Supabase module. */
+export type SearchFullTextMatches = Partial<Record<SearchRecordType, ReadonlySet<string>>>;
+
+/**
+ * Filters and ranks the account's already-loaded records against a text query and the active
+ * filters (see the module doc comment for the type/status/domain/date scoping rules).
+ *
+ * `fullTextMatches` is an optional server-side prefilter: when provided, an entry's text-query
+ * match is decided by membership in `fullTextMatches[entry.type]` (a real Postgres
+ * `search_vector @@ websearch_to_tsquery(...)` result) instead of the plain-JS substring check.
+ * When omitted — no full-text answer has arrived yet (e.g. the request is still in flight) or the
+ * caller doesn't have one (existing tests, any other non-web caller) — this falls back to the
+ * original in-memory substring match, so search is never broken by an absent or failed full-text
+ * lookup; see src/components/workspace/search/search-page.tsx for how the live page wires this
+ * up with that exact fallback. Every other filter dimension (type, status, domain, project,
+ * person, date range) is unaffected by this parameter and always runs client-side as before. */
 export function searchRecords(
   data: SearchPageData,
   query: string,
   filters: SearchFilterState,
   resultLimit: number = DEFAULT_RESULT_LIMIT,
+  fullTextMatches?: SearchFullTextMatches,
 ): SearchResult[] {
   const q = query.trim().toLowerCase();
   const entries = buildEntries(data).filter((entry) => {
@@ -231,7 +252,12 @@ export function searchRecords(
       if (filters.dateFrom && entry.relevantDate < filters.dateFrom) return false;
       if (filters.dateTo && entry.relevantDate > filters.dateTo) return false;
     }
-    if (q && !`${entry.title} ${entry.context}`.toLowerCase().includes(q)) return false;
+    if (q) {
+      const matches = fullTextMatches
+        ? (fullTextMatches[entry.type]?.has(entry.id) ?? false)
+        : `${entry.title} ${entry.context}`.toLowerCase().includes(q);
+      if (!matches) return false;
+    }
     return true;
   });
   return entries

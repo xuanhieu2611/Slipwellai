@@ -4,6 +4,7 @@ import {
   isDefaultSearchFilters,
   searchRecords,
   type SearchFilterState,
+  type SearchFullTextMatches,
 } from "@/lib/search";
 import type { SearchPageData } from "@/lib/workspace-page-data";
 
@@ -243,6 +244,78 @@ describe("searchRecords", () => {
         context: "Discussed the September campaign",
       },
     ]);
+  });
+
+  describe("fullTextMatches (server-side full-text prefilter)", () => {
+    it("uses the provided full-text matches instead of the in-memory substring check", () => {
+      // "task-open" only mentions Rivera in its details, so a naive title-only match would miss
+      // it; the full-text result is trusted as-is instead of being re-derived from title/context.
+      const matches: SearchFullTextMatches = { task: new Set(["task-open"]) };
+      const results = searchRecords(
+        baseData(),
+        "anything the full-text query decided matched",
+        defaultSearchFilters,
+        30,
+        matches,
+      );
+      expect(results.map((r) => r.id)).toEqual(["task-open"]);
+    });
+
+    it("excludes a record the in-memory match would have accepted, when full-text disagrees", () => {
+      // "Rivera" appears in task-open's details, but an empty full-text match set says no task
+      // matched, so the full-text answer must win over the substring check.
+      const matches: SearchFullTextMatches = { task: new Set() };
+      const results = searchRecords(
+        baseData(),
+        "rivera",
+        { ...defaultSearchFilters, types: ["task"] },
+        30,
+        matches,
+      );
+      expect(results).toEqual([]);
+    });
+
+    it("treats a record type absent from the matches map as having no full-text matches", () => {
+      // Only "note" has a match set; every other type (task, project, person, domain, capture)
+      // is absent from `matches`, so all of them are excluded even though "rivera" appears in
+      // several of their title/context fields.
+      const matches: SearchFullTextMatches = { note: new Set(["note-1"]) };
+      const results = searchRecords(baseData(), "rivera", defaultSearchFilters, 30, matches);
+      expect(results.map((r) => r.id).sort()).toEqual(["note-1"]);
+    });
+
+    it("still applies every other filter dimension on top of a full-text match", () => {
+      const matches: SearchFullTextMatches = {
+        task: new Set(["task-open", "task-completed"]),
+      };
+      const results = searchRecords(
+        baseData(),
+        "rivera",
+        { ...defaultSearchFilters, types: ["task"], domainId: "domain-ads" },
+        30,
+        matches,
+      );
+      // task-completed matched full-text but belongs to domain-work, so the domain filter still
+      // excludes it; task-open belongs to domain-ads and stays.
+      expect(results.map((r) => r.id)).toEqual(["task-open"]);
+    });
+
+    it("falls back to the in-memory substring match when fullTextMatches is not provided", () => {
+      const withoutFullText = searchRecords(baseData(), "rivera", defaultSearchFilters);
+      const ids = withoutFullText.map((r) => r.id).sort();
+      expect(ids).toEqual(["capture-filed", "person-1", "project-1", "task-open"]);
+    });
+
+    it("does not require fullTextMatches when there is no text query", () => {
+      const results = searchRecords(
+        baseData(),
+        "",
+        { ...defaultSearchFilters, types: ["person"] },
+        30,
+        {},
+      );
+      expect(results.map((r) => r.id)).toEqual(["person-1"]);
+    });
   });
 });
 
