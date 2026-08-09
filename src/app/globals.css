@@ -1125,6 +1125,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 .task-filter-reset:hover { background: var(--surface-soft); color: var(--ink); }
 
+/* Search's record-type filter reads as a labeled cluster of native checkboxes rather than a
+   pill select, since more than one type can be active at once (unlike the single-select
+   status/domain/project/person filters it sits beside). */
+.search-type-filter { align-items: center; background: var(--surface-sunken); border: 1px solid var(--line); border-radius: var(--r-md); display: inline-flex; flex-wrap: wrap; gap: .5rem .65rem; padding: .45rem .75rem; }
+.search-type-filter .inline-checkbox { white-space: nowrap; }
+.search-date-filter { align-items: center; background: var(--surface-sunken); border: 1px solid var(--line); border-radius: var(--r-md); display: inline-flex; gap: .4rem; padding: .4rem .7rem; }
+.search-date-filter.is-active { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.search-date-filter .field-base { background: transparent; border: 0; color: var(--ink); font-size: .78rem; font-weight: 600; min-height: 0; min-width: 0; padding: 0; width: 7.6rem; }
+.search-date-filter .field-base:focus { border: 0; box-shadow: none; }
+.search-date-filter-sep { color: var(--ink-muted); font-size: .75rem; }
+
 /* ---------- review inbox ---------- */
 
 /*
@@ -1658,4 +1669,5 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .task-calendar-head > div:first-child p { display: none; }
   .task-calendar-actions .button-base { font-size: .75rem; padding-inline: .45rem; }
   .task-calendar-day { min-height: 2.9rem; }
+  .search-date-filter .field-base { width: 6.6rem; }
 }
